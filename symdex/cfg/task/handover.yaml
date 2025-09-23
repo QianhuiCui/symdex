@@ -1,0 +1,73 @@
+defaults:
+  - base.yaml
+  - _self_
+
+env_name: "HandoverEnv-v0"
+rew:
+  reaching_object: 0.05
+  object_goal_tracking: 10.0 
+  object_goal_orient_tracking: 2.0
+  middle_success_bonus: 25.0  # 20
+  contact_bottle_punish: 4.0
+  reset_robot_joint_pos: 200.0
+  left_align_hand_pose: 0.2
+  left_align_finger_joint: 1.0
+  left_reaching_object: 40.0
+  left_object_goal_tracking: 20.0 
+  left_object_goal_orient_tracking: 5.0
+  middle_success_bonus_left: 20.0
+  success_bonus: 3000.0
+
+  # symmetry
+  reaching_object_symmetry: 0.05
+  object_goal_tracking_symmetry: 10.0 
+  object_goal_orient_tracking_symmetry: 2.0
+  contact_bottle_punish_symmetry: 4.0
+  reset_robot_joint_pos_symmetry: 200.0
+  left_align_hand_pose_symmetry: 0.2
+  left_align_finger_joint_symmetry: 1.0
+  left_reaching_object_symmetry: 40.0
+  left_object_goal_tracking_symmetry: 20.0 
+  left_object_goal_orient_tracking_symmetry: 5.0
+  middle_success_bonus_left_symmetry: 20.0
+  success_bonus_symmetry: 3000.0
+
+randomize:
+  object_mass: [0.2, 0.2]
+
+multi:
+  shared_obs_dim: 180
+  SYMDEX:
+    single_agent_action_dim: 22
+    swap_action: True
+    single_agent_obs_dim: [102, 102]
+    single_agent_obs_idx: [[[0, 56], [112, 158]], 
+                        [[56, 136], [158, 180]]]
+    single_agent_obs_idx_symmetry: [[[56, 136], [158, 180]],
+                                    [[0, 56], [112, 158]]]
+    single_agent_rew: [["reaching_object", "object_goal_tracking", "object_goal_orient_tracking", "middle_success_bonus", "contact_bottle_punish", "reset_robot_joint_pos", "success_bonus"],
+                        ["left_align_hand_pose", "left_align_finger_joint", "left_reaching_object", "left_object_goal_tracking", "left_object_goal_orient_tracking", "middle_success_bonus_left", "success_bonus"]]
+    single_agent_rew_symmetry: [["reaching_object_symmetry", "object_goal_tracking_symmetry", "object_goal_orient_tracking_symmetry", "middle_success_bonus", "contact_bottle_punish_symmetry", "reset_robot_joint_pos_symmetry", "success_bonus_symmetry"],
+                              ["left_align_hand_pose_symmetry", "left_align_finger_joint_symmetry", "left_reaching_object_symmetry", "left_object_goal_tracking_symmetry", "left_object_goal_orient_tracking_symmetry", 
+                              "middle_success_bonus_left_symmetry", "success_bonus_symmetry"]]
+
+symmetry:
+  reset_symmetry:
+    object_0:
+      type: "rigid_object"
+      symmetry: ['position', 'quat']
+    target_pos:
+      type: "command"
+      symmetry: ['position', 'quat']
+    left_hand_target_pos:
+      type: "command"
+      symmetry: ['position', 'quat']
+  SYMDEX:
+    # actor network
+    actor_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"],
+                         ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"]]
+    actor_output_fields: [["Q_js"], ["Q_js"]]
+    # critic network
+    critic_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"],
+                          ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"]]
+    critic_output_fields: [["irrep_0"], ["irrep_0"]]

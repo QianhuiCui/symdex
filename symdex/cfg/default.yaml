@@ -1,0 +1,24 @@
+defaults:
+  - algo: symdex_algo
+  - task: boxLift
+  - logging: default
+  - _self_
+
+env_name: "boxLift-v0"
+num_envs: 4096
+device: 'cuda:0'
+sim_device: ${.device}
+rl_device: ${.device}
+graphics_device_id: 0
+
+seed: 42
+max_step: null
+max_time: 36000 # in seconds
+eval_headless: True
+headless: True
+
+max_episode_length: 100
+                      
+artifact: null
+artifact_critic: null
+save_model: False

@@ -1,0 +1,11 @@
+wandb:
+  project: symdex
+  mode: 'online'
+  tags: null
+  group: null
+  entity: null
+  name: test
+  settings:
+    ignore_globs: [ '*.pt' ]
+    start_method: 'fork'
+

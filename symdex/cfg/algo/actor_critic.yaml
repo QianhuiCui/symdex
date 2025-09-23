@@ -1,0 +1,12 @@
+actor_lr: 0.0005
+critic_lr: 0.0005
+batch_size: 8192
+reward_scale: 1.
+max_grad_norm: 0.5
+tracker_len: 1000
+obs_norm: False
+value_norm: True
+handle_timeout: True
+log_freq: 5
+eval_freq: 60
+multi_agent: False

@@ -1,0 +1,22 @@
+defaults:
+  - actor_critic.yaml
+  - _self_
+
+name: "SYMDEX"
+horizon_len: 64
+batch_size: 32768
+gamma: 0.99
+act_class: DiagGaussianEquivariantMLPPolicy  # DiagGaussianMLPPolicy
+cri_class: EquivariantMLPNet  # MLPCritic
+eval_freq: 20
+
+update_times: 8
+no_tgt_actor: True
+
+use_gae: True
+value_clip: True
+lambda_gae_adv: 0.95
+lambda_entropy: 0.0  # 0.01
+ratio_clip: 0.15
+
+multi_agent: True

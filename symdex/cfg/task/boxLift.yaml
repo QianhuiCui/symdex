@@ -1,0 +1,69 @@
+defaults:
+  - base.yaml
+  - _self_
+
+env_name: "BoxLiftEnv-v0"
+rew:
+  align_hand_to_pos: 0.3
+  align_hand_to_quat: 0.05
+  punish_collision: -10.0
+  align_hand_to_pos_left: 0.3
+  align_hand_to_quat_left: 0.05
+  punish_collision_left: -10.0
+  object_goal_tracking: 20.0
+  object_goal_orient_tracking: 4.0
+  success_bonus: 2000.0
+
+randomize:
+  enable: False
+  update_freq: 100
+  eval: False
+  total_step: 10
+  success_threshold: 0.7
+  randomization:
+    object_mass: [0.13, 0.5]
+    static_friction: [0.24, 1.6]
+    dynamic_friction: [0.24, 1.6]
+    restitution: [0.0, 1.0]
+  curriculum:
+    action_scale: [0.05, 0.04, 0.03]
+    # energy_penalty: 
+    #   names: ["energy", "energy_left"]
+    #   values: [0.000001, 0.000001, 0.000001, 0.001]
+    # collision_penalty: 
+    #   names: ["punish_collision", "punish_collision_left", "collision_to_table", "collision_to_table_left"]
+    #   values: [-100.0, -100.0, -100.0, -500.0, -1000.0]
+    # external_force_torque: [0.0, 0.0, 0.5]
+
+multi:
+  shared_obs_dim: 147
+  SYMDEX:
+    single_agent_action_dim: 22
+    swap_action: True
+    single_agent_obs_dim: [91, 91]
+    single_agent_obs_idx: [[[0, 44], [88, 112], [124, 147]], 
+                          [[44, 100], [112, 125], [147, 169]]]
+    single_agent_obs_idx_symmetry: [[[44, 100], [112, 125], [147, 169]],
+                                    [[0, 44], [88, 112], [124, 147]]]
+    single_agent_rew: [["align_hand_to_pos", "align_hand_to_quat", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision"],
+                        ["align_hand_to_pos_left", "align_hand_to_quat_left", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision_left"]]
+    single_agent_rew_symmetry: [["align_hand_to_pos_left", "align_hand_to_quat_left", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision_left"],
+                                ["align_hand_to_pos", "align_hand_to_quat", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision"]]
+
+symmetry:
+  reset_symmetry:
+    object_0:
+      type: "rigid_object"
+      symmetry: ['position']
+    target_pos:
+      type: "command"
+      symmetry: ['position']
+  SYMDEX:
+    # actor network
+    actor_input_fields: [["Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "irrep_0", "Q_js"],
+                        ["Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "irrep_0", "Q_js"]] 
+    actor_output_fields: [["Q_js"], ["Q_js"]]  # 22
+    # critic network
+    critic_input_fields: [["Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "irrep_0", "Q_js"], # 22 + 22 + 3 + 9 + 3 + 9 + 1 + 22 = 91
+                        ["Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "irrep_0", "Q_js"]]  # 22 + 22 + 3 + 9 + 3 + 9 + 1 + 22 = 91
+    critic_output_fields: [["irrep_0"], ["irrep_0"]] # 1

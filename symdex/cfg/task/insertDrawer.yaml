@@ -1,0 +1,102 @@
+defaults:
+  - base.yaml
+  - _self_
+
+env_name: "InsertDrawerEnv-v0"
+rew:
+  # right
+  reaching_object: 0.01  # 0.02
+  object_lifting: 5.0  #1.0
+  object_goal_tracking: 50.0  #20.0
+  object_in_drawer: 100.0
+  reset_robot_joint_pos: 1.0
+  energy: 0.000001
+  collision_to_table: 0.000001
+  # left
+  reaching_handle: 0.01
+  moving_drawer: 10
+  moving_drawer_inside: 10
+  success_bonus: 5000
+  energy_left: 0.000001
+  collision_to_drawer: 0.000001
+
+  # symmetry
+  reaching_object_symmetry: 0.01
+  object_lifting_symmetry: 5.0
+  object_goal_tracking_symmetry: 50.0
+  object_in_drawer_symmetry: 100.0
+  reset_robot_joint_pos_symmetry: 1.0
+  reaching_handle_symmetry: 0.01
+  moving_drawer_symmetry: 10
+  moving_drawer_inside_symmetry: 10
+  collision_to_table_symmetry: 0.000001
+  collision_to_drawer_symmetry: 0.000001
+
+randomize:
+  enable: False
+  update_freq: 100
+  eval: False
+  total_step: 10
+  success_threshold: 0.7
+  randomization:
+    object_mass: [0.11, 0.11]
+    static_friction: [0.24, 1.6]
+    dynamic_friction: [0.24, 1.6]
+    restitution: [0.0, 1.0]
+  curriculum:
+    action_scale: [0.05, 0.04, 0.03]
+    energy_penalty: 
+      names: ["energy", "energy_left"]
+      values: [0.0, 0.001]
+    collision_penalty: 
+      names: ["collision_to_table", "collision_to_drawer", "collision_to_table_symmetry", "collision_to_drawer_symmetry"]
+      values: [0.0, -500.0]
+    reset_pose:
+      names: "reset_object_right"
+      values: [[[-0.1, 0.2], [-0.4, -0.3], [0.0, 0.0]], 
+               [[-0.12, 0.22], [-0.42, -0.28], [0.0, 0.0]],
+               [[-0.14, 0.24], [-0.44, -0.26], [0.0, 0.0]],
+               [[-0.16, 0.26], [-0.46, -0.24], [0.0, 0.0]],
+               [[-0.18, 0.28], [-0.48, -0.22], [0.0, 0.0]],
+               [[-0.2, 0.3], [-0.5, -0.2], [0.0, 0.0]]]
+    reset_pose2:
+      names: "reset_drawer_pos"
+      values: [[[0.36, 0.44], [0.06, 0.14], [0.1, 0.14]]]
+    # external_force_torque: [0.0, 0.5]
+
+multi:
+  shared_obs_dim: 172
+  SYMDEX:
+    single_agent_action_dim: 22
+    swap_action: True
+    single_agent_obs_dim: [82, 94]
+    single_agent_obs_idx: [[[0, 59], [127, 150]], # 82
+                          [[56, 128], [150, 172]]] # 94
+    single_agent_obs_idx_symmetry: [[[59, 115], [56, 59], [127, 128], [150, 172]], # 82
+                                    [[56, 59], [0, 56], [115, 150]]] # 94
+    single_agent_rew: [["reaching_object", "object_lifting", "object_goal_tracking", "object_success_bonus_pos", "object_in_drawer", "reset_robot_joint_pos", "success_bonus"],
+                        ["reaching_handle", "moving_drawer", "moving_drawer_inside", "success_bonus"]]
+    single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "object_goal_tracking_symmetry", 
+                                "object_success_bonus_pos_symmetry", "object_in_drawer_symmetry", "reset_robot_joint_pos_symmetry", "success_bonus"],
+                                ["reaching_handle_symmetry", "moving_drawer_symmetry", "moving_drawer_inside_symmetry", "success_bonus"]]
+
+symmetry:
+  reset_symmetry:
+    object_0:
+      type: "rigid_object"
+      symmetry: ['position']
+    drawer:
+      type: "articulation"
+      symmetry: ['position']
+    target_pos:
+      type: "command"
+      symmetry: ['position']
+  SYMDEX:
+    # actor network
+    actor_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "irrep_0", "Q_js"], # 3 + 9 + 22 + 22 + 3 + 1 + 22 = 82
+                        ["R3", "R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "irrep_0", "Q_js"]] # 3 + 3 + 9 + 22 + 22 + 3 + 9 + 1 + 22 = 94
+    actor_output_fields: [["Q_js"], ["Q_js"]]  # 22
+    # critic network
+    critic_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "irrep_0", "Q_js"], # 3 + 9 + 22 + 22 + 3 + 1 + 22 = 82
+                        ["R3", "R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "irrep_0", "Q_js"]]
+    critic_output_fields: [["irrep_0"], ["irrep_0"]] # 1
