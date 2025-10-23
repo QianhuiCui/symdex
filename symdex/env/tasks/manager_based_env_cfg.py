@@ -84,7 +84,7 @@ class BaseSceneCfg(InteractiveSceneCfg):
     table: RigidObjectCfg = RigidObjectCfg(
         prim_path="/World/envs/env_.*/Table",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/object/table.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/Background/table/table.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=True,

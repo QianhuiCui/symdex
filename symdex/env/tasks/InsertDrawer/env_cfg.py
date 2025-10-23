@@ -209,7 +209,7 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
     object_0 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_0",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/object/dog.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/grasp/dog_coacd.usd",
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -233,7 +233,7 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
     drawer = ArticulationCfg(
         prim_path=f"/World/envs/env_.*/Drawer",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/object/drawer.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/drawer/drawer.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
