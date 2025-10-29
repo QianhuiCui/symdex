@@ -17,7 +17,7 @@ max_time: 36000 # in seconds
 eval_headless: True
 headless: True
 
-max_episode_length: 100
+max_episode_length: 10e9
                       
 artifact: null
 artifact_critic: null
