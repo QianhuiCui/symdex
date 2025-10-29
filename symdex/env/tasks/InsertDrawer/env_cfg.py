@@ -5,6 +5,7 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 import isaaclab.envs.mdp as mdp
 from isaaclab.markers.config import FRAME_MARKER_CFG 
+from isaaclab.envs.mdp.actions import JointPositionActionCfg
 
 import symdex
 from symdex.env.tasks.manager_based_env_cfg import *
@@ -25,7 +26,7 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -117,7 +118,7 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -465,24 +466,36 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
 
 @configclass
 class InsertDrawerActionsCfg:
-    arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
+    # arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
+    #     asset_name="robot",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    #     joint_lower_limit=JOINT_LOWER_LIMIT,
+    #     joint_upper_limit=JOINT_UPPER_LIMIT,
+    #     alpha=0.2
+    # )
+
+    # arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
+    #     asset_name="robot_left",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    #     joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
+    #     joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
+    #     alpha=0.2
+    # )
+    arm_hand_action = JointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
-        joint_lower_limit=JOINT_LOWER_LIMIT,
-        joint_upper_limit=JOINT_UPPER_LIMIT,
-        alpha=0.2
     )
-
-    arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
+    arm_hand_action_left = JointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
-        joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
-        joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
-        alpha=0.2
     )
 
 @configclass
@@ -596,16 +609,17 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
     rewards = InsertDrawerRewardsCfg()
     num_object = 1
     action_dim = 44 # arm + hand
-    action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03,
-                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
+    action_scale: list = [1.0] * action_dim
+    #                      [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+    #                         0.03, 0.03, 0.03, 0.03, 
+    #                         0.03, 0.03, 0.03, 0.03, 
+    #                         0.03, 0.03, 0.03, 0.015,
+    #                         0.03, 0.03, 0.03, 0.03,
+    #                       0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+    #                         0.03, 0.03, 0.03, 0.03, 
+    #                         0.03, 0.03, 0.03, 0.03, 
+    #                         0.03, 0.03, 0.03, 0.015,
+    #                         0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
 

@@ -98,6 +98,34 @@ class BaseSceneCfg(InteractiveSceneCfg):
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0), rot=(0.70710678, 0, 0., 0.70710678)),
     )
 
+    # target spheres for visualization
+    target_sphere = RigidObjectCfg(
+        prim_path="/World/envs/env_.*/targetSphere",
+        spawn=sim_utils.SphereCfg(
+            radius=0.04,
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                kinematic_enabled=True,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.0),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0), metallic=0.2),  # red
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.5, 0.5, 0.05)),
+    )
+    target_sphere_left = RigidObjectCfg(
+        prim_path="/World/envs/env_.*/targetSphere_left",
+        spawn=sim_utils.SphereCfg(
+            radius=0.04,
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                kinematic_enabled=True,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.0),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0), metallic=0.2),  # blue
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.5, -0.5, 0.05)),
+    )
+    
     replicate_physics = False
 
 @configclass
