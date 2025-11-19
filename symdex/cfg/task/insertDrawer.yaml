@@ -32,11 +32,31 @@ rew: {}
   # collision_to_table_symmetry: 0.000001
   # collision_to_drawer_symmetry: 0.000001
 
-randomize: {}
-  # enable: False
-  # update_freq: 100
-  # eval: False
-  # total_step: 10
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 256
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: True
+      pos: [-0.5, 0.0, 0.5]
+      target: [0.18, 0.0, 0.06]
+    cam_2:
+      enable: False
+      randomize: True
+      pos: [0.6, -0.7, 0.5]
+      target: [-0.18, 0.0, 0.06]
+    wrist_cam_left:
+      enable: False 
+      delay: 3
+
+randomize: 
+  enable: False
+  update_freq: 100
+  eval: False
+  total_step: 10
   # success_threshold: 0.7
   # randomization:
   #   object_mass: [0.11, 0.11]

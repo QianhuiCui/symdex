@@ -62,7 +62,6 @@ def main(cfg: DictConfig):
 
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device)
-    count = 0
     env.reset()
     # env.unwrapped.update_randomization(0.0)
 
@@ -76,16 +75,9 @@ def main(cfg: DictConfig):
     # print("[DEBUG] Left robot joint order:", env.unwrapped.scene["robot_left"].data.joint_names)
     # print("Right arm joint limits:", env.unwrapped.scene["robot"].data.joint_limits)
     # print("Left arm joint limits:", env.unwrapped.scene["robot_left"].data.joint_limits)
-    # am = env.unwrapped.action_manager
-    # names = list(am.active_terms) 
-    # dims  = list(am.action_term_dim) 
-    # offsets = [0]
-    # for d in dims[:-1]:
-    #     offsets.append(offsets[-1] + d)
-    # slices = {n: (o, o+d) for n, o, d in zip(names, offsets, dims)}
     # print("[IO] slices:", slices)
     # print("Effective action_scale:", env.unwrapped.cfg.action_scale)
-    print("Config max_episode_length:", env.unwrapped.max_episode_length)
+    print("[DEBUG] Config max_episode_length:", env.unwrapped.max_episode_length)
 
     threading.Thread(target=recv_teleop, daemon=True).start()
 
@@ -93,11 +85,11 @@ def main(cfg: DictConfig):
     use_logger = getattr(cfg, "logger", False)
     if use_logger:
         from symdex.utils.trajectory_logger import TrajectoryLogger
-        logger = TrajectoryLogger(task_name=cfg.env_name)
-        logger.start_trial()
+        logger = TrajectoryLogger(task_name=cfg.task.env_name)
         print("[Teleop] Logger enabled.")
 
     print("[IsaacLab Teleop] Started. Waiting for teleop input...") 
+    just_reset = True
 
     while simulation_app.is_running():
         with _data_lock:
@@ -112,35 +104,80 @@ def main(cfg: DictConfig):
         # print(f"[DEBUG] q_value right: {q_value[:22]}, \n[DEBUG] q_value left: {q_value[22:]}")
         q_tensor = torch.tensor([q_value], dtype=torch.float32, device=cfg.rl_device)
         obs, rew, reset, extras = env.step(q_tensor)
+        # print("[DEBUG]: observation keys: ", obs.keys())
+        success_flag = bool(extras.get("success", False))
 
         # ---- Debug prints ----
-        # am = env.unwrapped.action_manager
-        # rt = am.get_term("arm_hand_action")
-        # lt = am.get_term("arm_hand_action_left")
-        # print("[RIGHT] raw:", rt.raw_actions[0].detach().cpu().numpy())
-        # print("[RIGHT] proc:", rt.processed_actions[0].detach().cpu().numpy())
-        # print("[LEFT ] raw:", lt.raw_actions[0].detach().cpu().numpy())
-        # print("[LEFT ] proc:", lt.processed_actions[0].detach().cpu().numpy())
         # q_current_right = env.unwrapped.scene["robot"].data.joint_pos[0].cpu().numpy()
         # print("[DEBUG] Step right robot joint pos:", q_current_right)
         # q_current_left = env.unwrapped.scene["robot_left"].data.joint_pos[0].cpu().numpy()
         # print("[DEBUG] Step left robot joint pos:", q_current_left)
-        if reset.any():
-            print("[DEBUG] Environment reset triggered auto-reset internally.")
-            print("Reset flags:", reset.cpu().numpy())
+        # if reset.any():
+        #     print("[DEBUG] Reset flags:", reset.cpu().numpy())
 
         if use_logger:
-            logger.add_sample(
-                t=timestamp if timestamp is not None else time.time(),
-                q=q_value,
-                left_pose=pose_left,
-                right_pose=pose_right,
+            # logger.add_sample(
+            #     t=timestamp if timestamp is not None else time.time(),
+            #     q=q_value,
+            #     left_pose=pose_left,
+            #     right_pose=pose_right,
+            # )
+            scene = env.unwrapped.scene
+            robot_r = scene["robot"]
+            robot_l = scene["robot_left"]
+            # joint states
+            joint_pos_r = robot_r.data.joint_pos[0].cpu().numpy()
+            joint_vel_r = robot_r.data.joint_vel[0].cpu().numpy()
+            joint_pos_l = robot_l.data.joint_pos[0].cpu().numpy()
+            joint_vel_l = robot_l.data.joint_vel[0].cpu().numpy()
+            # cartesian poses
+            ee_pos_r = robot_r.data.body_state_w[:, robot_r.find_bodies("palm_link"), :3].cpu().numpy()
+            ee_pos_l = robot_l.data.body_state_w[:, robot_l.find_bodies("palm_link"), :3].cpu().numpy()
+
+            observation = {
+                "joint_pos_right": joint_pos_r,
+                "joint_pos_left": joint_pos_l,
+                "joint_vel_right": joint_vel_r,
+                "joint_vel_left": joint_vel_l,
+                "ee_pose_right": ee_pos_r,
+                "ee_pose_left": ee_pos_l,
+                # 'exterior_image_1_left': Image(shape=(180, 320, 3), dtype=uint8),
+                # 'exterior_image_2_left': Image(shape=(180, 320, 3), dtype=uint8),
+                # 'wrist_image_left': Image(shape=(180, 320, 3), dtype=uint8),
+            }
+
+            action = q_value
+            action_dict = {
+                "arm_hand_action_right": q_value[:22],
+                "arm_hand_action_left": q_value[22:],
+                "ee_target_pose_right": pose_right,
+                "ee_target_pose_left": pose_left,
+            }
+
+            logger.add_step(
+                action=action,
+                action_dict=action_dict,
+                observation=observation,
+                reward=float(rew[0].item() if torch.is_tensor(rew) else rew),
+                is_first=just_reset,
+                is_last=bool(reset.any() or success_flag),
+                is_terminal=bool(success_flag),
+                language_instruction="",
+                discount=1.0,
             )
 
-        success_flag = bool(extras.get("success", False))
+        # Episode management
         if success_flag:
             print("[Teleop] Task success, resetting environment.")
             env.reset()
+            just_reset = True
+            if use_logger:
+                logger.save_episode()
+
+        elif reset.any():
+            print("[Teleop] Environment reset triggered auto-reset internally.")
+            env.reset()
+            just_reset = True
             if use_logger:
                 logger.start_new_trial()
                 count += 1

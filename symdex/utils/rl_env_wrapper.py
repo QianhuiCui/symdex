@@ -4,6 +4,9 @@ import gym.spaces
 import torch
 import numpy as np
 import math
+import einops
+from enum import IntEnum
+import torchvision.transforms as T
 from isaaclab.envs import VecEnvObs
 
 """
@@ -12,7 +15,7 @@ Vectorized environment wrapper.
 
 
 class VecEnvWrapper:
-    def __init__(self, env, rl_device: str, clip_obs: float = np.inf, clip_actions: float = 1):
+    def __init__(self, env, rl_device: str, clip_obs: float = np.inf, clip_actions: float = 1, raw_data: bool = False, image_size: int = 128):
         """Initializes the wrapper instance.
 
         Args:
@@ -34,6 +37,12 @@ class VecEnvWrapper:
         self._sim_device = env.unwrapped.device
         self.max_episode_length_s = env.unwrapped.cfg.episode_length_s
         self.max_episode_length = math.ceil(env.unwrapped.cfg.episode_length_s / (env.unwrapped.cfg.decimation * env.unwrapped.physics_dt))
+        self.raw_data = raw_data
+        self.cam_enable = env.unwrapped.cfg.hydra_cfg.task.cam.enable
+        self.image_transform = T.Compose([
+            T.Resize((image_size, image_size)),
+            T.Normalize(mean=[0.5]*3, std=[0.5]*3),
+        ])
         
     def __str__(self):
         """Returns the wrapper name and the :attr:`env` representation string."""
@@ -156,9 +165,36 @@ class VecEnvWrapper:
     def close(self):  # noqa: D102
         return self.env.close()
 
-    """
-    Helper functions
-    """
+    # """
+    # Helper functions
+    # """
+
+    # def _process_obs(self, obs_dict: VecEnvObs) -> torch.Tensor | dict[str, torch.Tensor]:
+    #     """Processing of the observations and states from the environment.
+
+    #     Note:
+    #         States typically refers to privileged observations for the critic function. It is typically used in
+    #         asymmetric actor-critic algorithms.
+
+    #     Args:
+    #         obs_dict: The current observations from environment.
+
+    #     Returns:
+    #         If environment provides states, then a dictionary containing the observations and states is returned.
+    #         Otherwise just the observations tensor is returned.
+    #     """
+    #     # process policy obs
+    #     obs = obs_dict["policy"]
+    #     # clip the observations
+    #     obs = torch.clamp(obs, -self._clip_obs, self._clip_obs)
+    #     # move the buffer to rl-device
+    #     obs = obs.to(device=self._rl_device).clone()
+        
+    #     return obs
+
+    # """
+    # Helper functions
+    # """
 
     def _process_obs(self, obs_dict: VecEnvObs) -> torch.Tensor | dict[str, torch.Tensor]:
         """Processing of the observations and states from the environment.
@@ -174,12 +210,114 @@ class VecEnvWrapper:
             If environment provides states, then a dictionary containing the observations and states is returned.
             Otherwise just the observations tensor is returned.
         """
-        # process policy obs
-        obs = obs_dict["policy"]
-        # clip the observations
-        obs = torch.clamp(obs, -self._clip_obs, self._clip_obs)
-        # move the buffer to rl-device
-        obs = obs.to(device=self._rl_device).clone()
+        if self.cam_enable:
+            for key, value in obs_dict.items():
+                if key == "critic" or "policy" in key:
+                    obs_dict[key] = torch.clamp(value, -self._clip_obs, self._clip_obs).to(device=self._rl_device).clone()
+                elif "vision" in key:
+                    if not self.raw_data:
+                        if obs_dict[key].shape[1] == 2:
+                            agentview_img = self._process_image_sequence(value[:, 0]).unsqueeze(1)
+                            eye_in_hand_img = self._process_image_sequence(value[:, 1]).unsqueeze(1)
+                            imgs = torch.cat([agentview_img, eye_in_hand_img], dim=1)
+                            obs_dict[key] = imgs
+                    else:
+                        obs_dict[key] = value.clone().to(device=self._rl_device)
+                elif "point_cloud" in key or "depth" in key:
+                    obs_dict[key] = value.clone().to(device=self._rl_device)
+            
+            return obs_dict
+        else:
+            obs = obs_dict["policy"]
+            obs = torch.clamp(obs, -self._clip_obs, self._clip_obs).to(device=self._rl_device).clone()
+            return obs
         
-        return obs
+    def _process_image_sequence(self, imgs: torch.Tensor) -> torch.Tensor:
+        """
+        Input: np_imgs of shape (T, H, W, C), dtype=uint8
+        Output: Tensor of shape (T, C, H, W), float32, transformed
+        """
+        imgs = imgs.float() / 255.0
+        imgs = einops.rearrange(imgs, "T H W C -> T C H W")
+        return torch.stack([self.image_transform(img) for img in imgs], dim=0)
 
+# ------------------------------------------------------
+# Adapter from Gym to DM Env
+# ------------------------------------------------------
+class StepType(IntEnum):
+    FIRST = 0
+    MID   = 1
+    LAST  = 2
+
+class TimestepCompat:
+    def __init__(self, step_type, reward, discount, observation):
+        self.step_type   = step_type
+        self.reward      = reward
+        self.discount    = discount
+        self.observation = observation
+
+    def first(self): return self.step_type == StepType.FIRST
+    def mid(self):   return self.step_type == StepType.MID
+    def last(self):  return self.step_type == StepType.LAST
+
+# ---- utils ----
+@staticmethod
+def _to_numpy(x):
+    import numpy as np
+    import torch
+    if x is None:
+        return None
+    if isinstance(x, torch.Tensor):
+        return x.detach().cpu().numpy()
+    if isinstance(x, dict):
+        return {k:_to_numpy(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_to_numpy(v) for v in x]
+    return x  
+
+class GymToDMEnv:
+    def __init__(self, env):
+        self._env = env
+
+    def __getattr__(self, name):
+        return getattr(self._env, name)
+
+
+    def reset(self, *args, **kwargs):
+        out = self._env.reset(*args, **kwargs)
+        if isinstance(out, tuple) and len(out) == 2:
+            obs, info = out
+        else:
+            obs, info = out, {}
+        obs = _to_numpy(obs)
+        reward   = np.array(0.0, dtype=np.float32)   # reset 步奖励置 0
+        discount = np.array(1.0, dtype=np.float32)   # reset 步折扣置 1
+        return TimestepCompat(StepType.FIRST, reward, discount, obs)
+
+    def step(self, action):
+        out = self._env.step(action)
+        # Gymnasium: (obs, reward, terminated, truncated, info)
+        if isinstance(out, tuple) and len(out) == 5:
+            obs, reward, terminated, truncated, _info = out
+            done = bool(np.asarray(terminated).any() or np.asarray(truncated).any())
+        # Gym: (obs, reward, done, info)
+        elif isinstance(out, tuple) and len(out) == 4:
+            obs, reward, done, _info = out
+            done = bool(np.asarray(done).any())
+        else:
+            raise RuntimeError(f"Unexpected step() output: {type(out)} with value {out}")
+
+        obs = _to_numpy(obs)
+        reward = _to_numpy(reward)
+        discount = np.array(0.0 if done else 1.0, dtype=np.float32)
+        step_type = StepType.LAST if done else StepType.MID
+        return TimestepCompat(step_type, reward, discount, obs)
+
+    def observation_spec(self):
+        return {}
+    def action_spec(self):
+        return {}
+    def reward_spec(self):
+        return {}
+    def discount_spec(self):
+        return {}

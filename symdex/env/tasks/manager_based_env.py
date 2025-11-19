@@ -12,6 +12,7 @@ import builtins
 import carb
 from isaacsim.core.version import get_version
 import omni.log
+import isaacsim.core.utils.stage as stage_utils
 from isaaclab.managers import CommandManager, CurriculumManager, RewardManager, TerminationManager
 from isaaclab.envs.manager_based_rl_env import ManagerBasedRLEnv
 from isaaclab.envs.common import VecEnvStepReturn
@@ -21,6 +22,7 @@ from isaaclab.sim import SimulationContext
 import isaaclab.sim as sim_utils
 import isaacsim.core.utils.torch as torch_utils
 from isaaclab.utils.timer import Timer
+from isaaclab.utils import DelayBuffer
 from isaaclab.assets import Articulation, ArticulationCfg, RigidObject, RigidObjectCfg
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 from isaaclab.sensors.contact_sensor import ContactSensor
@@ -28,11 +30,30 @@ from isaaclab.sensors.contact_sensor import ContactSensor
 from isaaclab.markers.config import FRAME_MARKER_CFG
 from isaaclab.markers.visualization_markers import VisualizationMarkers
 import isaaclab.utils.math as math_utils
+from isaaclab.utils.math import (
+    convert_camera_frame_orientation_convention,
+    create_rotation_matrix_from_view,
+    quat_from_matrix,
+    quat_inv,
+)
 
 from symdex.env.tasks.manager_based_env_cfg import BaseEnvCfg
 from symdex.utils.domain_random import DomainRandomizer
 from symdex.env.mdps.randomization_mdps import *
 from symdex.utils.symmetry import load_symmetric_system
+
+# OpenCV to OpenGL conversion
+CV_TO_GL = np.array([
+    [1,  0,  0],
+    [0, -1,  0],
+    [0,  0, -1]
+])
+
+GL_TO_CV = np.array([
+    [1,  0,  0],
+    [0, -1,  0],
+    [0,  0, -1]
+])
 
 
 class BaseEnv(ManagerBasedRLEnv):
@@ -94,6 +115,9 @@ class BaseEnv(ManagerBasedRLEnv):
         with Timer("[INFO]: Time taken for scene creation", "scene_creation"):
             self.scene = InteractiveScene(self.cfg.scene)
         print("[INFO]: Scene manager: ", self.scene)
+        # camera frame stack
+        self.num_cams = self.cfg.hydra_cfg.task.cam.num_cams
+        self.frame_stacks = torch.zeros((self.num_envs, self.num_cams, self.cfg.hydra_cfg.task.cam.frame_stack, self.cfg.hydra_cfg.task.cam.resolution, self.cfg.hydra_cfg.task.cam.resolution, 3), device=self.device, dtype=torch.uint8)
 
         # environment specific initialization
         self._pre_init_process()
@@ -152,8 +176,6 @@ class BaseEnv(ManagerBasedRLEnv):
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
-
-        print("[INFO]: Completed setting up the environment...")
 
         # post init
         self._post_init_process()
@@ -251,6 +273,28 @@ class BaseEnv(ManagerBasedRLEnv):
 
         self.all_time_first = True
 
+        # initialize camera
+        if self.cfg.hydra_cfg.task.cam.enable:
+            self.camera_offset = {}
+            self._process_camera_cfg(self.scene["robot"]._ALL_INDICES)
+            # set camera delay
+            self.camera_delay = {}
+            for cam_name, cam_cfg in self.cfg.hydra_cfg.task.cam.cam_params.items():
+                if not cam_cfg.enable or "wrist" not in cam_name or cam_cfg.delay == 0:
+                    continue
+                self.camera_delay[cam_name] = {
+                    "rgb": DelayBuffer(cam_cfg.delay, self.num_envs, device=self.device),
+                    "depth": DelayBuffer(cam_cfg.delay, self.num_envs, device=self.device),
+                    "position_offset": DelayBuffer(cam_cfg.delay, self.num_envs, device=self.device),
+                    "orientation_offset": DelayBuffer(cam_cfg.delay, self.num_envs, device=self.device),
+                }
+            # Set each delay buffer .set_time_lag(cam_cfg.delay)
+            for cam_name in self.camera_delay.keys():
+                self.camera_delay[cam_name]["rgb"].set_time_lag(self.cfg.hydra_cfg.task.cam.cam_params[cam_name].delay)
+                self.camera_delay[cam_name]["depth"].set_time_lag(self.cfg.hydra_cfg.task.cam.cam_params[cam_name].delay)
+
+        print("[INFO]: Completed setting up the environment...")
+
     def _configure_gym_env_spaces(self):
         """Configure the action and observation spaces for the Gym environment."""
         # observation space (unbounded since we don't impose any limits)
@@ -305,6 +349,15 @@ class BaseEnv(ManagerBasedRLEnv):
                 self._reset_symmetry(symmetric_env_ids)
         self._post_reset_process(env_ids)
 
+        # camera frame stack
+        if self.cfg.hydra_cfg.task.cam.enable:
+            self.frame_stacks[env_ids] = torch.zeros((env_ids.shape[0], self.num_cams, self.cfg.hydra_cfg.task.cam.frame_stack, self.cfg.hydra_cfg.task.cam.resolution, self.cfg.hydra_cfg.task.cam.resolution, 3), device=self.device, dtype=torch.uint8)
+            # Set each delay buffer .set_time_lag(cam_cfg.delay)
+            for cam_name in self.camera_delay.keys():
+                self.camera_delay[cam_name]["rgb"].reset(env_ids)
+                self.camera_delay[cam_name]["depth"].reset(env_ids)
+            self._process_camera_cfg(env_ids)
+
     def _post_reset_process(self, env_ids):
         """
         Post reset process for the environment. Call to reset the information at step 1 to ensure the correctness of the simulation.
@@ -351,3 +404,31 @@ class BaseEnv(ManagerBasedRLEnv):
                     command.quat_command_w[symmetric_env_ids] = symmetry_quat
             else:
                 raise ValueError(f"Unknown symmetry type: {value['type']}")
+
+    def _process_camera_cfg(self, env_ids):
+        for cam_name, cam_cfg in self.cfg.hydra_cfg.task.cam.cam_params.items():
+            if not cam_cfg.enable or "wrist" in cam_name:
+                continue
+            # set camera pose
+            eye = torch.tensor(cam_cfg.pos, device=self.device).unsqueeze(0).repeat(self.num_envs, 1)
+            if cam_cfg.randomize:
+                eye += math_utils.sample_uniform(torch.tensor([-0.1, -0.2, -0.2], device=self.device), torch.tensor([0.1, 0.1, 0.2], device=self.device), eye.shape, self.device)
+            target = torch.tensor(cam_cfg.target, device=self.device).unsqueeze(0).repeat(self.num_envs, 1)
+            if cam_name in self.camera_offset.keys():
+                cur_pos = self.camera_offset[cam_name]['pos']
+                cur_pos[env_ids] = eye[env_ids]
+                eye = cur_pos.clone()
+            self.scene[cam_name].set_world_poses_from_view(eyes=self.scene.env_origins + eye,
+                                                           targets=self.scene.env_origins + target)
+            # compute camera offset
+            up_axis = stage_utils.get_stage_up_axis()
+            rotation_matrix = create_rotation_matrix_from_view(eye, target, up_axis, device=self.device)
+            rotation_matrix = rotation_matrix @ torch.tensor(CV_TO_GL, device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
+            orientations = quat_from_matrix(rotation_matrix)
+            if cam_name in self.camera_offset.keys():
+                cur_orientation = self.camera_offset[cam_name]['orientation']
+                cur_orientation[env_ids] = orientations[env_ids]
+                orientations = cur_orientation.clone()
+            self.camera_offset[cam_name] = {}
+            self.camera_offset[cam_name]['pos'] = eye
+            self.camera_offset[cam_name]['orientation'] = orientations
