@@ -24,3 +24,4 @@ artifact_critic: null
 save_model: False
 
 logger: false
+max_episodes: 2

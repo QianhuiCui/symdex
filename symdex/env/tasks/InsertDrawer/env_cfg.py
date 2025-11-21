@@ -274,10 +274,8 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
-            ),
-        offset=CameraCfg.OffsetCfg(pos=(2.2, 0.0, 1.8),
-                                   rot=(0.53936, 0.42164, 0.45319, 0.57059),
-                                   convention="opengl"),
+            ),  # default parameters
+        offset=CameraCfg.OffsetCfg(convention="opengl"),
     )
 
     # sensors
