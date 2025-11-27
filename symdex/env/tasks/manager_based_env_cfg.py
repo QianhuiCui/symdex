@@ -24,6 +24,7 @@ from isaaclab.sim.spawners.materials.physics_materials_cfg import RigidBodyMater
 import symdex
 from symdex.env.mdps.reset_mdps import *
 from symdex.env.mdps.reward_mdps import *
+from symdex.utils.random_cfg import RandomLightCfg
 
 
 JOINT_LOWER_LIMIT = [-6.283, -2.304, -4.224, -6.283, -2.164, -6.283,
@@ -75,9 +76,14 @@ class BaseSceneCfg(InteractiveSceneCfg):
     )
 
     # lights
-    light = AssetBaseCfg(
+    # light = AssetBaseCfg(
+    #     prim_path="/World/light",
+    #     spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=2500.0),
+    # )
+    light = RandomLightCfg(
         prim_path="/World/light",
         spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=2500.0),
+        random_light_reset=False,
     )
 
     # table

@@ -11,7 +11,7 @@ sim_device: ${.device}
 rl_device: ${.device}
 graphics_device_id: 0
 
-seed: 42
+seed: null  # 42
 max_step: null
 max_time: 36000 # in seconds
 eval_headless: True

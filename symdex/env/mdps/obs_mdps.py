@@ -233,7 +233,7 @@ def point_cloud(env: ManagerBasedEnv,
         intrinsic_matrix.append(env.scene[cam_name].data.intrinsic_matrices.clone())
 
         out = env.scene[cam_name].data.output
-        print(cam_name, list(out.keys()))
+        # print(cam_name, list(out.keys()))
         
         depth.append(env.scene[cam_name].data.output['depth'].clone())
         position_offset.append(env.camera_offset[cam_name]["pos"])

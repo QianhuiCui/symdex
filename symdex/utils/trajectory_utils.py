@@ -13,6 +13,26 @@ def to_numpy(x):
         return x.cpu().numpy()
     return np.asarray(x)
 
+def to_str(value):
+    if isinstance(value, (list, tuple)):
+        language_instruction = value[0] if len(value) > 0 else ""
+    elif torch.is_tensor(value):
+        language_instruction = str(value[0].item())
+    else:
+        language_instruction = str(value) if value is not None else ""
+    return language_instruction
+
+def as_flag(value):
+    if value is None:
+        return False
+    if isinstance(value, torch.Tensor):
+        return bool(value.any().item())
+    if isinstance(value, np.ndarray):
+        return bool(value.any())
+    if isinstance(value, (list, tuple)):
+        return any(map(bool, value))
+    return bool(value)
+
 def build_observation_dict(env, obs):
     """
     Observation from env.step() converted into dict

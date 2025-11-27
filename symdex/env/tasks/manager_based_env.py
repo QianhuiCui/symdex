@@ -41,6 +41,7 @@ from symdex.env.tasks.manager_based_env_cfg import BaseEnvCfg
 from symdex.utils.domain_random import DomainRandomizer
 from symdex.env.mdps.randomization_mdps import *
 from symdex.utils.symmetry import load_symmetric_system
+from symdex.utils.random_utils import *
 
 # OpenCV to OpenGL conversion
 CV_TO_GL = np.array([
@@ -166,6 +167,9 @@ class BaseEnv(ManagerBasedRLEnv):
         # initialize observation buffers
         self.obs_buf = {}
 
+        # initialize language instruction buffer
+        self.language_instruction_buf = [""] * self.num_envs
+
         # store the render mode
         self.render_mode = render_mode
 
@@ -189,6 +193,7 @@ class BaseEnv(ManagerBasedRLEnv):
 
         self.extras['success'] = self.success_tracker
         self.extras['detailed_reward'] = self.detailed_reward_buf
+        self.extras["language_instruction"] = list(self.language_instruction_buf)
         # post reset process
         reset_indices = torch.where(self.episode_length_buf == 1)[0]
         if len(reset_indices) > 0:
@@ -323,6 +328,10 @@ class BaseEnv(ManagerBasedRLEnv):
     def _reset_idx(self, env_ids: torch.Tensor | None):
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.scene["robot"]._ALL_INDICES
+            env_id_regex = r"\d+"                       
+        else:
+            env_id_regex = "|".join(map(str, env_ids.tolist()))
+
         self.scene["robot"].reset(env_ids)
         if 'robot_left' in self.scene.keys():
             self.scene["robot_left"].reset(env_ids)
@@ -347,7 +356,6 @@ class BaseEnv(ManagerBasedRLEnv):
                 self._reset_symmetry_c4(env_ids)
             else:
                 self._reset_symmetry(symmetric_env_ids)
-        self._post_reset_process(env_ids)
 
         # camera frame stack
         if self.cfg.hydra_cfg.task.cam.enable:
@@ -357,6 +365,56 @@ class BaseEnv(ManagerBasedRLEnv):
                 self.camera_delay[cam_name]["rgb"].reset(env_ids)
                 self.camera_delay[cam_name]["depth"].reset(env_ids)
             self._process_camera_cfg(env_ids)
+        
+        stage = omni.usd.get_context().get_stage()
+        # randomize light
+        random_light_flag = getattr(self.cfg.scene.light, "random_light_reset", False)
+        random_freq = getattr(self.cfg.scene.light, "random_light_freq", 100)
+        if random_light_flag and self.global_step_tracker % random_freq == 0:
+            light_prim_path = "/World/light"
+            light_prim = stage.GetPrimAtPath(light_prim_path)
+            if light_prim.IsValid():
+                stage.RemovePrim(light_prim_path)
+            light_cfg = get_light(random_light=random_light_flag)
+            create_light(stage, light_prim_path, light_cfg, translation=(0.0, 0.0, 1.5))
+        
+        for obj_id in range(self.num_object):
+            spawn_cfg = getattr(self.cfg.scene, f"object_{obj_id}").spawn
+            prims = find_prims_by_regex(stage, rf"^/World/envs/env_({env_id_regex})/Object_{obj_id}$")
+            # get object category
+            if getattr(spawn_cfg, "obj_label", False):
+                object_label = get_object_label(spawn_cfg.usd_path, prims)
+            else:
+                object_label = [spawn_cfg.usd_path] * len(prims)
+            # randomize surface
+            # if getattr(spawn_cfg, "random_texture", False):
+            #     randomise_textures(prims, spawn_cfg.texture_path)
+            surface_cfg = getattr(spawn_cfg, "preview_surface", None)
+            if getattr(spawn_cfg, "preview_surface", None) is not None:
+                if getattr(spawn_cfg, "random_color", False):
+                    color_label, color = sample_dict(surface_cfg.diffuse_color_dict, env_ids.shape[0], self.device)
+                else:
+                    color = None
+                if getattr(spawn_cfg, "random_roughness", False):
+                    roughness = math_utils.sample_uniform(surface_cfg.roughness_range[0], surface_cfg.roughness_range[1], (env_ids.shape[0], 1), self.device)
+                else:
+                    roughness = torch.full((env_ids.shape[0], 1), 0.5, device=self.device)
+                if getattr(spawn_cfg, "random_metallic", False):
+                    metallic = math_utils.sample_uniform(surface_cfg.metallic_range[0], surface_cfg.metallic_range[1], (env_ids.shape[0], 1), self.device)
+                else:
+                    metallic = torch.full((env_ids.shape[0], 1), 0.5, device=self.device)
+                randomize_surface(prims, color, roughness, metallic)
+                description = get_surface_description(roughness, metallic)
+            lang_label = get_lang_label(object_label, color_label, description)
+            # print("language label: ", lang_label)
+            if isinstance(lang_label, (list, tuple)):
+                for i, env_id in enumerate(env_ids.tolist()):
+                    self.language_instruction_buf[env_id] = lang_label[i]
+            else:
+                for env_id in env_ids.tolist():
+                    self.language_instruction_buf[env_id] = str(lang_label)
+
+        self._post_reset_process(env_ids)
 
     def _post_reset_process(self, env_ids):
         """

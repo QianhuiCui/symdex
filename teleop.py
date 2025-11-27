@@ -13,7 +13,7 @@ import time
 from isaaclab.utils.math import quat_from_matrix
 
 from symdex.utils.common import set_random_seed, capture_keyboard_interrupt, preprocess_cfg
-from symdex.utils.trajectory_utils import build_observation_dict, now_ms, rgb_to_HWC, depth_to_gray
+from symdex.utils.trajectory_utils import build_observation_dict, now_ms, rgb_to_HWC, depth_to_gray, as_flag, to_str
 from symdex.env.tasks.manager_based_env_cfg import *
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
 import sys
@@ -102,16 +102,15 @@ def main(cfg: DictConfig):
         t_policy_start = now_ms()
 
         obs, rew, reset, extras = env.step(q_tensor)
-        print("[DEBUG] Observation Terms: ", obs)
+        # print("[DEBUG] Observation Terms: ", obs)
 
-        t_sleep_start = now_ms()
-        t_control_start = t_sleep_start
+        t_control_start = now_ms()
         t_step_end = now_ms()
 
         # ---- flags & reward ----
         reward_scalar = float(rew[0].item() if torch.is_tensor(rew) else rew)
-        success_flag = bool(extras.get("success", False))
-        done_flag = bool(reset.any() or success_flag)
+        success_flag = as_flag(extras.get("success"))
+        done_flag = as_flag(reset)
 
         # ---- controller info ----
         io_latency_ms = None
@@ -130,26 +129,16 @@ def main(cfg: DictConfig):
         obs_dict = build_observation_dict(env, obs)
         # ---- extract heavy data: vision frames -> video ----
         if use_logger and "vision" in obs_dict:
-            v = obs_dict["vision"]
-            if isinstance(v, dict) and "rgb_image" in v:
-                frame_np = rgb_to_HWC(v["rgb_image"])
-                logger.add_video_frame(camera_id="cam_1", frame=frame_np)
-                v.pop("rgb_image")
-                obs_dict["vision_meta"]["rgb"] = {"camera_ids": ["cam_1"], "shape": tuple(frame_np.shape)}
-            if isinstance(v, dict) and "depth" in v:
-                d_u8 = depth_to_gray(v["depth"])
-                logger.add_video_frame(camera_id="cam_1", frame=d_u8)
-                v.pop("depth")
-                obs_dict["vision_meta"]["depth"] = {"camera_ids": ["cam_1"], "shape": tuple(d_u8.shape)}
+            frame_np = rgb_to_HWC(obs_dict["vision"])
+            logger.add_video_frame(camera_id="cam_1", frame=frame_np)
+            obs_dict.pop("vision")
+            obs_dict["vision_meta"] = {"rgb_image": {"camera_ids": ["cam_1"],
+                                                     "shape": tuple(frame_np.shape),}
+    }
                 # ---- extract heavy data: point cloud -> per-step dataset ----
         if use_logger and "point_cloud" in obs_dict:
-            pc = obs_dict["point_cloud"]
-            if isinstance(pc, dict) and "point_cloud" in pc:
-                point_cloud_arr = np.asarray(pc["point_cloud"], dtype=np.float32)
-                pc.pop("point_cloud")
-            elif isinstance(pc, np.ndarray):
-                point_cloud_arr = np.asarray(pc, dtype=np.float32)
-                obs_dict.pop("point_cloud")
+            point_cloud_arr = np.asarray(obs_dict["point_cloud"], dtype=np.float32)
+            obs_dict.pop("point_cloud")
             logger.add_point_cloud(point_cloud_arr)
             obs_dict["point_cloud_meta"] = {"num_points": int(point_cloud_arr.shape[0]),
                                             "dim": int(point_cloud_arr.shape[1]) if point_cloud_arr.ndim == 2 else None,}
@@ -158,7 +147,6 @@ def main(cfg: DictConfig):
             "control": {
                 "step_start": int(t_step_start),
                 "policy_start": int(t_policy_start),
-                "sleep_start": int(t_sleep_start),
                 "control_start": int(t_control_start),
                 "step_end": int(t_step_end),
             },
@@ -181,6 +169,13 @@ def main(cfg: DictConfig):
             "arm_hand_action_left": q_np[22:],
         }
 
+        # ---- language instruction ----
+        if just_reset or (cur_lang is None):
+            lang_field = extras.get("language_instruction", "")
+            cur_lang = to_str(lang_field)
+        language_instruction = cur_lang
+
+        # ---- log step ----
         if use_logger:
             logger.add_step(
                 action=action,
@@ -190,7 +185,7 @@ def main(cfg: DictConfig):
                 is_first=bool(just_reset),
                 is_last=done_flag,
                 is_terminal=bool(success_flag),
-                language_instruction="",
+                language_instruction=language_instruction,
                 discount=1.0,
             )
 
@@ -199,6 +194,7 @@ def main(cfg: DictConfig):
             print("[Teleop] Task success, resetting environment.")
             env.reset()
             just_reset = True
+            cur_lang = None
             if use_logger:
                 logger.save_episode()
                 episodes_saved += 1
@@ -209,6 +205,7 @@ def main(cfg: DictConfig):
             print("[Teleop] Environment reset triggered auto-reset internally.")
             env.reset()
             just_reset = True
+            cur_lang = None
             if use_logger:
                 logger.save_episode()
                 episodes_saved += 1

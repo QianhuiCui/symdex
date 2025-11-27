@@ -115,7 +115,7 @@ class TrajectoryLogger:
         
         group = self.h5_file.create_group(f"episode_{self.episode_idx:03d}")
         grp_meta = group.create_group("episode_metadata")
-        grp_meta.attrs["file_path"] = self.file_path
+        grp_meta.attrs["file_path"] = str(self.file_path)
         grp_meta.attrs["num_steps"] = len(self.steps)
 
         grp_steps = group.create_group("steps")
