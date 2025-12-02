@@ -16,6 +16,7 @@ from symdex.env.mdps.reward_mdps import *
 from symdex.env.mdps.termination_mdps import *
 from symdex.env.mdps.command_mdps.grasp_command_cfg import TargetPositionCommandCfg
 from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPositionActionCfg
+from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
 import symdex.env.tasks.InsertDrawer.mdps as drawer
 
 FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
@@ -210,8 +211,20 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
 
     object_0 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_0",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/grasp/dog_coacd.usd",
+        spawn=MultiUsdCfg(
+            # sim_utils.UsdFileCfg(
+            # usd_path=f"{symdex.LIB_PATH}/assets/grasp/dog_coacd.usd",
+            usd_path="grasp",
+            random_choice=True,
+            obj_label=True,
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=True,
+            random_roughness=True,
+            random_metallic=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -270,7 +283,7 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=256, height=256,
+        width=128, height=128,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -446,39 +459,8 @@ class InsertDrawerCommandsCfg(BaseCommandsCfg):
 class InsertDrawerObservationsCfg(BaseObservationsCfg):
     """Observation specifications for the MDP."""
 
-    # @configclass
-    # class PolicyCfg(ObsGroup):
-    #     """Observations for policy group."""
-
-    #     # -- robot terms (order preserved)
-    #     ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
-    #     joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-    #                                                                        "joint_lower_limit": JOINT_LOWER_LIMIT, 
-    #                                                                        "joint_upper_limit": JOINT_UPPER_LIMIT,},
-    #                                                                        noise=Gnoise(std=0.005))
-    #     joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
-    #     object_pos = ObsTerm(
-    #         func=object_pos,
-    #         noise=Unoise(n_min=0.0, n_max=0.01),
-    #         params={"object_id": 0}
-    #     )
-    #     ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
-    #     joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-    #                                                                       "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
-    #                                                                       "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
-    #                                                                       "asset_cfg": SceneEntityCfg("robot_left")},
-    #                                                                       noise=Gnoise(std=0.005))
-    #     joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
-    #     drawer_handle_pose = ObsTerm(func=ee_pose, params={"ee_name": "handle_grip", "asset_cfg": SceneEntityCfg("drawer")})
-    #     drawer_joint_pos = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, "asset_cfg": SceneEntityCfg("drawer")}, )
-    #     last_action = ObsTerm(func=last_action)
-
-    #     def __post_init__(self):
-    #         self.enable_corruption = False
-    #         self.concatenate_terms = True
-            
     @configclass
-    class CriticCfg(ObsGroup):
+    class PolicyCfg(ObsGroup):
         """Observations for policy group."""
 
         # -- robot terms (order preserved)
@@ -500,75 +482,106 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
                                                                           "asset_cfg": SceneEntityCfg("robot_left")},
                                                                           noise=Gnoise(std=0.005))
         joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
-        drawer_handle_pos = ObsTerm(func=ee_pose, params={"ee_name": "handle_grip", "asset_cfg": SceneEntityCfg("drawer")})
+        drawer_handle_pose = ObsTerm(func=ee_pose, params={"ee_name": "handle_grip", "asset_cfg": SceneEntityCfg("drawer")})
         drawer_joint_pos = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, "asset_cfg": SceneEntityCfg("drawer")}, )
         last_action = ObsTerm(func=last_action)
 
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
+            
+    # @configclass
+    # class CriticCfg(ObsGroup):
+    #     """Observations for policy group."""
 
-    @configclass
-    class VisionCfg(ObsGroup):
-        """Observations for vision group."""
+    #     # -- robot terms (order preserved)
+    #     ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
+    #     joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
+    #                                                                        "joint_lower_limit": JOINT_LOWER_LIMIT, 
+    #                                                                        "joint_upper_limit": JOINT_UPPER_LIMIT,},
+    #                                                                        noise=Gnoise(std=0.005))
+    #     joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
+    #     object_pos = ObsTerm(
+    #         func=object_pos,
+    #         noise=Unoise(n_min=0.0, n_max=0.01),
+    #         params={"object_id": 0}
+    #     )
+    #     ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
+    #     joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
+    #                                                                       "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
+    #                                                                       "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
+    #                                                                       "asset_cfg": SceneEntityCfg("robot_left")},
+    #                                                                       noise=Gnoise(std=0.005))
+    #     joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
+    #     drawer_handle_pos = ObsTerm(func=ee_pose, params={"ee_name": "handle_grip", "asset_cfg": SceneEntityCfg("drawer")})
+    #     drawer_joint_pos = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, "asset_cfg": SceneEntityCfg("drawer")}, )
+    #     last_action = ObsTerm(func=last_action)
 
-        # -- robot terms (order preserved)
-        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
+    #     def __post_init__(self):
+    #         self.enable_corruption = False
+    #         self.concatenate_terms = True
 
-    @configclass
-    class PointCloudCfg(ObsGroup):
-        """Observations for point cloud group."""
+    # @configclass
+    # class VisionCfg(ObsGroup):
+    #     """Observations for vision group."""
 
-        # -- robot terms (order preserved)
-        point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-                                                        "wrist_cam_name": [], 
-                                                        "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.015, 0.5]],
-                                                        "max_points": 2048, 
-                                                        "downsample": "random",
-                                                        "add_noise": True})
-        # point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-        #                                                 "wrist_cam_name": [], 
-        #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.1], [0.015, 0.5]],
-        #                                                 "max_points": 2048, 
-        #                                                 "downsample": "random",
-        #                                                 "add_noise": True})
-        # point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-        #                                                 "wrist_cam_name": [], 
-        #                                                 "crop_range": [[-0.14, 0.4], [-0.0, 0.6], [0.015, 0.5]],
-        #                                                 "max_points": 2048, 
-        #                                                 "downsample": "random",
-        #                                                 "add_noise": True})
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
+    #     # -- robot terms (order preserved)
+        # rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+    #     def __post_init__(self):
+    #         self.enable_corruption = False
+    #         self.concatenate_terms = True
 
-    @configclass
-    class PolicyCfg(ObsGroup):
-        """Observations for policy group."""
+    # @configclass
+    # class PointCloudCfg(ObsGroup):
+    #     """Observations for point cloud group."""
 
-        # -- robot terms (order preserved)
-        joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT, 
-                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT,},
-                                                                           noise=Gnoise(std=0.01))
-        last_action_right = ObsTerm(func=last_action_side, params={"side": "right"})
-        joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-                                                                          "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
-                                                                          "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
-                                                                          "asset_cfg": SceneEntityCfg("robot_left")},
-                                                                          noise=Gnoise(std=0.01))
-        last_action_left = ObsTerm(func=last_action_side, params={"side": "left"})
-        def __post_init__(self):
-            self.enable_corruption = True
-            self.concatenate_terms = True
+    #     # -- robot terms (order preserved)
+    #     point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+    #                                                     "wrist_cam_name": [], 
+    #                                                     "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.015, 0.5]],
+    #                                                     "max_points": 2048, 
+    #                                                     "downsample": "random",
+    #                                                     "add_noise": True})
+    #     # point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+    #     #                                                 "wrist_cam_name": [], 
+    #     #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.1], [0.015, 0.5]],
+    #     #                                                 "max_points": 2048, 
+    #     #                                                 "downsample": "random",
+    #     #                                                 "add_noise": True})
+    #     # point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+    #     #                                                 "wrist_cam_name": [], 
+    #     #                                                 "crop_range": [[-0.14, 0.4], [-0.0, 0.6], [0.015, 0.5]],
+    #     #                                                 "max_points": 2048, 
+    #     #                                                 "downsample": "random",
+    #     #                                                 "add_noise": True})
+    #     def __post_init__(self):
+    #         self.enable_corruption = False
+    #         self.concatenate_terms = True
+
+    # @configclass
+    # class PolicyCfg(ObsGroup):
+    #     """Observations for policy group."""
+
+    #     # -- robot terms (order preserved)
+    #     joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
+    #                                                                        "joint_lower_limit": JOINT_LOWER_LIMIT, 
+    #                                                                        "joint_upper_limit": JOINT_UPPER_LIMIT,},
+    #                                                                        noise=Gnoise(std=0.01))
+    #     last_action_right = ObsTerm(func=last_action_side, params={"side": "right"})
+    #     joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
+    #                                                                       "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
+    #                                                                       "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
+    #                                                                       "asset_cfg": SceneEntityCfg("robot_left")},
+    #                                                                       noise=Gnoise(std=0.01))
+    #     last_action_left = ObsTerm(func=last_action_side, params={"side": "left"})
+    #     def __post_init__(self):
+    #         self.enable_corruption = True
+    #         self.concatenate_terms = True
 
     # observation groups
-    critic: CriticCfg = CriticCfg()
-    vision: VisionCfg = VisionCfg()
-    point_cloud: PointCloudCfg = PointCloudCfg()
+    # critic: CriticCfg = CriticCfg()
+    # vision: VisionCfg = VisionCfg()
+    # point_cloud: PointCloudCfg = PointCloudCfg()
     policy: PolicyCfg = PolicyCfg()
 
 
@@ -613,7 +626,7 @@ class InsertDrawerTerminationsCfg(BaseTerminationsCfg):
         func=drawer.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot")}
     )
     max_consecutive_success = DoneTerm(
-        func=drawer.max_consecutive_success, params={"num_success": 20}
+        func=drawer.max_consecutive_success, params={"num_success": 1}
     )
 
 
@@ -739,4 +752,4 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.viewer.eye = (-3.5, 0.0, 3.5)
+        self.viewer.eye = (-1.5, 0.0, 1.5)

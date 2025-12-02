@@ -36,7 +36,7 @@ cam:
   enable: True
   num_cams: 1
   frame_stack: 1
-  resolution: 256
+  resolution: 128
   cam_params:
     cam_1:
       enable: True

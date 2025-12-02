@@ -140,7 +140,7 @@ def obj_out_space(
         env: ManagerBasedRLEnv, 
         asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
         object_id: int = 0,
-        workspace_radius: float = 0.8,
+        workspace_radius: float = 0.7,
         workspace_height_range: tuple = (0.0, 1.5),
         ) -> torch.Tensor:
     """Terminate if the object is out of the workspace."""
@@ -154,7 +154,7 @@ def obj_out_space(
     dist_xy = torch.norm(offset[:, :2], dim=-1)
     dist_z = offset[:, 2]
 
-    out_of_radius = dist_xy > workspace_radius
+    out_of_radius = (dist_xy > workspace_radius) | (dist_xy < 0.1)
     out_of_height = (dist_z < workspace_height_range[0]) | (dist_z > workspace_height_range[1])
     out_of_space = out_of_radius | out_of_height
 

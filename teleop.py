@@ -128,20 +128,19 @@ def main(cfg: DictConfig):
         # ---- build observation dict ----
         obs_dict = build_observation_dict(env, obs)
         # ---- extract heavy data: vision frames -> video ----
-        if use_logger and "vision" in obs_dict:
-            frame_np = rgb_to_HWC(obs_dict["vision"])
-            logger.add_video_frame(camera_id="cam_1", frame=frame_np)
-            obs_dict.pop("vision")
-            obs_dict["vision_meta"] = {"rgb_image": {"camera_ids": ["cam_1"],
-                                                     "shape": tuple(frame_np.shape),}
-    }
-                # ---- extract heavy data: point cloud -> per-step dataset ----
-        if use_logger and "point_cloud" in obs_dict:
-            point_cloud_arr = np.asarray(obs_dict["point_cloud"], dtype=np.float32)
-            obs_dict.pop("point_cloud")
-            logger.add_point_cloud(point_cloud_arr)
-            obs_dict["point_cloud_meta"] = {"num_points": int(point_cloud_arr.shape[0]),
-                                            "dim": int(point_cloud_arr.shape[1]) if point_cloud_arr.ndim == 2 else None,}
+        # if use_logger and "vision" in obs_dict:
+        #     frame_np = rgb_to_HWC(obs_dict["vision"])
+        #     logger.add_video_frame(camera_id="cam_1", frame=frame_np)
+        #     obs_dict.pop("vision")
+        #     obs_dict["vision_meta"] = {"rgb_image": {"camera_ids": ["cam_1"],
+        #                                              "shape": tuple(frame_np.shape),}}
+        # ---- extract heavy data: point cloud -> per-step dataset ----
+        # if use_logger and "point_cloud" in obs_dict:
+        #     point_cloud_arr = np.asarray(obs_dict["point_cloud"], dtype=np.float32)
+        #     # obs_dict.pop("point_cloud")
+        #     # logger.add_point_cloud(point_cloud_arr)
+        #     obs_dict["point_cloud_meta"] = {"num_points": int(point_cloud_arr.shape[0]),
+        #                                     "dim": int(point_cloud_arr.shape[1]) if point_cloud_arr.ndim == 2 else None,}
         # ---- timestamps & intent ----
         obs_dict["timestamp"] = {
             "control": {

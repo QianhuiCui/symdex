@@ -17,11 +17,12 @@ max_time: 36000 # in seconds
 eval_headless: True
 headless: True
 
-max_episode_length: 1e9
+max_episode_length: 1500
                       
 artifact: null
 artifact_critic: null
 save_model: False
 
 logger: false
-max_episodes: 2
+max_episodes: 20
+dataset_path: null  # path to dataset h5 file

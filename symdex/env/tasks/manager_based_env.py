@@ -264,6 +264,7 @@ class BaseEnv(ManagerBasedRLEnv):
         self.success_tracker = None
         self.symmetry_tracker = None
         self.domain_randomizer = DomainRandomizer(self.cfg.hydra_cfg.task.randomize, num_envs=self.num_envs)
+        self.global_step_tracker = 0
 
         # symmetry
         self.G = load_symmetric_system(cfg=self.cfg.hydra_cfg.task.symmetry)

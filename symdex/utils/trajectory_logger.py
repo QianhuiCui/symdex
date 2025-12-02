@@ -7,7 +7,7 @@ import imageio
 
 from pathlib import Path
 LOGGER_ROOT = Path(__file__).resolve().parents[1] 
-SAVE_DIR = LOGGER_ROOT / "teleop_logs"
+SAVE_DIR = LOGGER_ROOT / "teleop_logs" / "policy"
 
 
 class TrajectoryLogger:
@@ -23,7 +23,7 @@ class TrajectoryLogger:
 
         self._video_writers = {}   # camera_id -> imageio writer
         self._video_temp = {}      # camera_id -> NamedTemporaryFile
-        self._pending_point_clouds = []  # list[np.ndarray], length = steps
+        # self._pending_point_clouds = []  # list[np.ndarray], length = steps
 
         self._reset_buffers()
         print(f"[Logger] Initialized trajectory log file: {self.file_path}")
@@ -32,7 +32,7 @@ class TrajectoryLogger:
         """Internal buffer for current trial data."""
         self.steps = []
         self.metadata = {}
-        self._pending_point_clouds = []
+        # self._pending_point_clouds = []
     
     def add_video_frame(self, camera_id: str, frame: np.ndarray):
         """Add a frame to the camera video. frame: HxWx3, uint8, HWC"""
@@ -44,9 +44,9 @@ class TrajectoryLogger:
             self._video_writers[cam] = writer
         self._video_writers[cam].append_data(frame)
     
-    def add_point_cloud(self, pc: np.ndarray):
-        """Add the point cloud (N x 3/6) of the current step and align it with the steps order."""
-        self._pending_point_clouds.append(np.asarray(pc, dtype=np.float32))
+    # def add_point_cloud(self, pc: np.ndarray):
+    #     """Add the point cloud (N x 3/6) of the current step and align it with the steps order."""
+    #     self._pending_point_clouds.append(np.asarray(pc, dtype=np.float32))
     
     def _write_obj(self, group, key, value):
         if hasattr(value, "detach"):
@@ -133,10 +133,10 @@ class TrajectoryLogger:
             for k, v in step["observation"].items():
                 self._write_obj(obs_grp, k, v)
             # point cloud (if exists, write to separate dataset per step)
-            if i < len(self._pending_point_clouds):
-                pc = self._pending_point_clouds[i]
-                if isinstance(pc, np.ndarray):
-                    step_grp.create_dataset("point_cloud", data=pc)
+            # if i < len(self._pending_point_clouds):
+            #     pc = self._pending_point_clouds[i]
+            #     if isinstance(pc, np.ndarray):
+            #         step_grp.create_dataset("point_cloud", data=pc)
             
             # step-level attrs
             step_grp.attrs["reward"] = float(step["reward"])
