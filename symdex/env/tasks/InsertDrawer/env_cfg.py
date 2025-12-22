@@ -470,11 +470,9 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
                                                                            "joint_upper_limit": JOINT_UPPER_LIMIT,},
                                                                            noise=Gnoise(std=0.005))
         joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
-        object_pos = ObsTerm(
-            func=object_pos,
-            noise=Unoise(n_min=0.0, n_max=0.01),
-            params={"object_id": 0}
-        )
+        object_pos = ObsTerm(func=object_pos,
+                             noise=Unoise(n_min=0.0, n_max=0.01),
+                             params={"object_id": 0},)
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
         joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
@@ -526,7 +524,8 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
     #     """Observations for vision group."""
 
     #     # -- robot terms (order preserved)
-        # rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+    #     rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+
     #     def __post_init__(self):
     #         self.enable_corruption = False
     #         self.concatenate_terms = True
@@ -554,6 +553,7 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
     #     #                                                 "max_points": 2048, 
     #     #                                                 "downsample": "random",
     #     #                                                 "add_noise": True})
+
     #     def __post_init__(self):
     #         self.enable_corruption = False
     #         self.concatenate_terms = True
@@ -575,7 +575,7 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
     #                                                                       noise=Gnoise(std=0.01))
     #     last_action_left = ObsTerm(func=last_action_side, params={"side": "left"})
     #     def __post_init__(self):
-    #         self.enable_corruption = True
+    #         self.enable_corruption = False
     #         self.concatenate_terms = True
 
     # observation groups
@@ -735,13 +735,22 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
     rewards = InsertDrawerRewardsCfg()
     num_object = 1
     action_dim = 44 # arm + hand
-    action_scale: list = [1.0] * action_dim
-    #                      [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+    action_scale: list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                            1.0, 1.0, 1.0, 1.0,
+                            1.0, 1.0, 1.0, 1.0,
+                            1.0, 1.0, 1.0, 1.0,
+                            1.0, 1.0, 1.0, 1.0,
+                          0.95, 0.95, 0.95, 0.95, 0.95, 0.95,
+                            0.95, 0.95, 0.95, 0.95,
+                            0.95, 0.95, 0.95, 0.95,
+                            0.95, 0.95, 0.95, 0.95,
+                            0.95, 0.95, 0.95, 0.95]
+    # action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
     #                         0.03, 0.03, 0.03, 0.03, 
     #                         0.03, 0.03, 0.03, 0.03, 
     #                         0.03, 0.03, 0.03, 0.015,
     #                         0.03, 0.03, 0.03, 0.03,
-    #                       0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+    #                         0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
     #                         0.03, 0.03, 0.03, 0.03, 
     #                         0.03, 0.03, 0.03, 0.03, 
     #                         0.03, 0.03, 0.03, 0.015,

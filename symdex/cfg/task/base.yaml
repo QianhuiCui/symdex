@@ -11,7 +11,7 @@ randomize:
 
 cam:
   enable: True
-  num_cams: 2
+  num_cams: 1
   frame_stack: 1
   resolution: 256
   cam_params:
