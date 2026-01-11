@@ -329,9 +329,6 @@ class BaseEnv(ManagerBasedRLEnv):
     def _reset_idx(self, env_ids: torch.Tensor | None):
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.scene["robot"]._ALL_INDICES
-            env_id_regex = r"\d+"                       
-        else:
-            env_id_regex = "|".join(map(str, env_ids.tolist()))
 
         self.scene["robot"].reset(env_ids)
         if 'robot_left' in self.scene.keys():
@@ -378,10 +375,16 @@ class BaseEnv(ManagerBasedRLEnv):
                 stage.RemovePrim(light_prim_path)
             light_cfg = get_light(random_light=random_light_flag)
             create_light(stage, light_prim_path, light_cfg, translation=(0.0, 0.0, 1.5))
-        
+        # randomize object surface and get language instruction
+        env_id_list = env_ids.tolist()
+        num = env_ids.shape[0]
+        task_name = self.cfg.name
+        lang_objs = []
+        lang_colors = []
+        lang_surfaces = []
         for obj_id in range(self.num_object):
             spawn_cfg = getattr(self.cfg.scene, f"object_{obj_id}").spawn
-            prims = find_prims_by_regex(stage, rf"^/World/envs/env_({env_id_regex})/Object_{obj_id}$")
+            prims = [stage.GetPrimAtPath(f"/World/envs/env_{e_id}/Object_{obj_id}") for e_id in env_id_list]
             # get object category
             if getattr(spawn_cfg, "obj_label", False):
                 object_label = get_object_label(spawn_cfg.usd_path, prims)
@@ -406,15 +409,26 @@ class BaseEnv(ManagerBasedRLEnv):
                     metallic = torch.full((env_ids.shape[0], 1), 0.5, device=self.device)
                 randomize_surface(prims, color, roughness, metallic)
                 description = get_surface_description(roughness, metallic)
-            lang_label = get_lang_label(object_label, color_label, description)
-            # print("language label: ", lang_label)
-            if isinstance(lang_label, (list, tuple)):
-                for i, env_id in enumerate(env_ids.tolist()):
-                    self.language_instruction_buf[env_id] = lang_label[i]
-            else:
-                for env_id in env_ids.tolist():
-                    self.language_instruction_buf[env_id] = str(lang_label)
-
+            if (getattr(spawn_cfg, "obj_label", False) or
+                getattr(spawn_cfg, "random_color", False) or
+                getattr(spawn_cfg, "random_roughness", False) or
+                getattr(spawn_cfg, "random_metallic", False)
+            ):
+                lang_objs.append(object_label)
+                lang_colors.append(color_label)
+                lang_surfaces.append(description)
+                    for i, env_id in enumerate(env_ids.tolist()):
+                        self.language_instruction_buf[env_id] = lang_label[i]
+        labels = get_lang_label(
+            task=task_name,
+            num_envs=env_n,
+            objs=lang_objs,
+            colors=lang_colors,
+            surfaces=lang_surfaces,
+        )
+        for i, env_id in enumerate(env_id_list):
+            self.language_instruction_buf[env_id] = labels[i]
+            
         self._post_reset_process(env_ids)
 
     def _post_reset_process(self, env_ids):

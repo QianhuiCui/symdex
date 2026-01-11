@@ -83,7 +83,7 @@ class BaseSceneCfg(InteractiveSceneCfg):
     light = RandomLightCfg(
         prim_path="/World/light",
         spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=2500.0),
-        random_light_reset=True,
+        random_light_reset=False,
     )
 
     # table

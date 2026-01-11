@@ -89,7 +89,6 @@ def randomise_colors(prims, color):
                     # if tex_inp and tex_inp.Get():
                     #     tex_inp.Set(None)
 
-
 def randomise_roughness(prims, roughness):
     # print(f"randomize_usd_prims_roughness called with {len(prims)} prims")
     for prim in prims:
@@ -116,7 +115,6 @@ def randomise_roughness(prims, roughness):
                             inp.Set(roughness)
                             break
 
-
 def randomise_metallic(prims, metallic):
     # print(f"randomize_usd_prims_metallic called with {len(prims)} prims")
     for prim in prims:
@@ -138,7 +136,6 @@ def randomise_metallic(prims, metallic):
                                 _set_shader_input(inp, metallic)
                                 break
 
-
 def randomise_opacity(prims, opacity):
     # print(f"randomize_usd_prims_opacity called with {len(prims)} prims")
     for prim in prims:
@@ -159,7 +156,6 @@ def randomise_opacity(prims, opacity):
                             if inp:
                                 inp.Set(opacity)
                                 break
-
 
 def randomise_textures(prims, texture_dir):
     # print(f"randomize_usd_prims_texture called with {len(prims)} prims")
@@ -202,7 +198,6 @@ def randomise_textures(prims, texture_dir):
                     if not found:
                         print(f"No texture input found for shader at {mat_prim.GetPath()}, available inputs: {all_inputs}")
 
-
 def _iter_direct_materials(root_prim):
     mats = {}
     for prim in Usd.PrimRange(root_prim):
@@ -213,7 +208,6 @@ def _iter_direct_materials(root_prim):
         if mat and mat.GetPrim() and mat.GetPrim().IsValid():
             mats[mat.GetPath()] = mat
     return list(mats.values())
-
 
 def _set_shader_input(inp, value):
     type_name = inp.GetTypeName()
@@ -282,11 +276,120 @@ def create_light(stage, prim_path, light_cfg, translation=None):
             prim.AddTranslateOp().Set(Gf.Vec3f(x, y, z))
     return prim 
 
-def find_prims_by_regex(stage, pattern_str):
-    pattern = re.compile(pattern_str)
-    return [prim for prim in Usd.PrimRange(stage.GetPseudoRoot())
-            if pattern.match(prim.GetPath().pathString)]
 
+# --- Language label utilities---
+LANGUAGE_TEMPLATES: dict[str, str] = {
+    "default": "{color} {surface} {obj}",
+    "insertDrawer": "pick {color} {surface} {obj} into drawer and insert drawer",
+    "boxLift": "lift {color} {surface} tote ",
+    "handover": "right-to-left handover of a {color} {surface} {obj}",
+    "pickObject": "right hand pick up the {color_1} {surface_1} {obj_1}, and then left hand pick up the {color_2} {surface_2} {obj_2}",
+    "stirBowl": "",
+    "threading": "",
+    "pouring": "",
+}
+
+SURFACE_THRESHOULDS = {
+    "metallic": {
+        "high": 0.8,
+        "medium": 0.5,
+    },
+    "roughness": {
+        "polished": 0.1,
+        "glossy": 0.3,
+        "satin": 0.6,
+        "matte": 0.9,
+    },
+}
+
+def get_surface_description(roughness, metallic):
+    roughness = roughness.squeeze(-1) 
+    metallic  = metallic.squeeze(-1)
+
+    rough_list = roughness.tolist()
+    metal_list = metallic.tolist()
+    labels = []
+
+    for r, m in zip(rough_list, metal_list):
+        # descriptor by roughness
+        if r <= SURFACE_THRESHOULDS["roughness"]["polished"]:
+            descriptor = "polished"
+        elif r <= SURFACE_THRESHOULDS["roughness"]["glossy"]:
+            descriptor = "glossy"
+        elif r <= SURFACE_THRESHOULDS["roughness"]["satin"]:
+            descriptor = "satin"
+        elif r <= SURFACE_THRESHOULDS["roughness"]["matte"]:
+            descriptor = "matte"
+        else:
+            descriptor = "rough"
+
+        # category by metallic
+        if m >= SURFACE_THRESHOULDS["metallic"]["high"]:
+            # pure metal
+            label = f"{descriptor} metal"
+        elif m >= SURFACE_THRESHOULDS["metallic"]["medium"]:
+            # semi-metallic blend
+            label = f"{descriptor} semi-metallic"
+        else:
+            # non-metal: plastic/ceramic
+            if descriptor == "polished":
+                label = "porcelain-like"
+            else:
+                label = f"{descriptor} plastic"
+        labels.append(label)
+    
+    return labels
+
+def get_lang_label(
+        task: str | None, 
+        num_envs: int, 
+        objs: list[list[str]], 
+        colors: list[list[str]], 
+        surfaces: list[list[str]], 
+    ) -> list[str]:
+    template = LANGUAGE_TEMPLATES.get(task or "default", LANGUAGE_TEMPLATES["default"])
+    
+    num_obj_labels = len(objs)
+    lang_labels = []
+
+    if num_obj_labels == 0:
+        for i in range(num_envs):
+            text = template.format(
+                color=colors[0][i],
+                surface=surfaces[0][i],
+            )
+            lang_labels.append(" ".join(text.split()).strip())
+    elif num_obj_labels == 1:
+        for i in range(num_envs):
+            text = template.format(
+                color=colors[0][i],
+                surface=surfaces[0][i],
+                obj=objs[0][i],
+            )
+            lang_labels.append(" ".join(text.split()).strip())
+    else:
+        for i in range(num_envs):
+            text = template.format(
+                color_1=colors[0][i],
+                surface_1=surfaces[0][i],
+                obj_1=objs[0][i],
+                color_2=colors[1][i],
+                surface_2=surfaces[1][i],
+                obj_2=objs[1][i],
+            )
+            lang_labels.append(" ".join(text.split()).strip())
+    return lang_labels
+    # return [
+    #     f"{color} {surface} {obj}"
+    #     for color, surface, obj in zip(color, surface, obj)
+    # ]
+
+
+# --- Random sampling utilities ---
+# def find_prims_by_regex(stage, pattern_str):
+#     pattern = re.compile(pattern_str)
+#     return [prim for prim in Usd.PrimRange(stage.GetPseudoRoot())
+#             if pattern.match(prim.GetPath().pathString)]
 
 def sample_value(val):
     if isinstance(val, tuple) and isinstance(val[0], tuple):
@@ -332,55 +435,3 @@ def sample_dict(dict, length, device):
         label.append(cur_key.lower())
         value.append(dict[cur_key])
     return label, torch.tensor(value, device=device)
-
-def get_surface_description(roughness, metallic):
-    # Thresholds
-    METAL_HIGH   = 0.8
-    METAL_MEDIUM = 0.5
-    ROUGH_POLISHED = 0.1
-    ROUGH_GLOSSY   = 0.3
-    ROUGH_SATIN    = 0.6
-    ROUGH_MATTE    = 0.9
-
-    roughness = roughness.squeeze(-1) 
-    metallic  = metallic.squeeze(-1)
-
-    rough_list = roughness.tolist()
-    metal_list = metallic.tolist()
-    labels = []
-
-    for r, m in zip(rough_list, metal_list):
-        # descriptor by roughness
-        if r <= ROUGH_POLISHED:
-            descriptor = "polished"
-        elif r <= ROUGH_GLOSSY:
-            descriptor = "glossy"
-        elif r <= ROUGH_SATIN:
-            descriptor = "satin"
-        elif r <= ROUGH_MATTE:
-            descriptor = "matte"
-        else:
-            descriptor = "rough"
-
-        # category by metallic
-        if m >= METAL_HIGH:
-            # pure metal
-            label = f"{descriptor} metal"
-        elif m >= METAL_MEDIUM:
-            # semi-metallic blend
-            label = f"{descriptor} semi-metallic"
-        else:
-            # non-metal: plastic/ceramic
-            if descriptor == "polished":
-                label = "porcelain-like"
-            else:
-                label = f"{descriptor} plastic"
-        labels.append(label)
-    
-    return labels
-
-def get_lang_label(obj, color, surface):
-    return [
-        f"{color} {surface} {obj}"
-        for color, surface, obj in zip(color, surface, obj)
-    ]
