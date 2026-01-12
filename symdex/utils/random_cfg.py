@@ -79,6 +79,12 @@ OBJECT: Dict[str, List[str]] = {
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_18/visual_model.usd",
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_19/visual_model.usd",
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_20/visual_model.usd"
+    ],
+    "cube_with_hole": [
+        f"{symdex.LIB_PATH}/assets/object/cube_with_hole.usd"
+    ]
+    "drill": [
+        f"{symdex.LIB_PATH}/assets/object/drill.usd"
     ]
 }
 
@@ -105,6 +111,33 @@ OBJECT_CATEGORY: dict[str, str] = {
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_18/visual_model.usd": "calf",
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_19/visual_model.usd": "cow",
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_20/visual_model.usd": "cattle"
+    },
+    "cube_with_hole": {
+        f"{symdex.LIB_PATH}/assets/object/cube_with_hole.usd": "cube"
+    },
+    "bottle": {
+        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_1/base.usd": "bottle",
+        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_2/base.usd": "bottle",
+        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_3/base.usd": "bottle",
+        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_4/base.usd": "bottle",
+        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_5/base.usd": "bottle"
+    },
+    "cup": {
+        f"{symdex.LIB_PATH}/assets/objects/cups/cup_1/base.usd": "cup",
+        f"{symdex.LIB_PATH}/assets/objects/cups/cup_2/base.usd": "cup",
+        f"{symdex.LIB_PATH}/assets/objects/cups/cup_3/base.usd": "cup",
+        f"{symdex.LIB_PATH}/assets/objects/cups/cup_4/base.usd": "cup",
+        f"{symdex.LIB_PATH}/assets/objects/cups/cup_5/base.usd": "cup"
+    },
+    "bowl": {
+        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_1/base.usd": "bowl",
+        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_2/base.usd": "bowl",
+        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_3/base.usd": "bowl",
+        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_4/base.usd": "bowl",
+        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_5/base.usd": "bowl"
+    },
+    "drill": {
+        f"{symdex.LIB_PATH}/assets/object/drill.usd": "drill"
     }
 }
 

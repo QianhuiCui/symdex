@@ -284,9 +284,8 @@ LANGUAGE_TEMPLATES: dict[str, str] = {
     "boxLift": "lift {color} {surface} tote ",
     "handover": "right-to-left handover of a {color} {surface} {obj}",
     "pickObject": "right hand pick up the {color_1} {surface_1} {obj_1}, and then left hand pick up the {color_2} {surface_2} {obj_2}",
-    "stirBowl": "",
-    "threading": "",
-    "pouring": "",
+    "threading": "right hand pick up the {color} {surface} {obj_1}, left hand pick up the {color} {surface} {obj_2}, and thread them together",
+    "pouring": "right hand pick up the {color} {surface} {obj_1}, left hand push the {color} {surface} {obj_2} under {obj_1}, and pour",
 }
 
 SURFACE_THRESHOULDS = {
