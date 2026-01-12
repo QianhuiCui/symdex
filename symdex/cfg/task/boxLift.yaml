@@ -3,30 +3,50 @@ defaults:
   - _self_
 
 env_name: "BoxLiftEnv-v0"
-rew:
-  align_hand_to_pos: 0.3
-  align_hand_to_quat: 0.05
-  punish_collision: -10.0
-  align_hand_to_pos_left: 0.3
-  align_hand_to_quat_left: 0.05
-  punish_collision_left: -10.0
-  object_goal_tracking: 20.0
-  object_goal_orient_tracking: 4.0
-  success_bonus: 2000.0
+rew: {}
+  # align_hand_to_pos: 0.3
+  # align_hand_to_quat: 0.05
+  # punish_collision: -10.0
+  # align_hand_to_pos_left: 0.3
+  # align_hand_to_quat_left: 0.05
+  # punish_collision_left: -10.0
+  # object_goal_tracking: 20.0
+  # object_goal_orient_tracking: 4.0
+  # success_bonus: 2000.0
+
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 128
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: False
+      pos: [0.6, 0.0, 1.0]
+      target: [0.13, 0.0, 0.26]
+    cam_2:
+      enable: False
+      randomize: True
+      pos: [0.6, -0.7, 0.5]
+      target: [-0.18, 0.0, 0.06]
+    wrist_cam_left:
+      enable: False 
+      delay: 3
 
 randomize:
   enable: False
   update_freq: 100
   eval: False
   total_step: 10
-  success_threshold: 0.7
+  # success_threshold: 0.7
   randomization:
     object_mass: [0.13, 0.5]
     static_friction: [0.24, 1.6]
     dynamic_friction: [0.24, 1.6]
     restitution: [0.0, 1.0]
-  curriculum:
-    action_scale: [0.05, 0.04, 0.03]
+  # curriculum:
+  #   action_scale: [0.05, 0.04, 0.03]
     # energy_penalty: 
     #   names: ["energy", "energy_left"]
     #   values: [0.000001, 0.000001, 0.000001, 0.001]
@@ -45,10 +65,10 @@ multi:
                           [[44, 100], [112, 125], [147, 169]]]
     single_agent_obs_idx_symmetry: [[[44, 100], [112, 125], [147, 169]],
                                     [[0, 44], [88, 112], [124, 147]]]
-    single_agent_rew: [["align_hand_to_pos", "align_hand_to_quat", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision"],
-                        ["align_hand_to_pos_left", "align_hand_to_quat_left", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision_left"]]
-    single_agent_rew_symmetry: [["align_hand_to_pos_left", "align_hand_to_quat_left", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision_left"],
-                                ["align_hand_to_pos", "align_hand_to_quat", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision"]]
+    # single_agent_rew: [["align_hand_to_pos", "align_hand_to_quat", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision"],
+    #                     ["align_hand_to_pos_left", "align_hand_to_quat_left", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision_left"]]
+    # single_agent_rew_symmetry: [["align_hand_to_pos_left", "align_hand_to_quat_left", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision_left"],
+    #                             ["align_hand_to_pos", "align_hand_to_quat", "object_goal_tracking", "object_goal_orient_tracking", "success_bonus", "punish_collision"]]
 
 symmetry:
   reset_symmetry:

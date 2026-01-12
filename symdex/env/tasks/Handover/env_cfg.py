@@ -5,6 +5,7 @@ from isaaclab.utils import configclass
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer import OffsetCfg
 from isaaclab.markers.config import FRAME_MARKER_CFG 
+from isaaclab.envs.mdp.actions import JointPositionActionCfg
 
 import symdex
 from symdex.env.tasks.manager_based_env_cfg import *
@@ -15,7 +16,8 @@ from symdex.env.mdps.termination_mdps import *
 from symdex.env.mdps.command_mdps.grasp_command_cfg import TargetPositionCommandCfg
 from symdex.env.mdps.command_mdps.reach_command_cfg import TargetPositionCommandCfg as ReachCommandCfg
 from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPositionActionCfg
-from symdex.env.tasks.Handover import mdps as handover
+from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
+import symdex.env.tasks.Handover.mdps as handover
 
 FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
 FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
@@ -26,7 +28,7 @@ class HandoverSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -118,7 +120,7 @@ class HandoverSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -209,8 +211,20 @@ class HandoverSceneCfg(BaseSceneCfg):
 
     object_0 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_0",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/object/orange_bottle.usd",
+        spawn=MultiUsdCfg(
+            # sim_utils.UsdFileCfg(
+            # usd_path=f"{symdex.LIB_PATH}/assets/object/orange_bottle.usd",
+            usd_path="bottle",
+            random_choice=True,
+            obj_label=True,
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=True,
+            random_roughness=True,
+            random_metallic=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -230,6 +244,17 @@ class HandoverSceneCfg(BaseSceneCfg):
             ang_vel=(0.0, 0.0, 0.0),
             pos=(0.0, 0.0, 0.0),
         ),
+    )
+
+    # cameras
+    cam_1 = CameraCfg(
+        prim_path="/World/envs/env_.*/Cameras_1",
+        width=128, height=128,
+        data_types=["rgb", "depth"],
+        spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+            ),  # default parameters
+        offset=CameraCfg.OffsetCfg(convention="opengl"),
     )
 
     # sensors
@@ -465,32 +490,50 @@ class HandoverObservationsCfg(BaseObservationsCfg):
 
 @configclass
 class HandoverActionsCfg:
-    arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
+    # arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
+    #     asset_name="robot",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    #     joint_lower_limit=JOINT_LOWER_LIMIT,
+    #     joint_upper_limit=JOINT_UPPER_LIMIT,
+    #     alpha=0.2
+    # )
+
+    # arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
+    #     asset_name="robot_left",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    #     joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
+    #     joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
+    #     alpha=0.2
+    # )
+    arm_hand_action = JointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
-        joint_lower_limit=JOINT_LOWER_LIMIT,
-        joint_upper_limit=JOINT_UPPER_LIMIT,
-        alpha=0.2
     )
-
-    arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
+    arm_hand_action_left = JointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
-        joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
-        joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
-        alpha=0.2
     )
 
 
 @configclass
 class HandoverTerminationsCfg(BaseTerminationsCfg):
+    out_of_space = DoneTerm(
+        func=handover.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot")}
+    )
+    out_of_space_left = DoneTerm(
+        func=handover.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot_left")}
+    ) 
     max_consecutive_success = DoneTerm(
         func=handover.max_consecutive_success, 
-        params={"num_success": 10}
+        params={"num_success": 1},
     )
 
 
@@ -573,83 +616,7 @@ class HandoverRewardsCfg(BaseRewardsCfg):
                                                                 "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
                             weight=0.0,
                             )
-    # symmetry
-    reaching_object_symmetry = RewTerm(func=handover.frame_marker_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5, 2.0], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5", "palm_link"], 
-                                      "frame_name": "bottle_bottom",
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
-    object_goal_tracking_symmetry = RewTerm(func=handover.object_goal_distance,
-                                   params={"command_name": "target_pos", "object_id": 0, "asset_cfg": SceneEntityCfg("robot_left"),
-                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                                   weight=0.0,
-                                   )
-    object_goal_orient_tracking_symmetry = RewTerm(func=handover.object_goal_orient_distance,
-                                   params={"command_name": "target_pos", "object_id": 0, "axis": "z", "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                                   weight=0.0,
-                                   )
-    contact_bottle_punish_symmetry = RewTerm(func=handover.contact_bottle_punish,
-                                   params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
-                                                            "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
-                                   weight=0.0,
-                                   )
-    reset_robot_joint_pos_symmetry = RewTerm(func=handover.robot_goal_distance, 
-                              params={"target_pos": [0.0462, 0.5045, 0.4468], 
-                                      "target_link": "palm_link",
-                                      "asset_cfg": SceneEntityCfg("robot_left"),
-                                      "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
-                                                       "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]}, 
-                                      weight=0.0)   
-    left_align_hand_pose_symmetry = RewTerm(func=handover.align_hand_pose,
-                                   params={"link_name": "palm_link", "command_name": "left_hand_target_pos", "asset_cfg": SceneEntityCfg("robot")},
-                                   weight=0.0,
-                                   )
-    left_align_finger_joint_symmetry = RewTerm(func=handover.align_finger_joint,
-                                   params={"link_name": ["jif1", "jif2", "jif3", "jif4", "jmf1", "jmf2", "jmf3", "jmf4", "jpf1", "jpf2", "jpf3", "jpf4", "jth1", "jth2", "jth3", "jth4"], 
-                                           "asset_cfg": SceneEntityCfg("robot")},
-                                   weight=0.0,
-                                   )
-    left_reaching_object_symmetry = RewTerm(func=handover.frame_marker_robot_distance, 
-                              params={"weight": [1.5, 1.0, 1.0, 2.0], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "frame_name": "bottle_top",
-                                      "if_left": True,
-                                      "asset_cfg": SceneEntityCfg("robot")}, 
-                                      weight=0.0)
-    left_object_goal_tracking_symmetry = RewTerm(func=handover.object_goal_distance,
-                                   params={"command_name": "target_pos", 
-                                           "object_id": 0, 
-                                           "if_left": True,
-                                           "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
-                                                            "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"]},
-                                   weight=0.0,
-                                   )
-    left_object_goal_orient_tracking_symmetry = RewTerm(func=handover.object_goal_orient_distance,
-                                   params={"command_name": "target_pos", 
-                                           "object_id": 0, 
-                                           "axis": "z", 
-                                           "if_left": True,
-                                           "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
-                                                            "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"]},
-                                   weight=0.0,
-                                   )
-    middle_success_bonus_left_symmetry = RewTerm(func=handover.cmd_success_bonus,
-                                   params={"command_names": "target_pos", "num_success": 1, "if_left": True, 
-                                           "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
-                                                            "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"]},
-                                   weight=0.0,
-                                   )
-    success_bonus_symmetry = RewTerm(func=handover.success_bonus,
-                            params={"command_names": "target_pos", 
-                                    "num_success": 10,
-                                    "symmetry": True,
-                                    "not_contact_sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
-                                                                "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"],
-                                    "is_contact_sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
-                                                                "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"]},
-                            weight=0.0,
-                            )
+                            
 
 @configclass
 class HandoverEnvCfg(BaseEnvCfg):
@@ -663,16 +630,17 @@ class HandoverEnvCfg(BaseEnvCfg):
     rewards = HandoverRewardsCfg()
     num_object = 1
     action_dim = 44 # arm + hand
-    action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03,
-                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
+    action_scale: list = [1.0] * action_dim
+                        # [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                        #     0.03, 0.03, 0.03, 0.03, 
+                        #     0.03, 0.03, 0.03, 0.03, 
+                        #     0.03, 0.03, 0.03, 0.015,
+                        #     0.03, 0.03, 0.03, 0.03,
+                        #     0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                        #     0.03, 0.03, 0.03, 0.03, 
+                        #     0.03, 0.03, 0.03, 0.03, 
+                        #     0.03, 0.03, 0.03, 0.015,
+                        #     0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
 

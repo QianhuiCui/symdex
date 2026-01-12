@@ -58,11 +58,11 @@ randomize:
   eval: False
   total_step: 10
   # success_threshold: 0.7
-  # randomization:
-  #   object_mass: [0.11, 0.11]
-  #   static_friction: [0.24, 1.6]
-  #   dynamic_friction: [0.24, 1.6]
-  #   restitution: [0.0, 1.0]
+  randomization:
+    object_mass: [0.11, 0.11]
+    static_friction: [0.24, 1.6]
+    dynamic_friction: [0.24, 1.6]
+    restitution: [0.0, 1.0]
   # curriculum:
   #   # action_scale: [0.05, 0.04, 0.03]
   #   energy_penalty: 
@@ -92,8 +92,8 @@ multi:
     single_agent_obs_dim: [82, 94]
     single_agent_obs_idx: [[[0, 59], [127, 150]], # 82
                           [[56, 128], [150, 172]]] # 94
-    single_agent_obs_idx_symmetry: [[[59, 115], [56, 59], [127, 128], [150, 172]], # 82
-                                    [[56, 59], [0, 56], [115, 150]]] # 94
+    # single_agent_obs_idx_symmetry: [[[59, 115], [56, 59], [127, 128], [150, 172]], # 82
+    #                                 [[56, 59], [0, 56], [115, 150]]] # 94
     # single_agent_rew: [["reaching_object", "object_lifting", "object_goal_tracking", "object_success_bonus_pos", "object_in_drawer", "reset_robot_joint_pos", "success_bonus"],
     #                     ["reaching_handle", "moving_drawer", "moving_drawer_inside", "success_bonus"]]
     # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "object_goal_tracking_symmetry", 

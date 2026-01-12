@@ -5,6 +5,7 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer import OffsetCfg
+from isaaclab.envs.mdp.actions import JointPositionActionCfg
 from isaaclab.markers.config import FRAME_MARKER_CFG 
 
 import symdex
@@ -15,6 +16,7 @@ from symdex.env.mdps.reward_mdps import *
 from symdex.env.mdps.termination_mdps import *
 from symdex.env.mdps.command_mdps.grasp_command_cfg import TargetPositionCommandCfg
 from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPositionActionCfg
+from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
 from symdex.env.tasks.StirBowl import mdps as bowl
 from symdex.env.tasks.Threading import mdps as threading
 
@@ -27,7 +29,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -119,7 +121,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -210,8 +212,10 @@ class ThreadingSceneCfg(BaseSceneCfg):
 
     object_0 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_0",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/object/cube_with_hole.usd",
+        spawn=MultiUsdCfg(
+        # sim_utils.UsdFileCfg(
+            # usd_path=f"{symdex.LIB_PATH}/assets/object/cube_with_hole.usd",
+            usd_path="cube_with_hole",
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -221,6 +225,14 @@ class ThreadingSceneCfg(BaseSceneCfg):
                 solver_velocity_iteration_count=1,
                 max_depenetration_velocity=1000.0,
             ),
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=True,
+            random_roughness=True,
+            random_metallic=True,
             mass_props=sim_utils.MassPropertiesCfg(mass=0.2),  # 0.15
             activate_contact_sensors=True,
             scale=(0.75, 0.75, 0.75),
@@ -235,8 +247,10 @@ class ThreadingSceneCfg(BaseSceneCfg):
 
     object_1 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_1",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/object/drill.usd",
+        spawn=MultiUsdCfg(
+        # sim_utils.UsdFileCfg(
+            # usd_path=f"{symdex.LIB_PATH}/assets/object/drill.usd",
+            usd_path="drill",
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -246,6 +260,14 @@ class ThreadingSceneCfg(BaseSceneCfg):
                 solver_velocity_iteration_count=1,
                 max_depenetration_velocity=1000.0,
             ),
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=True,
+            random_roughness=True,
+            random_metallic=True,
             mass_props=sim_utils.MassPropertiesCfg(mass=0.5),  # 0.85
             activate_contact_sensors=True,
             scale=(1.0, 1.0, 1.0),
@@ -256,6 +278,17 @@ class ThreadingSceneCfg(BaseSceneCfg):
             pos=(0.0, 0.0, 0.0),
             # rot=(0.500, 0.500, -0.500, -0.500)
         ),
+    )
+
+    # cameras
+    cam_1 = CameraCfg(
+        prim_path="/World/envs/env_.*/Cameras_1",
+        width=128, height=128,
+        data_types=["rgb", "depth"],
+        spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+            ),  # default parameters
+        offset=CameraCfg.OffsetCfg(convention="opengl"),
     )
 
     # sensors
@@ -340,21 +373,21 @@ class ThreadingSceneCfg(BaseSceneCfg):
         ],
     )
 
-    object_approach_frame_symmetry = FrameTransformerCfg(
-        prim_path="{ENV_REGEX_NS}/Object_1",
-        debug_vis=False,
-        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(prim_path="/Visuals/ObjectApproachFrameTransformer"),
-        target_frames=[
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Object_1",
-                name="approach_frame",
-                offset=OffsetCfg(
-                    pos=(0.05, 0.0, 0.0),
-                    rot=(0.0, 0.0, 0.7071, 0.7071),
-                ),
-            ),
-        ],
-    )
+    # object_approach_frame_symmetry = FrameTransformerCfg(
+    #     prim_path="{ENV_REGEX_NS}/Object_1",
+    #     debug_vis=False,
+    #     visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(prim_path="/Visuals/ObjectApproachFrameTransformer"),
+    #     target_frames=[
+    #         FrameTransformerCfg.FrameCfg(
+    #             prim_path="{ENV_REGEX_NS}/Object_1",
+    #             name="approach_frame",
+    #             offset=OffsetCfg(
+    #                 pos=(0.05, 0.0, 0.0),
+    #                 rot=(0.0, 0.0, 0.7071, 0.7071),
+    #             ),
+    #         ),
+    #     ],
+    # )
 
 @configclass
 class ThreadingEventCfg(BaseEventCfg):
@@ -457,30 +490,48 @@ class ThreadingObservationsCfg(BaseObservationsCfg):
 
 @configclass
 class ThreadingActionsCfg:
-    arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
+    # arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
+    #     asset_name="robot",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    #     joint_lower_limit=JOINT_LOWER_LIMIT,
+    #     joint_upper_limit=JOINT_UPPER_LIMIT,
+    #     alpha=0.2
+    # )
+
+    # arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
+    #     asset_name="robot_left",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    #     joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
+    #     joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
+    #     alpha=0.2
+    # )
+    arm_hand_action = JointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
-        joint_lower_limit=JOINT_LOWER_LIMIT,
-        joint_upper_limit=JOINT_UPPER_LIMIT,
-        alpha=0.2
     )
-
-    arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
+    arm_hand_action_left = JointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
-        scale=1.0,
+        scale=0.95,
         use_default_offset=False,
-        joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
-        joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
-        alpha=0.2
     )
 
 @configclass
 class ThreadingTerminationsCfg(BaseTerminationsCfg):
+    out_of_space = DoneTerm(
+        func=threading.out_of_space, params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 0,}
+    )
+    out_of_space_left = DoneTerm(
+        func=threading.out_of_space, params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 1,}
+    )
     max_consecutive_success = DoneTerm(
-        func=threading.max_consecutive_success, params={"num_success": 20}
+        func=threading.max_consecutive_success, params={"num_success": 1}
     )
 
 @configclass
@@ -620,20 +671,21 @@ class ThreadingEnvCfg(BaseEnvCfg):
     rewards = ThreadingRewardsCfg()
     num_object = 2
     action_dim = 44 # arm + hand
-    action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03,
-                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
+    action_scale: list = [1.0] * action_dim
+    # action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+    #                         0.03, 0.03, 0.03, 0.03, 
+    #                         0.03, 0.03, 0.03, 0.03, 
+    #                         0.03, 0.03, 0.03, 0.015,
+    #                         0.03, 0.03, 0.03, 0.03,
+    #                         0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+    #                         0.03, 0.03, 0.03, 0.03, 
+    #                         0.03, 0.03, 0.03, 0.03, 
+    #                         0.03, 0.03, 0.03, 0.015,
+    #                         0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
 
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.viewer.eye = (-3.5, 0.0, 3.5)
+        self.viewer.eye = (-1.5, 0.0, 1.5)

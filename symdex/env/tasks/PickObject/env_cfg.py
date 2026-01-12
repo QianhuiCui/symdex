@@ -5,6 +5,7 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 import isaaclab.envs.mdp as mdp
 from isaaclab.markers.config import FRAME_MARKER_CFG 
+from isaaclab.envs.mdp.actions import JointPositionActionCfg
 
 import symdex
 from symdex.env.tasks.manager_based_env_cfg import *
@@ -14,7 +15,9 @@ from symdex.env.mdps.reward_mdps import *
 from symdex.env.mdps.termination_mdps import *
 from symdex.env.mdps.command_mdps.grasp_command_cfg import TargetPositionCommandCfg
 from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPositionActionCfg
-from symdex.env.tasks.PickObject import mdps as pick
+from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
+import symdex.env.tasks.PickObject.mdps as pick
+
 FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
 FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
 
@@ -24,7 +27,7 @@ class PickObjectSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -116,7 +119,7 @@ class PickObjectSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -232,10 +235,22 @@ class PickObjectSceneCfg(BaseSceneCfg):
 
     object_1 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_1",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
+        spawn=MultiUsdCfg(
+        # sim_utils.UsdFileCfg(
+            # usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
             # usd_path=f"{symdex.LIB_PATH}/assets/object/dog.usd",
             # usd_path=f"{symdex.LIB_PATH}/assets/object/can.usd",
+            usd_path="grasp",
+            random_choice=True,
+            obj_label=True,
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=True,
+            random_roughness=True,
+            random_metallic=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -247,8 +262,8 @@ class PickObjectSceneCfg(BaseSceneCfg):
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=0.11),
             activate_contact_sensors=True,
-            scale=(1.2, 1.2, 1.2),
-            # scale=(1.0, 1.0, 1.0),
+            # scale=(1.2, 1.2, 1.2),
+            scale=(1.0, 1.0, 1.0),
         ), # wait for initialization
         init_state=RigidObjectCfg.InitialStateCfg(
             lin_vel=(0.0, 0.0, 0.0),
@@ -259,10 +274,22 @@ class PickObjectSceneCfg(BaseSceneCfg):
 
     object_2 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_2",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
+        spawn=MultiUsdCfg(
+        # sim_utils.UsdFileCfg(
+            # usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
             # usd_path=f"{symdex.LIB_PATH}/assets/object/dog.usd",
             # usd_path=f"{symdex.LIB_PATH}/assets/object/can.usd",
+            usd_path="grasp",
+            random_choice=True,
+            obj_label=True,
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=True,
+            random_roughness=True,
+            random_metallic=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -274,14 +301,25 @@ class PickObjectSceneCfg(BaseSceneCfg):
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=0.11),
             activate_contact_sensors=True,
-            scale=(1.2, 1.2, 1.2),
-            # scale=(1.0, 1.0, 1.0),
+            # scale=(1.2, 1.2, 1.2),
+            scale=(1.0, 1.0, 1.0),
         ), # wait for initialization
         init_state=RigidObjectCfg.InitialStateCfg(
             lin_vel=(0.0, 0.0, 0.0),
             ang_vel=(0.0, 0.0, 0.0),
             pos=(0.0, 0.0, 0.0),
         ),
+    )
+
+    # cameras
+    cam_1 = CameraCfg(
+        prim_path="/World/envs/env_.*/Cameras_1",
+        width=128, height=128,
+        data_types=["rgb", "depth"],
+        spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+            ),  # default parameters
+        offset=CameraCfg.OffsetCfg(convention="opengl"),
     )
 
     # sensors
@@ -309,35 +347,35 @@ class PickObjectSceneCfg(BaseSceneCfg):
         debug_vis=True,
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
     )
-    contact_sensors_0_symmetry = ContactSensorCfg(
-        prim_path="/World/envs/env_.*/Robot_left/if5",  # index
-        update_period=0.0, 
-        debug_vis=True,
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
-    )
-    contact_sensors_1_symmetry = ContactSensorCfg(
-        prim_path="/World/envs/env_.*/Robot_left/mf5",  # middle
-        update_period=0.0, 
-        debug_vis=True,
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
-    )
-    contact_sensors_2_symmetry = ContactSensorCfg(
-        prim_path="/World/envs/env_.*/Robot_left/pf5",  # pinky
-        update_period=0.0, 
-        debug_vis=True,
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
-    )
-    contact_sensors_3_symmetry = ContactSensorCfg(
-        prim_path="/World/envs/env_.*/Robot_left/th5",  # thumb
-        update_period=0.0, 
-        debug_vis=True,
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
-    )
     contact_sensors_robot = ContactSensorCfg(
         prim_path="/World/envs/env_.*/Robot/link1|link2|link3|link4|link5|link6",  # thumb
         update_period=0.0, 
         debug_vis=True,
     )
+    # contact_sensors_0_symmetry = ContactSensorCfg(
+    #     prim_path="/World/envs/env_.*/Robot_left/if5",  # index
+    #     update_period=0.0, 
+    #     debug_vis=True,
+    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
+    # )
+    # contact_sensors_1_symmetry = ContactSensorCfg(
+    #     prim_path="/World/envs/env_.*/Robot_left/mf5",  # middle
+    #     update_period=0.0, 
+    #     debug_vis=True,
+    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
+    # )
+    # contact_sensors_2_symmetry = ContactSensorCfg(
+    #     prim_path="/World/envs/env_.*/Robot_left/pf5",  # pinky
+    #     update_period=0.0, 
+    #     debug_vis=True,
+    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
+    # )
+    # contact_sensors_3_symmetry = ContactSensorCfg(
+    #     prim_path="/World/envs/env_.*/Robot_left/th5",  # thumb
+    #     update_period=0.0, 
+    #     debug_vis=True,
+    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
+    # )
     contact_sensors_0_left = ContactSensorCfg(
         prim_path="/World/envs/env_.*/Robot_left/if5",  # index
         update_period=0.0, 
@@ -367,30 +405,30 @@ class PickObjectSceneCfg(BaseSceneCfg):
         update_period=0.0, 
         debug_vis=True,
     )
-    contact_sensors_0_left_symmetry = ContactSensorCfg(
-        prim_path="/World/envs/env_.*/Robot/if5",  # index
-        update_period=0.0, 
-        debug_vis=True,
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
-    )
-    contact_sensors_1_left_symmetry = ContactSensorCfg(
-        prim_path="/World/envs/env_.*/Robot/mf5",  # middle
-        update_period=0.0, 
-        debug_vis=True,
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
-    )
-    contact_sensors_2_left_symmetry = ContactSensorCfg(
-        prim_path="/World/envs/env_.*/Robot/pf5",  # pinky
-        update_period=0.0, 
-        debug_vis=True,
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
-    )
-    contact_sensors_3_left_symmetry = ContactSensorCfg(
-        prim_path="/World/envs/env_.*/Robot/th5",  # thumb
-        update_period=0.0, 
-        debug_vis=True,
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
-    )
+    # contact_sensors_0_left_symmetry = ContactSensorCfg(
+    #     prim_path="/World/envs/env_.*/Robot/if5",  # index
+    #     update_period=0.0, 
+    #     debug_vis=True,
+    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
+    # )
+    # contact_sensors_1_left_symmetry = ContactSensorCfg(
+    #     prim_path="/World/envs/env_.*/Robot/mf5",  # middle
+    #     update_period=0.0, 
+    #     debug_vis=True,
+    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
+    # )
+    # contact_sensors_2_left_symmetry = ContactSensorCfg(
+    #     prim_path="/World/envs/env_.*/Robot/pf5",  # pinky
+    #     update_period=0.0, 
+    #     debug_vis=True,
+    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
+    # )
+    # contact_sensors_3_left_symmetry = ContactSensorCfg(
+    #     prim_path="/World/envs/env_.*/Robot/th5",  # thumb
+    #     update_period=0.0, 
+    #     debug_vis=True,
+    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
+    # )
 
 
 @configclass
@@ -507,30 +545,53 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
 
 @configclass
 class PickObjectActionsCfg:
-    arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
+    # arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
+    #     asset_name="robot",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    #     joint_lower_limit=JOINT_LOWER_LIMIT,
+    #     joint_upper_limit=JOINT_UPPER_LIMIT,
+    #     alpha=0.2
+    # )
+
+    # arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
+    #     asset_name="robot_left",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    #     joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
+    #     joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
+    #     alpha=0.2
+    # )
+    arm_hand_action = JointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
-        joint_lower_limit=JOINT_LOWER_LIMIT,
-        joint_upper_limit=JOINT_UPPER_LIMIT,
-        alpha=0.2
     )
-
-    arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
+    arm_hand_action_left = JointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
-        joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
-        joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
-        alpha=0.2
     )
 
 
 @configclass
 class PickObjectTerminationsCfg(BaseTerminationsCfg):
-    pass
+    out_of_space = DoneTerm(
+        func=pick.out_of_space,
+        params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 1},
+    )
+    out_of_space_left = DoneTerm(
+        func=pick.out_of_space,
+        params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 2},
+    )
+    max_consecutive_success = DoneTerm(
+        func=pick.max_consecutive_success,
+        params={"num_success": 1},
+    )
 
 
 @configclass
@@ -599,78 +660,9 @@ class PickObjectRewardsCfg(BaseRewardsCfg):
                                       "asset_cfg": SceneEntityCfg("robot_left")}, 
                                       weight=0.0)
     success_bonus = RewTerm(func=pick.success_bonus,
-                            params={"num_success": 5},
-                            weight=1.0,
+                            params={},
+                            weight=0.0,
                             )
-    
-    # symmetry
-    reaching_object_symmetry = RewTerm(func=object_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "object_id": 1,
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
-    object_lifting_symmetry = RewTerm(func=lift_distance,
-                             params={"command_name": "target_pos", "object_id": 1, "sensor_names": ["contact_sensors_0_symmetry", "contact_sensors_1_symmetry", "contact_sensors_2_symmetry", "contact_sensors_3_symmetry"]},
-                             weight=0.0,
-                             )
-    object_goal_tracking_symmetry = RewTerm(func=pick.object_goal_distance,
-                                   params={"command_name": "target_pos", "object_id": 1, "sensor_names": ["contact_sensors_0_symmetry", "contact_sensors_1_symmetry", "contact_sensors_2_symmetry", "contact_sensors_3_symmetry"],},
-                                   weight=0.0,
-                                   )
-    object_1_in_tote_symmetry = RewTerm(func=pick.if_in_tote,
-                             params={"object_id": 1, 
-                                     "sensor_names": ["contact_sensors_0_symmetry", "contact_sensors_1_symmetry", "contact_sensors_2_symmetry", "contact_sensors_3_symmetry"], 
-                                     "distance_threshold": 0.15,
-                                     "symmetry": True},
-                             weight=0.0,
-                             )
-    reset_robot_joint_pos_symmetry = RewTerm(func=pick.robot_goal_distance, 
-                              params={"object_id": 1,
-                                      "target_pos": [0.0462, 0.3045, 0.4468], 
-                                      "target_link": "palm_link",
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
-    reaching_object_left_symmetry = RewTerm(func=object_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "object_id": 2}, 
-                                      weight=0.0)
-    object_lifting_left_symmetry = RewTerm(func=lift_distance,
-                             params={"command_name": "target_pos", "object_id": 2, "sensor_names": ["contact_sensors_0_left_symmetry", "contact_sensors_1_left_symmetry", "contact_sensors_2_left_symmetry", "contact_sensors_3_left_symmetry"]},
-                             weight=0.0,
-                             )
-    object_goal_tracking_left_symmetry = RewTerm(func=pick.object_goal_distance,
-                                   params={"command_name": "waiting_pos", 
-                                           "object_id": 2, 
-                                           "sensor_names": ["contact_sensors_0_left_symmetry", "contact_sensors_1_left_symmetry", "contact_sensors_2_left_symmetry", "contact_sensors_3_left_symmetry"],
-                                           "delay": False,
-                                           "switch": True},
-                                   weight=0.0,
-                                   )
-    object_goal_tracking_left_delay_symmetry = RewTerm(func=pick.object_goal_distance,
-                                   params={"command_name": "target_pos", 
-                                           "object_id": 2, 
-                                           "sensor_names": ["contact_sensors_0_left_symmetry", "contact_sensors_1_left_symmetry", "contact_sensors_2_left_symmetry", "contact_sensors_3_left_symmetry"],
-                                           "delay": True,
-                                           "switch": False,
-                                           "distance_threshold": 0.2},
-                                   weight=0.0,
-                                   )
-    object_2_in_tote_symmetry = RewTerm(func=pick.if_in_tote,
-                             params={"object_id": 2, 
-                                     "sensor_names": ["contact_sensors_0_left_symmetry", "contact_sensors_1_left_symmetry", "contact_sensors_2_left_symmetry", "contact_sensors_3_left_symmetry"], 
-                                     "distance_threshold": 0.2,
-                                     "delay": True,
-                                     "symmetry": True},
-                             weight=0.0,
-                             )
-    reset_robot_joint_pos_left_symmetry = RewTerm(func=pick.robot_goal_distance, 
-                              params={"object_id": 2, 
-                                      "target_pos": [0.0462, -0.3045, 0.4468], 
-                                      "target_link": "palm_link"}, 
-                                      weight=0.0)
-    
     energy = RewTerm(func=energy_punishment,
                                   weight=0.0,
                                   params={"asset_cfg": SceneEntityCfg("robot"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
@@ -685,18 +677,11 @@ class PickObjectRewardsCfg(BaseRewardsCfg):
                                 params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
                                 weight=0.0,
                                 )
-    collision_to_table_symmetry = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0_symmetry", "contact_sensors_1_symmetry", "contact_sensors_2_symmetry", "contact_sensors_3_symmetry"]},
-                                weight=0.0,
-                                )
     collision_to_table_left = RewTerm(func=collision_penalty,
                                 params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
                                 weight=0.0,
                                 )
-    collision_to_table_left_symmetry = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0_left_symmetry", "contact_sensors_1_left_symmetry", "contact_sensors_2_left_symmetry", "contact_sensors_3_left_symmetry"]},
-                                weight=0.0,
-                                )
+
 
 @configclass
 class PickObjectEnvCfg(BaseEnvCfg):
@@ -710,17 +695,17 @@ class PickObjectEnvCfg(BaseEnvCfg):
     rewards = PickObjectRewardsCfg()
     num_object = 3
     action_dim = 44 # arm + hand
-    action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03,
-                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
-
+    action_scale: list = [1.0] * action_dim
+                        # [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                        #     0.03, 0.03, 0.03, 0.03, 
+                        #     0.03, 0.03, 0.03, 0.03, 
+                        #     0.03, 0.03, 0.03, 0.015,
+                        #     0.03, 0.03, 0.03, 0.03,
+                        #     0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                        #     0.03, 0.03, 0.03, 0.03, 
+                        #     0.03, 0.03, 0.03, 0.03, 
+                        #     0.03, 0.03, 0.03, 0.015,
+                        #     0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
     visualize_marker: bool = False
 
     def __post_init__(self):

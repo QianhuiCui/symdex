@@ -1,0 +1,135 @@
+defaults:
+  - base.yaml
+  - _self_
+
+env_name: "PouringEnv-v0"
+
+palm_pose:
+  pose1:
+    prim_path: "{ENV_REGEX_NS}/Object_0"
+    position_offset: [0.0, 0.0, 0.07]
+    orientation_offset: [0.500, 0.500, 0.500, 0.500]
+    object_id: 0
+    agnostic: True
+  pose2:
+    prim_path: "{ENV_REGEX_NS}/Object_1"
+    position_offset: [0.0, 0.06, -0.12]
+    orientation_offset: [0.0, -0.707, 0.0, -0.707]
+    object_id: None
+    agnostic: False
+
+rew: {}
+  # align_right: 0.05
+  # reach_right: 0.05
+  # lift_right: 4.0
+  # move_right: 2.0
+  # move_ori_right: 4.0
+  # cmd_wait_right: 0.0  # 500.0s
+  # cmd_success_right: 20.0
+  # align_left: 0.05
+  # move_left: 8.0
+  # move_ori_left: 0.5
+  # cmd_success_left: 20.0
+  # success_bonus: 2000.0
+
+randomize:
+  enable: False
+  update_freq: 100
+  eval: False
+  total_step: 10
+  success_threshold: 0.7
+  # randomization:
+  #   # object_mass: [0.11, 0.11] #[0.02, 0.12]
+  #   # static_friction: [0.2, 1.0]
+  #   dynamic_friction: [0.2, 1.0]
+  #   restitution: [0.0, 1.0]
+  # curriculum:
+  #   action_scale: [0.05, 0.04, 0.03]
+    # energy_penalty: 
+    #   names: ["energy", "energy_left"]
+    #   values: [0.000001, 0.001]
+    # collision_penalty: 
+    #   names: ["collision_to_table", "collision_to_table_left", "collision_to_table_symmetry", "collision_to_table_left_symmetry"]
+    #   values: [-0.000001, -500.0]
+    # reset_pose3:
+    #   names: "reset_tote"
+    #   values: [[[0.1, 0.1], [0.0, 0.0], [0.0, 0.0]],
+    #            [[0.09, 0.11], [-0.02, 0.0], [0.0, 0.0]],
+    #            [[0.08, 0.12], [-0.03, 0.0], [0.0, 0.0]],
+    #            [[0.07, 0.13], [-0.04, 0.0], [0.0, 0.0]],
+    #            [[0.06, 0.14], [-0.05, 0.0], [0.0, 0.0]]]
+    # reset_pose:
+    #   names: "reset_object_1"
+    #   values: [[[0.1, 0.15], [-0.4, -0.3], [0.0, 0.0]], 
+    #            [[0.08, 0.17], [-0.41, -0.29], [0.0, 0.0]],
+    #            [[0.06, 0.19], [-0.42, -0.28], [0.0, 0.0]],
+    #            [[0.04, 0.21], [-0.43, -0.27], [0.0, 0.0]],
+    #            [[0.02, 0.23], [-0.44, -0.26], [0.0, 0.0]]]
+    # reset_pose2:
+    #   names: "reset_object_2"
+    #   values: [[[0.1, 0.15], [0.4, 0.3], [0.0, 0.0]], 
+    #            [[0.08, 0.17], [0.41, 0.29], [0.0, 0.0]],
+    #            [[0.06, 0.19], [0.42, 0.28], [0.0, 0.0]],
+    #            [[0.04, 0.21], [0.43, 0.27], [0.0, 0.0]],
+    #            [[0.02, 0.23], [0.44, 0.26], [0.0, 0.0]]]
+
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 128
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: False
+      pos: [0.6, 0.0, 1.0]
+      target: [0.13, 0.0, 0.26]
+    cam_2:
+      enable: False
+      randomize: True
+      pos: [0.6, -0.7, 0.5]
+      target: [-0.18, 0.0, 0.06]
+    wrist_cam_left:
+      enable: False 
+      delay: 3
+      
+multi:
+  shared_obs_dim: 177
+  SYMDEX:
+    single_agent_action_dim: 22
+    swap_action: False
+    single_agent_obs_dim: [92, 85]
+    single_agent_obs_idx: [[[0, 63], [119, 126], [133, 155]], 
+                          [[63, 119], [126, 133], [155, 177]]] 
+    # single_agent_rew: [["align_right", "reach_right", "lift_right", "move_right", "move_ori_right", "cmd_wait_right", "cmd_success_right", "success_bonus"],
+    #                    ["align_left", "move_left", "move_ori_left", "cmd_success_left", "success_bonus"]]
+    # single_agent_rew_symmetry: [["align_right_symmetry", "reach_right_symmetry", "lift_right_symmetry", "move_right_symmetry", "move_ori_right_symmetry", "cmd_wait_right_symmetry", "cmd_success_right_symmetry"],
+    #                   ["align_left_symmetry", "move_left_symmetry", "move_ori_left_symmetry", "cmd_success_left_symmetry", "success_bonus"]]
+
+symmetry:
+  symmetric_envs: False
+  reset_symmetry:
+    object_0:
+      type: "rigid_object"
+      symmetry: ['position']
+    object_1:
+      type: "rigid_object"
+      symmetry: ['position']
+    object_2:
+      type: "rigid_object"
+      symmetry: ['position']
+    target_pos:
+      type: "command"
+      symmetry: ['position']
+    waiting_pos:
+      type: "command"
+      symmetry: ['position']
+  SYMDEX:
+    # actor network
+    actor_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"], 
+                        ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "Q_js"]]  
+    actor_output_fields: [["Q_js"], ["Q_js"]]  # 22
+    # critic network
+    critic_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"], 
+                        ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "Q_js"]]  
+    critic_output_fields: [["irrep_0"], ["irrep_0"]] # 1

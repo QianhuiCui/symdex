@@ -3,34 +3,34 @@ defaults:
   - _self_
 
 env_name: "ThreadingEnv-v0"
-rew:
-  reaching_object: 0.02
-  object_lifting: 2.0
-  cube_goal_tracking: 10.0
-  cube_goal_orient_tracking: 2.5
-  cube_success_bonus: 0.0
-  align_hand_to_pos: 1.0
-  align_hand_to_quat: 0.25
-  reaching_drill: 0.01
-  drill_goal_tracking: 10.0
-  drill_goal_orient_tracking: 0.4
-  drill_success_bonus: 0.0
-  drill_cube_distance: 500.0
-  success_bonus: 2000.0
+rew: {}
+  # reaching_object: 0.02
+  # object_lifting: 2.0
+  # cube_goal_tracking: 10.0
+  # cube_goal_orient_tracking: 2.5
+  # cube_success_bonus: 0.0
+  # align_hand_to_pos: 1.0
+  # align_hand_to_quat: 0.25
+  # reaching_drill: 0.01
+  # drill_goal_tracking: 10.0
+  # drill_goal_orient_tracking: 0.4
+  # drill_success_bonus: 0.0
+  # drill_cube_distance: 500.0
+  # success_bonus: 2000.0
 
   # symmetry
-  reaching_object_symmetry: 0.02
-  object_lifting_symmetry: 2.0
-  cube_goal_tracking_symmetry: 10.0
-  cube_goal_orient_tracking_symmetry: 2.5
-  align_hand_to_pos_symmetry: 1.0
-  align_hand_to_quat_symmetry: 0.25
-  reaching_drill_symmetry: 0.01
+  # reaching_object_symmetry: 0.02
+  # object_lifting_symmetry: 2.0
+  # cube_goal_tracking_symmetry: 10.0
+  # cube_goal_orient_tracking_symmetry: 2.5
+  # align_hand_to_pos_symmetry: 1.0
+  # align_hand_to_quat_symmetry: 0.25
+  # reaching_drill_symmetry: 0.01
 
-  energy: 0.000001
-  energy_left: 0.000001
-  collision_to_table: -0.000001
-  collision_to_table_symmetry: -0.000001
+  # energy: 0.000001
+  # energy_left: 0.000001
+  # collision_to_table: -0.000001
+  # collision_to_table_symmetry: -0.000001
 
 randomize:
   enable: False
@@ -42,31 +42,51 @@ randomize:
     static_friction: [0.2, 1.0]
     dynamic_friction: [0.2, 1.0]
     restitution: [0.0, 1.0]
-  curriculum:
-    action_scale: [0.05, 0.04, 0.03]
-    energy_penalty: 
-      names: ["energy", "energy_left"]
-      values: [0.000001, 0.001]
-    collision_penalty: 
-      names: ["collision_to_table", "collision_to_table_symmetry"]
-      values: [-0.000001, -500.0]
-    reset_pose:
-      names: "reset_object_cube"
-      values: [[[0.1, 0.1], [-0.3, -0.3], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [0.0, 0.0]], 
-               [[0.09, 0.11], [-0.32, -0.29], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.1, 0.1]],
-               [[0.08, 0.12], [-0.33, -0.28], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.2, 0.2]],
-               [[0.07, 0.13], [-0.34, -0.27], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.3, 0.3]],
-               [[0.06, 0.14], [-0.35, -0.26], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.4, 0.4]],
-               [[0.05, 0.15], [-0.36, -0.25], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.5, 0.5]]]
-    reset_pose2:
-      names: "reset_object_drill"
-      values: [[[0.15, 0.15], [0.2, 0.2], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.57, 1.57]], 
-               [[0.14, 0.16], [0.21, 0.21], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.47, 1.67]],
-               [[0.13, 0.17], [0.22, 0.22], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.37, 1.77]],
-               [[0.12, 0.18], [0.23, 0.23], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.27, 1.87]],
-               [[0.11, 0.19], [0.24, 0.24], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.17, 1.97]],
-               [[0.10, 0.20], [0.25, 0.25], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.07, 2.07]]]
+  # curriculum:
+  #   action_scale: [0.05, 0.04, 0.03]
+  #   energy_penalty: 
+  #     names: ["energy", "energy_left"]
+  #     values: [0.000001, 0.001]
+  #   collision_penalty: 
+  #     names: ["collision_to_table", "collision_to_table_symmetry"]
+  #     values: [-0.000001, -500.0]
+  #   reset_pose:
+  #     names: "reset_object_cube"
+  #     values: [[[0.1, 0.1], [-0.3, -0.3], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [0.0, 0.0]], 
+  #              [[0.09, 0.11], [-0.32, -0.29], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.1, 0.1]],
+  #              [[0.08, 0.12], [-0.33, -0.28], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.2, 0.2]],
+  #              [[0.07, 0.13], [-0.34, -0.27], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.3, 0.3]],
+  #              [[0.06, 0.14], [-0.35, -0.26], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.4, 0.4]],
+  #              [[0.05, 0.15], [-0.36, -0.25], [0.05, 0.05], [-1.57, -1.57], [0.0, 0.0], [-0.5, 0.5]]]
+  #   reset_pose2:
+  #     names: "reset_object_drill"
+  #     values: [[[0.15, 0.15], [0.2, 0.2], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.57, 1.57]], 
+  #              [[0.14, 0.16], [0.21, 0.21], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.47, 1.67]],
+  #              [[0.13, 0.17], [0.22, 0.22], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.37, 1.77]],
+  #              [[0.12, 0.18], [0.23, 0.23], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.27, 1.87]],
+  #              [[0.11, 0.19], [0.24, 0.24], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.17, 1.97]],
+  #              [[0.10, 0.20], [0.25, 0.25], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.07, 2.07]]]
 
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 128
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: False
+      pos: [0.6, 0.0, 1.0]
+      target: [0.13, 0.0, 0.26]
+    cam_2:
+      enable: False
+      randomize: True
+      pos: [0.6, -0.7, 0.5]
+      target: [-0.18, 0.0, 0.06]
+    wrist_cam_left:
+      enable: False 
+      delay: 3
+      
 multi:
   shared_obs_dim: 180
   SYMDEX:
@@ -75,12 +95,12 @@ multi:
     single_agent_obs_dim: [102, 102]
     single_agent_obs_idx: [[[0, 56], [112, 158]], 
                           [[56, 136], [158, 180]]]
-    single_agent_obs_idx_symmetry: [[[56, 136], [158, 180]], 
-                                   [[0, 56], [112, 158]]]
-    single_agent_rew: [["reaching_object", "object_lifting", "cube_goal_tracking", "cube_goal_orient_tracking", "cube_success_bonus", "drill_cube_distance", "success_bonus"],
-                      ["align_hand_to_pos", "align_hand_to_quat", "reaching_drill", "drill_goal_tracking", "drill_goal_orient_tracking", "drill_success_bonus", "drill_cube_distance", "success_bonus"]]
-    single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "cube_goal_tracking_symmetry", "cube_goal_orient_tracking_symmetry", "cube_success_bonus", "drill_cube_distance", "success_bonus"],
-                                ["align_hand_to_pos_symmetry", "align_hand_to_quat_symmetry", "reaching_drill_symmetry", "drill_goal_tracking", "drill_goal_orient_tracking", "drill_success_bonus", "drill_cube_distance", "success_bonus"]]
+    # single_agent_obs_idx_symmetry: [[[56, 136], [158, 180]], 
+    #                                [[0, 56], [112, 158]]]
+    # single_agent_rew: [["reaching_object", "object_lifting", "cube_goal_tracking", "cube_goal_orient_tracking", "cube_success_bonus", "drill_cube_distance", "success_bonus"],
+    #                   ["align_hand_to_pos", "align_hand_to_quat", "reaching_drill", "drill_goal_tracking", "drill_goal_orient_tracking", "drill_success_bonus", "drill_cube_distance", "success_bonus"]]
+    # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "cube_goal_tracking_symmetry", "cube_goal_orient_tracking_symmetry", "cube_success_bonus", "drill_cube_distance", "success_bonus"],
+    #                             ["align_hand_to_pos_symmetry", "align_hand_to_quat_symmetry", "reaching_drill_symmetry", "drill_goal_tracking", "drill_goal_orient_tracking", "drill_success_bonus", "drill_cube_distance", "success_bonus"]]
 
 symmetry:
   reset_symmetry:
@@ -102,6 +122,6 @@ symmetry:
                         ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"]]  # 102
     actor_output_fields: [["Q_js"], ["Q_js"]]  # 22
     # critic network
-    critic_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"], # 3 + 9 + 22 + 22 + 3 + 1 + 22 = 82
-                        ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"]]  # 3 + 3 + 9 + 22 + 22 + 3 + 9 + 1 + 22 = 94
+    critic_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"], 
+                        ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "SO3_flat", "Q_js"]]  
     critic_output_fields: [["irrep_0"], ["irrep_0"]] # 1

@@ -615,7 +615,7 @@ class InsertDrawerActionsCfg:
     arm_hand_action_left = JointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
-        scale=1.0,
+        scale=0.95,
         use_default_offset=False,
     )
 
@@ -678,50 +678,7 @@ class InsertDrawerRewardsCfg(BaseRewardsCfg):
                                 params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
                                 weight=0.0,
                                 )
-    # symmetry terms
-    reaching_object_symmetry = RewTerm(func=object_robot_distance,
-                                      params={"weight": [1.0, 1.0, 1.0, 1.5], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "object_id": 0,
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
-    object_lifting_symmetry = RewTerm(func=lift_distance,
-                             params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_symmetry", "contact_sensors_1_symmetry", "contact_sensors_2_symmetry", "contact_sensors_3_symmetry"]},
-                             weight=0.0,
-                             )
-    object_goal_tracking_symmetry = RewTerm(func=object_goal_distance,
-                                   params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_symmetry", "contact_sensors_1_symmetry", "contact_sensors_2_symmetry", "contact_sensors_3_symmetry"],},
-                                   weight=0.0,
-                                   )
-    object_in_drawer_symmetry = RewTerm(func=drawer.if_in_drawer,
-                             params={"object_id": 0, "sensor_names": ["contact_sensors_0_symmetry", "contact_sensors_1_symmetry", "contact_sensors_2_symmetry", "contact_sensors_3_symmetry"]},
-                             weight=0.0,
-                             )
-    reset_robot_joint_pos_symmetry = RewTerm(func=drawer.robot_goal_distance, 
-                              params={"target_pos": [-0.1277, 0.3174,  1.2583], 
-                                      "target_link": "palm_link",
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)           
-    
-    reaching_handle_symmetry = RewTerm(func=drawer.drawer_handle_robot_distance, 
-                              params={"weight": [1.0, 1.0], 
-                                      "link_name": ["if5", "mf5"], 
-                                      "asset_cfg": SceneEntityCfg("robot")}, 
-                                      weight=0.0)
-    moving_drawer_symmetry = RewTerm(func=drawer.drawer_move, 
-                            params={"joints": ["base_drawer_joint"], "asset_cfg": SceneEntityCfg("drawer"), "sensor_names": ["contact_sensors_0_left_symmetry"]},
-                            weight=0.0)
-    moving_drawer_inside_symmetry = RewTerm(func=drawer.drawer_move_inside, 
-                            params={"joints": ["base_drawer_joint"], "asset_cfg": SceneEntityCfg("drawer"), "sensor_names": ["contact_sensors_0_left_symmetry"]},
-                            weight=0.0)
-    collision_to_table_symmetry = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0_symmetry", "contact_sensors_1_symmetry", "contact_sensors_2_symmetry", "contact_sensors_3_symmetry"]},
-                                weight=0.0,
-                                )
-    collision_to_drawer_symmetry = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0_left_symmetry", "contact_sensors_1_left_symmetry", "contact_sensors_2_left_symmetry", "contact_sensors_3_left_symmetry"]},
-                                weight=0.0,
-                                )
+
 
 @configclass
 class InsertDrawerEnvCfg(BaseEnvCfg):
@@ -735,16 +692,7 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
     rewards = InsertDrawerRewardsCfg()
     num_object = 1
     action_dim = 44 # arm + hand
-    action_scale: list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                            1.0, 1.0, 1.0, 1.0,
-                            1.0, 1.0, 1.0, 1.0,
-                            1.0, 1.0, 1.0, 1.0,
-                            1.0, 1.0, 1.0, 1.0,
-                          0.95, 0.95, 0.95, 0.95, 0.95, 0.95,
-                            0.95, 0.95, 0.95, 0.95,
-                            0.95, 0.95, 0.95, 0.95,
-                            0.95, 0.95, 0.95, 0.95,
-                            0.95, 0.95, 0.95, 0.95]
+    action_scale: list = [1.0] * action_dim
     # action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
     #                         0.03, 0.03, 0.03, 0.03, 
     #                         0.03, 0.03, 0.03, 0.03, 

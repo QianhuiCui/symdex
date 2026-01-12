@@ -96,11 +96,9 @@ def punish_collision(
 
 def success_bonus(
     env: ManagerBasedRLEnv,
-    num_success: int = 10,
 ) -> torch.Tensor:
-    success = env.success_step_tracker >= num_success
-    env.success_tracker = success.float()
-    return success
+    rew = env.success_tracker.float()
+    return rew
 
 def generated_commands(env: ManagerBasedRLEnv, object_id: int = 0):
     waiting_pos = env.command_manager.get_command("waiting_pos").clone()
@@ -116,3 +114,48 @@ def generated_commands(env: ManagerBasedRLEnv, object_id: int = 0):
     target_pos[tote_not_in] = waiting_pos[tote_not_in]
     return target_pos
 
+def max_consecutive_success(env: ManagerBasedRLEnv, num_success: int) -> torch.Tensor:
+    object_1: RigidObject = env.scene["object_1"]
+    object_2: RigidObject = env.scene["object_2"]
+    tote = env.scene["object_0"]
+    sensor_names = ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]
+    distance_threshold = 0.2
+
+    dist_1 = torch.norm(object_1.data.root_pos_w[:, :3] - tote.data.root_pos_w[:, :3], dim=-1)
+    in_tote_1 = check_release(env, sensor_names) * (dist_1 < distance_threshold) * (object_1.data.root_pos_w[:, 2] < 0.2) * (env.object_on_tote_tracker[1] > 0)
+    dist_2 = torch.norm(object_2.data.root_pos_w[:, :3] - tote.data.root_pos_w[:, :3], dim=-1)
+    in_tote_2 = check_release(env, sensor_names) * (dist_2 < distance_threshold) * (object_2.data.root_pos_w[:, 2] < 0.2) * (env.object_on_tote_tracker[2] > 0)
+
+    env.object_in_tote_tracker[1] += in_tote_1.float()
+    env.object_in_tote_tracker[2] += (in_tote_2 & (env.object_in_tote_tracker[1] >= 3)).float()
+    success = reduce(torch.logical_and, [env.object_in_tote_tracker[1] >= 3, env.object_in_tote_tracker[2] >= 3]).bool()
+
+    env.success_tracker_step[success] += 1
+    env.success_tracker_step[~success] = 0
+    success_consecutive = env.success_tracker_step >= num_success
+    env.success_tracker = success_consecutive.float()
+    return success_consecutive
+
+def obj_out_space(
+        env: ManagerBasedRLEnv, 
+        asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+        object_id: int = 0,
+        workspace_radius: float = 0.7,
+        workspace_height_range: tuple = (0.0, 1.5),
+        ) -> torch.Tensor:
+    """Terminate if the object is out of the workspace."""
+    robot = env.scene[asset_cfg.name]
+    object: RigidObject = env.scene[f"object_{object_id}"]
+
+    robot_base = robot.data.root_link_pos_w[:, :3]
+    object_pos = object.data.root_pos_w[:, :3]
+
+    offset = object_pos - robot_base
+    dist_xy = torch.norm(offset[:, :2], dim=-1)
+    dist_z = offset[:, 2]
+
+    out_of_radius = (dist_xy > workspace_radius) | (dist_xy < 0.1)
+    out_of_height = (dist_z < workspace_height_range[0]) | (dist_z > workspace_height_range[1])
+    out_of_space = out_of_radius | out_of_height
+
+    return out_of_space

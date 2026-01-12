@@ -3,35 +3,55 @@ defaults:
   - _self_
 
 env_name: "HandoverEnv-v0"
-rew:
-  reaching_object: 0.05
-  object_goal_tracking: 10.0 
-  object_goal_orient_tracking: 2.0
-  middle_success_bonus: 25.0  # 20
-  contact_bottle_punish: 4.0
-  reset_robot_joint_pos: 200.0
-  left_align_hand_pose: 0.2
-  left_align_finger_joint: 1.0
-  left_reaching_object: 40.0
-  left_object_goal_tracking: 20.0 
-  left_object_goal_orient_tracking: 5.0
-  middle_success_bonus_left: 20.0
-  success_bonus: 3000.0
+rew: {}
+  # reaching_object: 0.05
+  # object_goal_tracking: 10.0 
+  # object_goal_orient_tracking: 2.0
+  # middle_success_bonus: 25.0  # 20
+  # contact_bottle_punish: 4.0
+  # reset_robot_joint_pos: 200.0
+  # left_align_hand_pose: 0.2
+  # left_align_finger_joint: 1.0
+  # left_reaching_object: 40.0
+  # left_object_goal_tracking: 20.0 
+  # left_object_goal_orient_tracking: 5.0
+  # middle_success_bonus_left: 20.0
+  # success_bonus: 3000.0
 
   # symmetry
-  reaching_object_symmetry: 0.05
-  object_goal_tracking_symmetry: 10.0 
-  object_goal_orient_tracking_symmetry: 2.0
-  contact_bottle_punish_symmetry: 4.0
-  reset_robot_joint_pos_symmetry: 200.0
-  left_align_hand_pose_symmetry: 0.2
-  left_align_finger_joint_symmetry: 1.0
-  left_reaching_object_symmetry: 40.0
-  left_object_goal_tracking_symmetry: 20.0 
-  left_object_goal_orient_tracking_symmetry: 5.0
-  middle_success_bonus_left_symmetry: 20.0
-  success_bonus_symmetry: 3000.0
+  # reaching_object_symmetry: 0.05
+  # object_goal_tracking_symmetry: 10.0 
+  # object_goal_orient_tracking_symmetry: 2.0
+  # contact_bottle_punish_symmetry: 4.0
+  # reset_robot_joint_pos_symmetry: 200.0
+  # left_align_hand_pose_symmetry: 0.2
+  # left_align_finger_joint_symmetry: 1.0
+  # left_reaching_object_symmetry: 40.0
+  # left_object_goal_tracking_symmetry: 20.0 
+  # left_object_goal_orient_tracking_symmetry: 5.0
+  # middle_success_bonus_left_symmetry: 20.0
+  # success_bonus_symmetry: 3000.0
 
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 128
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: False
+      pos: [0.6, 0.0, 1.0]
+      target: [0.13, 0.0, 0.26]
+    cam_2:
+      enable: False
+      randomize: True
+      pos: [0.6, -0.7, 0.5]
+      target: [-0.18, 0.0, 0.06]
+    wrist_cam_left:
+      enable: False 
+      delay: 3
+      
 randomize:
   object_mass: [0.2, 0.2]
 

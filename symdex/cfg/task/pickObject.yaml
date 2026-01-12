@@ -3,83 +3,103 @@ defaults:
   - _self_
 
 env_name: "PickObjectEnv-v0"
-rew:
+rew: {}
   # right
-  reaching_object: 0.01
-  object_lifting: 1.0
-  object_goal_tracking: 10.0
-  object_1_in_tote: 2000.0
-  reset_robot_joint_pos: 200.0
-  # left
-  reaching_object_left: 0.01
-  object_lifting_left: 1.0
-  object_goal_tracking_left: 10.0
-  object_goal_tracking_left_delay: 50.0
-  object_2_in_tote: 2000.0
-  reset_robot_joint_pos_left: 200.0
-  success_bonus: 1.0
+  # reaching_object: 0.01
+  # object_lifting: 1.0
+  # object_goal_tracking: 10.0
+  # object_1_in_tote: 2000.0
+  # reset_robot_joint_pos: 200.0
+  # # left
+  # reaching_object_left: 0.01
+  # object_lifting_left: 1.0
+  # object_goal_tracking_left: 10.0
+  # object_goal_tracking_left_delay: 50.0
+  # object_2_in_tote: 2000.0
+  # reset_robot_joint_pos_left: 200.0
+  # success_bonus: 1.0
 
-  # symmetry
-  reaching_object_symmetry: 0.01
-  object_lifting_symmetry: 1.0
-  object_goal_tracking_symmetry: 10.0
-  object_1_in_tote_symmetry: 2000.0
-  reset_robot_joint_pos_symmetry: 200.0
-  # left
-  reaching_object_left_symmetry: 0.01
-  object_lifting_left_symmetry: 1.0
-  object_goal_tracking_left_symmetry: 10.0
-  object_goal_tracking_left_delay_symmetry: 50.0
-  object_2_in_tote_symmetry: 2000.0
-  reset_robot_joint_pos_left_symmetry: 200.0
+  # # symmetry
+  # reaching_object_symmetry: 0.01
+  # object_lifting_symmetry: 1.0
+  # object_goal_tracking_symmetry: 10.0
+  # object_1_in_tote_symmetry: 2000.0
+  # reset_robot_joint_pos_symmetry: 200.0
+  # # left
+  # reaching_object_left_symmetry: 0.01
+  # object_lifting_left_symmetry: 1.0
+  # object_goal_tracking_left_symmetry: 10.0
+  # object_goal_tracking_left_delay_symmetry: 50.0
+  # object_2_in_tote_symmetry: 2000.0
+  # reset_robot_joint_pos_left_symmetry: 200.0
 
-  energy: 0.000001
-  energy_left: 0.000001
-  collision_to_table: -0.000001
-  collision_to_table_left: -0.000001
-  collision_to_table_symmetry: -0.000001
-  collision_to_table_left_symmetry: -0.000001
+  # energy: 0.000001
+  # energy_left: 0.000001
+  # collision_to_table: -0.000001
+  # collision_to_table_left: -0.000001
+  # collision_to_table_symmetry: -0.000001
+  # collision_to_table_left_symmetry: -0.000001
+
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 128
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: False
+      pos: [0.6, 0.0, 1.0]
+      target: [0.13, 0.0, 0.26]
+    cam_2:
+      enable: False
+      randomize: True
+      pos: [0.6, -0.7, 0.5]
+      target: [-0.18, 0.0, 0.06]
+    wrist_cam_left:
+      enable: False 
+      delay: 3
 
 randomize:
   enable: False
   update_freq: 100
   eval: False
   total_step: 10
-  success_threshold: 0.7
+  # success_threshold: 0.7
   randomization:
     object_mass: [0.11, 0.11] #[0.02, 0.12]
     static_friction: [0.2, 1.0]
     dynamic_friction: [0.2, 1.0]
-    restitution: [0.0, 1.0]
-  curriculum:
-    action_scale: [0.05, 0.04, 0.03]
-    energy_penalty: 
-      names: ["energy", "energy_left"]
-      values: [0.000001, 0.001]
-    collision_penalty: 
-      names: ["collision_to_table", "collision_to_table_left", "collision_to_table_symmetry", "collision_to_table_left_symmetry"]
-      values: [-0.000001, -500.0]
-    reset_pose3:
-      names: "reset_tote"
-      values: [[[0.1, 0.1], [0.0, 0.0], [0.0, 0.0]],
-               [[0.09, 0.11], [-0.02, 0.0], [0.0, 0.0]],
-               [[0.08, 0.12], [-0.03, 0.0], [0.0, 0.0]],
-               [[0.07, 0.13], [-0.04, 0.0], [0.0, 0.0]],
-               [[0.06, 0.14], [-0.05, 0.0], [0.0, 0.0]]]
-    reset_pose:
-      names: "reset_object_1"
-      values: [[[0.1, 0.15], [-0.4, -0.3], [0.0, 0.0]], 
-               [[0.08, 0.17], [-0.41, -0.29], [0.0, 0.0]],
-               [[0.06, 0.19], [-0.42, -0.28], [0.0, 0.0]],
-               [[0.04, 0.21], [-0.43, -0.27], [0.0, 0.0]],
-               [[0.02, 0.23], [-0.44, -0.26], [0.0, 0.0]]]
-    reset_pose2:
-      names: "reset_object_2"
-      values: [[[0.1, 0.15], [0.4, 0.3], [0.0, 0.0]], 
-               [[0.08, 0.17], [0.41, 0.29], [0.0, 0.0]],
-               [[0.06, 0.19], [0.42, 0.28], [0.0, 0.0]],
-               [[0.04, 0.21], [0.43, 0.27], [0.0, 0.0]],
-               [[0.02, 0.23], [0.44, 0.26], [0.0, 0.0]]]
+    # restitution: [0.0, 1.0]
+  # curriculum:
+  #   action_scale: [0.05, 0.04, 0.03]
+  #   energy_penalty: 
+  #     names: ["energy", "energy_left"]
+  #     values: [0.000001, 0.001]
+  #   collision_penalty: 
+  #     names: ["collision_to_table", "collision_to_table_left", "collision_to_table_symmetry", "collision_to_table_left_symmetry"]
+  #     values: [-0.000001, -500.0]
+  #   reset_pose3:
+  #     names: "reset_tote"
+  #     values: [[[0.1, 0.1], [0.0, 0.0], [0.0, 0.0]],
+  #              [[0.09, 0.11], [-0.02, 0.0], [0.0, 0.0]],
+  #              [[0.08, 0.12], [-0.03, 0.0], [0.0, 0.0]],
+  #              [[0.07, 0.13], [-0.04, 0.0], [0.0, 0.0]],
+  #              [[0.06, 0.14], [-0.05, 0.0], [0.0, 0.0]]]
+  #   reset_pose:
+  #     names: "reset_object_1"
+  #     values: [[[0.1, 0.15], [-0.4, -0.3], [0.0, 0.0]], 
+  #              [[0.08, 0.17], [-0.41, -0.29], [0.0, 0.0]],
+  #              [[0.06, 0.19], [-0.42, -0.28], [0.0, 0.0]],
+  #              [[0.04, 0.21], [-0.43, -0.27], [0.0, 0.0]],
+  #              [[0.02, 0.23], [-0.44, -0.26], [0.0, 0.0]]]
+  #   reset_pose2:
+  #     names: "reset_object_2"
+  #     values: [[[0.1, 0.15], [0.4, 0.3], [0.0, 0.0]], 
+  #              [[0.08, 0.17], [0.41, 0.29], [0.0, 0.0]],
+  #              [[0.06, 0.19], [0.42, 0.28], [0.0, 0.0]],
+  #              [[0.04, 0.21], [0.43, 0.27], [0.0, 0.0]],
+  #              [[0.02, 0.23], [0.44, 0.26], [0.0, 0.0]]]
 
 multi:
   shared_obs_dim: 138

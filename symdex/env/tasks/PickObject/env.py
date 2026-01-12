@@ -37,8 +37,8 @@ class PickObjectEnv(BaseEnv):
         success = reduce(torch.logical_and, [self.object_in_tote_tracker[1] >= 3, self.object_in_tote_tracker[2] >= 3]).bool()
         success_idx = torch.where(success)[0]
         unsuccess_idx = torch.where(~success)[0]
-        self.success_step_tracker[success_idx] += 1
-        self.success_step_tracker[unsuccess_idx] = 0
+        self.success_tracker_step[success_idx] += 1
+        self.success_tracker_step[unsuccess_idx] = 0
 
         # Debug only
         if self.cfg.visualize_marker:
@@ -54,7 +54,7 @@ class PickObjectEnv(BaseEnv):
 
     def _pre_init_process(self):
         super()._pre_init_process()
-        self.success_step_tracker = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        self.success_tracker_step = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         self.object_on_tote_tracker = torch.zeros(self.num_object, self.num_envs, device=self.device)
         self.object_in_tote_tracker = torch.zeros(self.num_object, self.num_envs, device=self.device)
 
@@ -62,4 +62,4 @@ class PickObjectEnv(BaseEnv):
         super()._post_reset_process(env_ids)
         self.object_on_tote_tracker[:, env_ids] = 0.0
         self.object_in_tote_tracker[:, env_ids] = 0.0
-        self.success_step_tracker[env_ids] = 0
+        self.success_tracker_step[env_ids] = 0
