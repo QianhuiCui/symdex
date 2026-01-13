@@ -525,10 +525,10 @@ class ThreadingActionsCfg:
 @configclass
 class ThreadingTerminationsCfg(BaseTerminationsCfg):
     out_of_space = DoneTerm(
-        func=threading.out_of_space, params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 0,}
+        func=threading.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 0,}
     )
     out_of_space_left = DoneTerm(
-        func=threading.out_of_space, params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 1,}
+        func=threading.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 1,}
     )
     max_consecutive_success = DoneTerm(
         func=threading.max_consecutive_success, params={"num_success": 1}

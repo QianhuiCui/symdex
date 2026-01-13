@@ -70,7 +70,7 @@ randomize:
     object_mass: [0.11, 0.11] #[0.02, 0.12]
     static_friction: [0.2, 1.0]
     dynamic_friction: [0.2, 1.0]
-    # restitution: [0.0, 1.0]
+    restitution: [0.0, 1.0]
   # curriculum:
   #   action_scale: [0.05, 0.04, 0.03]
   #   energy_penalty: 

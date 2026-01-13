@@ -72,10 +72,10 @@ gym.register(
     },
 )
 
-from .tasks.pouring.env_cfg import PouringEnvCfg
+from .tasks.Pouring.env_cfg import PouringEnvCfg
 gym.register(
     id="PouringEnv-v0",
-    entry_point="symdex.env.tasks.pouring.env:PouringEnv",
+    entry_point="symdex.env.tasks.Pouring.env:PouringEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": PouringEnvCfg,

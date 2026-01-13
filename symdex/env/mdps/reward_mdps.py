@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import torch
-from typing import TYPE_CHECKING
+import math
+import types
+from typing import TYPE_CHECKING, Literal
 
 from functools import reduce
 import isaaclab.utils.math as math_utils
 from isaaclab.assets import Articulation, RigidObject
 from isaaclab.managers import SceneEntityCfg
+
+from symdex.utils.isaac_utils import get_angle_from_quat
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnv
@@ -228,3 +232,251 @@ def align_palm_to_pos(
     # position distance
     distance = torch.norm(robot_state_w[:, :3] - env.scene[frame_name].data.target_pos_w.reshape(-1, 3), dim=-1)
     return -distance
+
+def if_palm_aligned(
+    env: ManagerBasedRLEnv,
+    palm_frame_name: list[str],
+    palm_link_name: list[str],
+    pos_threshold: float,
+    ori_threshold: float,
+    asset_cfg: list[SceneEntityCfg] = list[SceneEntityCfg("robot")],
+) -> torch.Tensor:
+    if_aligned = torch.zeros(env.num_envs, device=env.device)
+    for i in range(len(asset_cfg)):
+        robot: Articulation = env.scene[asset_cfg[i].name]
+        palm_link_idx = robot.find_bodies(palm_link_name[i])[0]
+        palm_state_w = robot.data.body_state_w[:, palm_link_idx, :7].reshape(-1, 7)
+        # palm position distance
+        distance = torch.norm(palm_state_w[:, :3] - env.scene[palm_frame_name[i]].data.target_pos_w.reshape(-1, 3), dim=-1)
+        # palm orientation distance
+        ori_distance = math_utils.quat_error_magnitude(
+            palm_state_w[:, 3:7], env.scene[palm_frame_name[i]].data.target_quat_w.reshape(-1, 4)
+        )
+        if_aligned += torch.logical_and(distance < pos_threshold, ori_distance < ori_threshold).float()
+    return (if_aligned == float(len(asset_cfg))).float()
+
+def process_command(env: ManagerBasedRLEnv, command_name: str | function, type: Literal["pos", "ori"] = "pos"):
+    weights = torch.ones(env.num_envs, device=env.device)
+    if isinstance(command_name, str):
+        command = env.command_manager.get_command(command_name)
+        if type == "pos":
+            des_pos_w = command[:, :3] + env.scene.env_origins
+        else:
+            des_ori_w = command[:, 3:]
+    else:
+        command = command_name(env)
+        if isinstance(command, torch.Tensor):
+            if type == "pos":
+                des_pos_w = command[:, :3] + env.scene.env_origins
+            else:
+                des_ori_w = command[:, 3:]
+        else:
+            if type == "pos":
+                des_pos_w = command[0][:, :3] + env.scene.env_origins
+            else:
+                des_ori_w = command[0][:, 3:]
+            weights = command[1]
+
+    if type == "pos":
+        return des_pos_w, weights
+    else:
+        return des_ori_w, weights
+    
+def align_func(
+    env: ManagerBasedRLEnv,
+    palm_frame_name: str,
+    palm_link_name: str,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """
+    Reach reward function for aligning the palm with predicted pose and reaching the fingertip to the object.
+
+    Args:
+        object_id: the id of the object to reach
+        fingertip_weight: the weight of the fingertip
+        fingertip_link_name: the name of the fingertip link
+        palm_frame_name: the name of the palm frame
+        palm_link_name: the name of the palm link
+        asset_cfg: the asset configuration
+
+    Returns:
+        reward: (B,)
+    """
+    robot: Articulation = env.scene[asset_cfg.name]
+    reward = torch.zeros(env.num_envs, device=env.device)
+    # palm
+    palm_link_idx = robot.find_bodies(palm_link_name)[0]
+    palm_state_w = robot.data.body_state_w[:, palm_link_idx, :7].reshape(-1, 7)
+    # palm position distance
+    distance = torch.norm(palm_state_w[:, :3] - env.scene[palm_frame_name].data.target_pos_w.reshape(-1, 3), dim=-1)
+    reward -= 3.0 * distance
+    # palm orientation distance
+    ori_distance = math_utils.quat_error_magnitude(
+        palm_state_w[:, 3:7], env.scene[palm_frame_name].data.target_quat_w.reshape(-1, 4)
+    )
+    reward -= 0.5 * ori_distance
+    return reward
+
+def move_func(
+    env: ManagerBasedRLEnv,
+    command_name: str | function,
+    object_id: int | dict | function,
+    palm_frame_name: list[str] | None,
+    palm_link_name: list[str] | None,
+    required_lift: bool,
+    pos_threshold: float = 0.1,
+    ori_threshold: float = 0.5,
+    contact_sensors: list[str] = None,
+    act_func: function = None,
+    asset_cfg: list[SceneEntityCfg] = list[SceneEntityCfg("robot")],
+) -> torch.Tensor:
+    rew = torch.zeros(env.num_envs, device=env.device)
+    # get the object position
+    if isinstance(object_id, dict):
+        object: Articulation = env.scene[object_id["target_articulation_name"]]
+        target_body_idx = object.find_bodies(object_id["target_body_name"])[0]
+        object_pos_w = object.data.body_pos_w[:, target_body_idx, :3].reshape(-1, 3)
+        object_id = object_id["object_id"]
+    elif isinstance(object_id, int):
+        object: RigidObject = env.scene[f"object_{object_id}"]
+        object_pos_w = object.data.root_pos_w[:, :3]
+    else:
+        raise ValueError(f"object_id must be an integer or a dictionary, but got {type(object_id)}")
+
+    # get the command
+    des_pos_w, weights = process_command(env, command_name, "pos")
+    distance = torch.norm(des_pos_w - object_pos_w[:, :3], dim=1)
+    max_distance = torch.norm(des_pos_w - env.object_init_pos[object_id], dim=1)
+    distance = torch.clamp(max_distance - distance, min=0.0) / (max_distance + 1e-8)
+    rew += 10 * distance
+    if required_lift:
+        rew *= (env.object_lift_tracker[object_id] >= 5)
+
+    if contact_sensors is not None:
+        is_contact = get_allegro_contact(env, contact_sensors)
+        rew *= is_contact
+    if palm_frame_name is not None:
+        rew *= if_palm_aligned(env, palm_frame_name, palm_link_name, pos_threshold, ori_threshold, asset_cfg)
+    if act_func is not None:
+        rew *= act_func(env)
+    return rew * weights
+
+def move_ori_func(
+    env: ManagerBasedRLEnv,
+    command_name: str | function,
+    object_id: int,
+    palm_frame_name: list[str] | None,
+    palm_link_name: list[str] | None,
+    axis: str = None,
+    required_lift: bool = False,
+    pos_threshold: float = 0.1,
+    ori_threshold: float = 0.5,
+    contact_sensors: list[str] = None,
+    asset_cfg: list[SceneEntityCfg] = list[SceneEntityCfg("robot")],
+) -> torch.Tensor:
+    object: RigidObject = env.scene[f"object_{object_id}"]
+    # get the command
+    des_ori_w, weights = process_command(env, command_name, "ori")
+    # orientation distance
+    if axis is not None:
+        target_axis = get_angle_from_quat(des_ori_w, axis=axis, normalize=True)
+        init_axis = get_angle_from_quat(env.object_init_orient[object_id], axis=axis, normalize=True)
+        cur_axis = get_angle_from_quat(object.data.root_quat_w, axis=axis, normalize=True)
+        ori_distance = torch.sum(target_axis * cur_axis, dim=-1)
+        ori_distance = torch.clamp(ori_distance, -1.0, 1.0)
+        # linearize the reward
+        ori_distance = torch.acos(ori_distance)
+        ori_distance = 1 - ori_distance / math.pi  # 0 to 1
+    else:
+        error = math_utils.quat_error_magnitude(object.data.root_quat_w, des_ori_w)
+        # ori_distance = 1 / (1 + error)
+        # print(error)
+        ori_distance = torch.clamp(2.5 - error, min=0.0)
+    rew = ori_distance
+    if required_lift:
+        rew *= (env.object_lift_tracker[object_id] >= 5)
+        
+    if contact_sensors is not None:
+        is_contact = get_allegro_contact(env, contact_sensors)
+        rew *= is_contact
+    if palm_frame_name is not None:
+        rew *= if_palm_aligned(env, palm_frame_name, palm_link_name, pos_threshold, ori_threshold, asset_cfg)
+    return rew * weights
+
+def reach_func(
+    env: ManagerBasedRLEnv,
+    object_id: int | dict | str | types.FunctionType,
+    palm_frame_name: str | None = None,
+    palm_link_name: str | None = None,
+    pos_threshold: float = 0.1,
+    ori_threshold: float = 0.5,
+    fingertip_weight: list = None,
+    fingertip_link_name: list = None,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """
+    Reach reward function for aligning the palm with predicted pose and reaching the fingertip to the object.
+
+    Args:
+        object_id: the id of the object to reach
+        fingertip_weight: the weight of the fingertip
+        fingertip_link_name: the name of the fingertip link
+        palm_frame_name: the name of the palm frame
+        palm_link_name: the name of the palm link
+        asset_cfg: the asset configuration
+
+    Returns:
+        reward: (B,)
+    """
+    robot: Articulation = env.scene[asset_cfg.name]
+    # fingertip
+    # reach the object
+    if isinstance(object_id, dict):
+        object: Articulation = env.scene[object_id["target_articulation_name"]]
+        target_body_idx = object.find_bodies(object_id["target_body_name"])[0]
+        object_pos_w = object.data.body_pos_w[:, target_body_idx, :3].reshape(-1, 1, 3)
+        if "offset" in object_id.keys():
+            object_pos_w += torch.tensor(object_id["offset"], device=env.device)
+    elif isinstance(object_id, int):
+        object: RigidObject = env.scene[f"object_{object_id}"]
+        object_pos_w = object.data.root_pos_w[:, None, :3]
+    elif isinstance(object_id, types.FunctionType):
+        object_pos_w = object_id(env).unsqueeze(1)
+    else:
+        raise ValueError(f"object_id must be an integer or a dictionary or a function, but got {type(object_id)}")
+    # Fingertip position: (num_envs, num_fingertip, 3)
+    fingertip_weight = torch.tensor(fingertip_weight, device=env.device)
+    fingertip_link_idx = robot.find_bodies(fingertip_link_name)[0]
+    fingertip_pos_w = robot.data.body_pos_w[:, fingertip_link_idx, :3]
+    # Distance of the fingertip to the object: (num_envs,)
+    object_link_distance = (torch.norm(object_pos_w - fingertip_pos_w, dim=-1) * fingertip_weight).mean(dim=1)
+    reward = 0.2 * 1 / object_link_distance 
+    if palm_frame_name is not None:
+        reward *= if_palm_aligned(env, [palm_frame_name], [palm_link_name], pos_threshold, ori_threshold, [asset_cfg])
+    return reward
+
+def lift_func(
+    env: ManagerBasedRLEnv,
+    object_id: int | dict | function,
+    palm_frame_name: list[str] | None,
+    palm_link_name: list[str],
+    pos_threshold: float = 0.1,
+    ori_threshold: float = 0.5,
+    contact_sensors: list[str] = None,
+    asset_cfg: list[SceneEntityCfg] = list[SceneEntityCfg("robot")],
+) -> torch.Tensor:
+    object: RigidObject = env.scene[f"object_{object_id}"]
+    object_pos_w = object.data.root_pos_w[:, :3]
+    # compute lift reward
+    z_distance = (object_pos_w[:, 2] - env.object_init_pos[object_id][:, 2]) / 0.25  # (des_pos_w[:, 2] - env.object_init_pos[object_id][:, 2] + 1e-6) # linear
+    z_distance = torch.clamp(z_distance, min=0.0)
+    rew = z_distance * (object_pos_w[:, 2] < env.object_init_pos[object_id][:, 2] + 0.25).float()
+    if contact_sensors is not None:
+        is_contact = get_allegro_contact(env, contact_sensors)
+        rew *= is_contact
+    # update lift tracker
+    env.object_lift_tracker[object_id] += (object_pos_w[:, 2] > env.object_init_pos[object_id][:, 2] + 0.15).float()
+    rew *= (env.object_lift_tracker[object_id] < 5)
+    if palm_frame_name is not None:
+        rew *= if_palm_aligned(env, palm_frame_name, palm_link_name, pos_threshold, ori_threshold, asset_cfg)
+    return rew

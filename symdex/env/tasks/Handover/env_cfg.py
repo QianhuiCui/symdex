@@ -647,3 +647,4 @@ class HandoverEnvCfg(BaseEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
+        self.viewer.eye = (-1.5, 0.0, 1.5)

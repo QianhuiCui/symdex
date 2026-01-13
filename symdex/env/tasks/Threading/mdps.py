@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import isaaclab.utils.math as math_utils
 from isaaclab.assets import RigidObject
+from isaaclab.managers import SceneEntityCfg
 from symdex.env.mdps.reward_mdps import get_allegro_contact
 
 if TYPE_CHECKING:

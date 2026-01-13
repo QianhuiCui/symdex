@@ -211,7 +211,7 @@ class PickObjectSceneCfg(BaseSceneCfg):
     object_0 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_0",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/object/tote_collision.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/tote/Tote0.usd",
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=True,
                 disable_gravity=False,
@@ -581,11 +581,11 @@ class PickObjectActionsCfg:
 @configclass
 class PickObjectTerminationsCfg(BaseTerminationsCfg):
     out_of_space = DoneTerm(
-        func=pick.out_of_space,
+        func=pick.obj_out_space,
         params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 1},
     )
     out_of_space_left = DoneTerm(
-        func=pick.out_of_space,
+        func=pick.obj_out_space,
         params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 2},
     )
     max_consecutive_success = DoneTerm(
@@ -711,3 +711,4 @@ class PickObjectEnvCfg(BaseEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
+        self.viewer.eye = (-1.5, 0.0, 1.5)

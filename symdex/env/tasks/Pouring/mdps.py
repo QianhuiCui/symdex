@@ -81,3 +81,8 @@ def generated_commands_right_weights(env: ManagerBasedRLEnv):
         weights[both_success_idx] = 2.0
 
     return [waiting_pos, weights]
+
+def success_bonus(
+    env: ManagerBasedRLEnv,
+) -> torch.Tensor:
+    return env.success_tracker

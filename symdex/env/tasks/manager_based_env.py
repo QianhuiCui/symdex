@@ -417,11 +417,9 @@ class BaseEnv(ManagerBasedRLEnv):
                 lang_objs.append(object_label)
                 lang_colors.append(color_label)
                 lang_surfaces.append(description)
-                    for i, env_id in enumerate(env_ids.tolist()):
-                        self.language_instruction_buf[env_id] = lang_label[i]
         labels = get_lang_label(
             task=task_name,
-            num_envs=env_n,
+            num_envs=num,
             objs=lang_objs,
             colors=lang_colors,
             surfaces=lang_surfaces,

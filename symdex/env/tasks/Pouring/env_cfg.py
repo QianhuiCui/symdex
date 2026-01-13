@@ -17,7 +17,7 @@ from symdex.env.mdps.termination_mdps import *
 from symdex.env.mdps.command_mdps.grasp_command_cfg import TargetPositionCommandCfg
 from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPositionActionCfg
 from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
-import symdex.env.tasks.pouring.mdp as pouring 
+import symdex.env.tasks.Pouring.mdps as pouring 
 
 
 FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
@@ -279,6 +279,17 @@ class PouringSceneCfg(BaseSceneCfg):
         ),
     )
 
+    # cameras
+    cam_1 = CameraCfg(
+        prim_path="/World/envs/env_.*/Cameras_1",
+        width=128, height=128,
+        data_types=["rgb", "depth"],
+        spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+            ),  # default parameters
+        offset=CameraCfg.OffsetCfg(convention="opengl"),
+    )
+
     contact_sensors_0 = ContactSensorCfg(
         prim_path="/World/envs/env_.*/Robot/if5",  # index
         update_period=0.0, 
@@ -410,7 +421,6 @@ class PouringCommandsCfg(BaseCommandsCfg):
     target_pos_bowl = TargetPositionCommandCfg(
         object_id=1,
         success_threshold=0.05,
-        axis="y",
         success_threshold_orient=0.97, # 60 degree 
         pose_range={"x": [0.1, 0.1], "y": [0.05, 0.05], "z": [0.0, 0.0], "roll": [1.57, 1.57]},
         # pose_range={"x": [0.05, 0.05], "y": [-0.1, -0.1], "z": [0.0, 0.0], "roll": [1.57, 1.57]},
@@ -664,7 +674,7 @@ class PouringRewardsCfg(BaseRewardsCfg):
     cmd_success_left = RewTerm(func=pouring.object_success,
                                 params={"object_id": 1},
                                 weight=0.0)
-    success_bonus = RewTerm(func=success_bonus,
+    success_bonus = RewTerm(func=pouring.success_bonus,
                             params={},
                             weight=0.0)
    
@@ -678,11 +688,7 @@ class PouringEnvCfg(BaseEnvCfg):
     actions = PouringActionsCfg()
     terminations = PouringTerminationsCfg()
     rewards = PouringRewardsCfg()
-    objects: ObjectCfg = ObjectCfg(
-            num_object=2,
-            asset_path=f"{bidex.LIB_PATH}/assets/Annotated_objects",
-        )
-
+    num_object=2
     action_dim = 44 # arm + hand
     action_scale: list = [1.0] * action_dim
     # action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
@@ -713,3 +719,4 @@ class PouringEnvCfg(BaseEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
+        self.viewer.eye = (-1.5, 0.0, 1.5)

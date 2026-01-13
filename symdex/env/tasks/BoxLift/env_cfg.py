@@ -17,6 +17,7 @@ from symdex.env.mdps.reward_mdps import *
 from symdex.env.mdps.termination_mdps import *
 from symdex.env.mdps.command_mdps.grasp_command_cfg import TargetPositionCommandCfg
 from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPositionActionCfg
+from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
 from symdex.env.tasks.BoxLift import mdps as lift
 
 FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
@@ -211,34 +212,36 @@ class BoxLiftSceneCfg(BaseSceneCfg):
 
     object_0 = RigidObjectCfg = RigidObjectCfg(
         prim_path="/World/envs/env_.*/Object_0",
-        spawn=sim_utils.MultiAssetSpawnerCfg(
-            assets_cfg=[
-                # sim_utils.CuboidCfg(
-                #     size=(0.25, 0.39, 0.155),
-                # ),
-                # sim_utils.CuboidCfg(
-                #     size=(0.31, 0.405, 0.215),
-                # ),
-                # sim_utils.CuboidCfg(
-                #     size=(0.19, 0.275, 0.215),
-                # ),
-                # sim_utils.CuboidCfg(
-                #     size=(0.18, 0.26, 0.13),
-                # ),
-                sim_utils.UsdFileCfg(
-                    usd_path=f"{symdex.LIB_PATH}/assets/object/tote.usd",
-                    scale=(0.8, 0.6, 1.0),
-                ),
-            ],
-            random_choice=True,
+        spawn=MultiUsdCfg(
+        # sim_utils.UsdFileCfg(
+            usd_path=f"{symdex.LIB_PATH}/assets/tote/Tote0.usd",
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=True,
+            random_roughness=True,
+            random_metallic=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 solver_position_iteration_count=16, solver_velocity_iteration_count=1
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
             activate_contact_sensors=True,
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-        ),
+            scale=(0.8, 0.6, 1.0),
+        ), # wait for initialization
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
+    )
+
+    # cameras
+    cam_1 = CameraCfg(
+        prim_path="/World/envs/env_.*/Cameras_1",
+        width=128, height=128,
+        data_types=["rgb", "depth"],
+        spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+            ),  # default parameters
+        offset=CameraCfg.OffsetCfg(convention="opengl"),
     )
 
     # sensors
@@ -479,3 +482,4 @@ class BoxLiftEnvCfg(BaseEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
+        self.viewer.eye = (-1.5, 0.0, 1.5)
