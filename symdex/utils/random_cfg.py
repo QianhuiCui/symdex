@@ -81,10 +81,10 @@ OBJECT: Dict[str, List[str]] = {
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_20/visual_model.usd"
     ],
     "cube_with_hole": [
-        f"{symdex.LIB_PATH}/assets/object/cube_with_hole.usd"
-    ]
+        f"{symdex.LIB_PATH}/assets/threading/cube_with_hole.usd"
+    ],
     "drill": [
-        f"{symdex.LIB_PATH}/assets/object/drill.usd"
+        f"{symdex.LIB_PATH}/assets/threading/drill.usd"
     ]
 }
 
@@ -113,7 +113,7 @@ OBJECT_CATEGORY: dict[str, str] = {
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_20/visual_model.usd": "cattle"
     },
     "cube_with_hole": {
-        f"{symdex.LIB_PATH}/assets/object/cube_with_hole.usd": "cube"
+        f"{symdex.LIB_PATH}/assets/threading/cube_with_hole.usd": "cube"
     },
     "bottle": {
         f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_1/base.usd": "bottle",
@@ -137,7 +137,7 @@ OBJECT_CATEGORY: dict[str, str] = {
         f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_5/base.usd": "bowl"
     },
     "drill": {
-        f"{symdex.LIB_PATH}/assets/object/drill.usd": "drill"
+        f"{symdex.LIB_PATH}/assets/threading/drill.usd": "drill"
     }
 }
 

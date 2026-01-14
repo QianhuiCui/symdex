@@ -7,7 +7,7 @@ import imageio
 
 from pathlib import Path
 LOGGER_ROOT = Path(__file__).resolve().parents[1] 
-SAVE_DIR = LOGGER_ROOT / "teleop_logs" / "policy"
+SAVE_DIR = LOGGER_ROOT / "teleop_logs"  # / "policy"
 
 
 class TrajectoryLogger:
@@ -73,7 +73,7 @@ class TrajectoryLogger:
         except Exception:
             group.attrs[str(key)] = str(value)
 
-    def add_step(self, *, action, action_dict, observation, reward, is_first=False, is_last=False, is_terminal=False, language_instruction="", discount=1.0):
+    def add_step(self, *, action, action_dict, observation, reward, is_first=False, failed=False, succeed=False, language_instruction="", discount=1.0):
         """Add a step to the current episode."""
         step = dict(
             action=np.array(action, dtype=np.float32),
@@ -81,8 +81,8 @@ class TrajectoryLogger:
             observation=observation,
             reward=float(reward),
             is_first=bool(is_first),
-            is_last=bool(is_last),
-            is_terminal=bool(is_terminal),
+            failed=bool(failed),
+            succeed=bool(succeed),
             language_instruction=str(language_instruction),
             discount=float(discount),
         )

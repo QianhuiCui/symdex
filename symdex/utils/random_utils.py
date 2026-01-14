@@ -280,12 +280,12 @@ def create_light(stage, prim_path, light_cfg, translation=None):
 # --- Language label utilities---
 LANGUAGE_TEMPLATES: dict[str, str] = {
     "default": "{color} {surface} {obj}",
-    "insertDrawer": "pick {color} {surface} {obj} into drawer and insert drawer",
-    "boxLift": "lift {color} {surface} tote ",
-    "handover": "right-to-left handover of a {color} {surface} {obj}",
-    "pickObject": "right hand pick up the {color_1} {surface_1} {obj_1}, and then left hand pick up the {color_2} {surface_2} {obj_2}",
-    "threading": "right hand pick up the {color} {surface} {obj_1}, left hand pick up the {color} {surface} {obj_2}, and thread them together",
-    "pouring": "right hand pick up the {color} {surface} {obj_1}, left hand push the {color} {surface} {obj_2} under {obj_1}, and pour",
+    "InsertDrawer": "pick {color} {surface} {obj} into drawer and insert drawer.",
+    "BoxLift": "lift green tote with two hands.",
+    "Handover": "right-to-left handover of a {color} {surface} {obj}",
+    "PickObject": "right hand pick up the {color_1} {surface_1} {obj_1}, and then left hand pick up the {color_2} {surface_2} {obj_2}.",
+    "Threading": "right hand pick up the {color_1} {surface_1} {obj_1}, left hand pick up the {color_2} {surface_2} {obj_2}, and thread them together.",
+    "Pouring": "right hand pick up the {color_1} {surface_1} {obj_1}, left hand push the {color_2} {surface_2} {obj_2} under {obj_1}, and pour.",
 }
 
 SURFACE_THRESHOULDS = {
