@@ -15,6 +15,7 @@ from isaaclab.utils.math import quat_from_matrix
 from symdex.utils.common import set_random_seed, capture_keyboard_interrupt, preprocess_cfg
 from symdex.utils.trajectory_utils import build_observation_dict, now_ms, rgb_to_HWC, depth_to_gray, as_flag, to_str
 from symdex.env.tasks.manager_based_env_cfg import *
+from symdex.utils.action_scaler import ActionScaler, ActionScalerCfg
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
 import sys
 sys.path.append("/home/qianhui/Desktop/dex_bimanual_telep/scripts")
@@ -64,6 +65,8 @@ def main(cfg: DictConfig):
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device)
     env.reset()
+    scaler = ActionScaler(env.unwrapped, ActionScalerCfg(warmup_steps=20, max_delta=0.05))
+    scaler.reset()
 
     # ---- Debug prints ----
     print("[DEBUG] Config max_episode_length:", env.unwrapped.max_episode_length)
@@ -97,6 +100,7 @@ def main(cfg: DictConfig):
         t_step_start = now_ms()
 
         q_np = np.asarray(q_value, dtype=np.float32)
+        q_np = scaler.scale(q_np)
         q_tensor = torch.as_tensor(q_np[None, ...], dtype=torch.float32, device=cfg.rl_device)
 
         t_policy_start = now_ms()
@@ -109,21 +113,21 @@ def main(cfg: DictConfig):
 
         # ---- flags & reward ----
         reward_scalar = float(rew[0].item() if torch.is_tensor(rew) else rew)
-        success_flag = as_flag(extras.get("success"))
-        done_flag = as_flag(reset)
+        succeed = as_flag(extras.get("success"))
+        failed = as_flag(reset) and (not succeed)
 
         # ---- controller info ----
-        io_latency_ms = None
-        ts_src_ms = None
-        if src_timestamp is not None:
-            try:
-                ts = float(src_timestamp)
-                ts_src_ms = ts * 1000.0 if ts < 1e12 else (ts / 1e6 if ts > 1e14 else ts)
-                io_latency_ms = max(0.0, t_step_start - ts_src_ms)
-            except Exception:
-                io_latency_ms = None
-                ts_src_ms = None
-        controller_info = {"has_teleop": q_value is not None, "io_latency_ms": io_latency_ms}
+        # io_latency_ms = None
+        # ts_src_ms = None
+        # if src_timestamp is not None:
+        #     try:
+        #         ts = float(src_timestamp)
+        #         ts_src_ms = ts * 1000.0 if ts < 1e12 else (ts / 1e6 if ts > 1e14 else ts)
+        #         io_latency_ms = max(0.0, t_step_start - ts_src_ms)
+        #     except Exception:
+        #         io_latency_ms = None
+        #         ts_src_ms = None
+        # controller_info = {"has_teleop": q_value is not None, "io_latency_ms": io_latency_ms}
 
         # ---- build observation dict ----
         obs_dict = build_observation_dict(env, obs)
@@ -151,7 +155,7 @@ def main(cfg: DictConfig):
             },
             "source": {"teleop_input_ms": None if ts_src_ms is None else float(ts_src_ms)},
         }
-        obs_dict["controller_info"] = controller_info
+        # obs_dict["controller_info"] = controller_info
         # ---- target ---- 
         targets = {}
         if pose_right is not None:
@@ -182,8 +186,8 @@ def main(cfg: DictConfig):
                 observation=obs_dict,
                 reward=reward_scalar,
                 is_first=bool(just_reset),
-                is_last=done_flag,
-                is_terminal=bool(success_flag),
+                failed=bool(failed),
+                succeed=bool(succeed),
                 language_instruction=language_instruction,
                 discount=1.0,
             )
@@ -192,6 +196,7 @@ def main(cfg: DictConfig):
         if success_flag:
             print("[Teleop] Task success, resetting environment.")
             env.reset()
+            scaler.reset()
             just_reset = True
             cur_lang = None
             if use_logger:
@@ -203,6 +208,7 @@ def main(cfg: DictConfig):
         elif reset.any():
             print("[Teleop] Environment reset triggered auto-reset internally.")
             env.reset()
+            scaler.reset()
             just_reset = True
             cur_lang = None
             if use_logger:
