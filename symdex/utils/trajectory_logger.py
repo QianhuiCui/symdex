@@ -1,9 +1,9 @@
-import os
+import torch
 import time
 import h5py
 import numpy as np
-import tempfile
-import imageio
+
+from isaaclab.utils.math import quat_from_matrix
 
 from pathlib import Path
 LOGGER_ROOT = Path(__file__).resolve().parents[1] 
@@ -11,7 +11,7 @@ SAVE_DIR = LOGGER_ROOT / "teleop_logs"  # / "policy"
 
 
 class TrajectoryLogger:
-    def __init__(self, save_dir: Path=SAVE_DIR, task_name=None, video_fps=30):
+    def __init__(self, save_dir: Path=SAVE_DIR, task_name=None):
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -19,142 +19,111 @@ class TrajectoryLogger:
         self.file_path = save_dir / f"{task_name}_{timestamp}.h5"
         self.h5_file = h5py.File(str(self.file_path), "w")
         self.episode_idx = 0
-        self.video_fps = int(video_fps)
-
-        self._video_writers = {}   # camera_id -> imageio writer
-        self._video_temp = {}      # camera_id -> NamedTemporaryFile
-        # self._pending_point_clouds = []  # list[np.ndarray], length = steps
-
+        self._epi_meta = {}
         self._reset_buffers()
         print(f"[Logger] Initialized trajectory log file: {self.file_path}")
 
     def _reset_buffers(self):
         """Internal buffer for current trial data."""
-        self.steps = []
-        self.metadata = {}
-        # self._pending_point_clouds = []
+        self._obs_policy = []
+        self._obs_vision = []
+        self._next_obs_policy = []
+        self._next_obs_vision = []
+
+        self._act = []
+        self._rew = []
+        self._terminals = []
+        self._timeouts = []
+        self._rew_terms = []
+
+    def start_episode(self, *, language_instruction: str, rew_cfg_hash: str | None, rew_names: list[str] | None, rew_weights: np.ndarray | None):
+        """episode metadata when starting a new episode."""
+        self._epi_meta = {
+            "language_instruction": str(language_instruction),
+            "rew_cfg_hash": "" if rew_cfg_hash is None else str(rew_cfg_hash),
+        }
+        self._epi_meta["reward_names"] = [str(name) for name in rew_names] if rew_names is not None else []
+        self._epi_meta["reward_weights"] = np.asarray(rew_weights, dtype=np.float32) if rew_weights is not None else np.array([], dtype=np.float32)
+
+    def add_transition(self, *, observation, action, reward, next_observation, terminated: bool, truncated: bool, rew_terms):
+        self._obs_policy.append(np.asarray(observation["policy"], dtype=np.float32))
+        self._obs_vision.append(np.asarray(observation["vision"], dtype=np.uint8))
+        self._next_obs_policy.append(np.asarray(next_observation["policy"], dtype=np.float32))
+        self._next_obs_vision.append(np.asarray(next_observation["vision"], dtype=np.uint8))
+
+        self._act.append(np.asarray(action, dtype=np.float32))
+        self._rew.append(float(reward))
+        self._terminals.append(np.uint8(1 if terminated else 0))
+        self._timeouts.append(np.uint8(1 if truncated else 0))
+        self._rew_terms.append(np.asarray(rew_terms, dtype=np.float32))
     
-    def add_video_frame(self, camera_id: str, frame: np.ndarray):
-        """Add a frame to the camera video. frame: HxWx3, uint8, HWC"""
-        cam = str(camera_id)
-        if cam not in self._video_writers:
-            tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-            writer = imageio.get_writer(tmp.name, fps=self.video_fps, macro_block_size=1)
-            self._video_temp[cam] = tmp
-            self._video_writers[cam] = writer
-        self._video_writers[cam].append_data(frame)
-    
-    # def add_point_cloud(self, pc: np.ndarray):
-    #     """Add the point cloud (N x 3/6) of the current step and align it with the steps order."""
-    #     self._pending_point_clouds.append(np.asarray(pc, dtype=np.float32))
-    
-    def _write_obj(self, group, key, value):
-        if hasattr(value, "detach"):
-            value = value.detach().cpu().numpy()
-        elif hasattr(value, "cpu") and hasattr(value, "numpy"):
-            value = value.cpu().numpy()
-
-        if isinstance(value, dict):
-            sub = group.create_group(str(key))
-            for k, v in value.items():
-                self._write_obj(sub, str(k), v)
-            return
-
-        if isinstance(value, np.ndarray):
-            group.create_dataset(str(key), data=value)
-            return
-
-        if np.isscalar(value) or isinstance(value, (list, tuple)):
-            group.create_dataset(str(key), data=np.array(value))
-            return
-
-        try:
-            group.attrs[str(key)] = value
-        except Exception:
-            group.attrs[str(key)] = str(value)
-
-    def add_step(self, *, action, action_dict, observation, reward, is_first=False, failed=False, succeed=False, language_instruction="", discount=1.0):
-        """Add a step to the current episode."""
-        step = dict(
-            action=np.array(action, dtype=np.float32),
-            action_dict={k: np.array(v, dtype=np.float32) for k, v in action_dict.items()},
-            observation=observation,
-            reward=float(reward),
-            is_first=bool(is_first),
-            failed=bool(failed),
-            succeed=bool(succeed),
-            language_instruction=str(language_instruction),
-            discount=float(discount),
-        )
-        self.steps.append(step)
-    
-    def _finalize_videos_to_h5(self, ep_group):
-        """Turn off writers, serialise mp4 into bytes, and write to /videos/*."""
-        if not self._video_writers:
-            return
-        vids_grp = ep_group.create_group("videos")
-        for cam, writer in self._video_writers.items():
-            writer.close()
-        for cam, tmp in self._video_temp.items():
-            tmp.seek(0)
-            raw = np.frombuffer(tmp.read(), dtype=np.uint8)
-            ds = vids_grp.create_dataset(cam, data=raw)
-            ds.attrs["container"] = "mp4"
-            ds.attrs["fps"] = self.video_fps
-            tmp.close()
-            try:
-                os.remove(tmp.name)
-            except Exception:
-                pass
-        self._video_writers.clear()
-        self._video_temp.clear()
-
     def save_episode(self):
-        if len(self.steps) == 0:
+        steps = len(self._rew)
+        if len(self._rew) == 0:
             return
-        
-        group = self.h5_file.create_group(f"episode_{self.episode_idx:03d}")
-        grp_meta = group.create_group("episode_metadata")
-        grp_meta.attrs["file_path"] = str(self.file_path)
-        grp_meta.attrs["num_steps"] = len(self.steps)
+        grp = self.h5_file.create_group(f"episode_{self.episode_idx:03d}")
 
-        grp_steps = group.create_group("steps")
-        for i, step in enumerate(self.steps):
-            step_grp = grp_steps.create_group(f"step_{i:04d}")
+        # metadata
+        meta = grp.create_group("epi_meta")
+        for k, v in self._epi_meta.items():
+            if isinstance(v, (list, tuple)):
+                meta.create_dataset(k, data=np.array(v, dtype='S'))
+            elif isinstance(v, np.ndarray):
+                meta.create_dataset(k, data=v)
+            else:
+                meta.attrs[k] = v
+        
+        # offline rl data
+        offline_data = grp.create_group("offline_data")
+        
+        # observations group
+        obs_grp = offline_data.create_group("observations")
+        obs_grp.create_dataset("policy", data=np.stack(self._obs_policy, axis=0))
+        obs_grp.create_dataset("vision",
+                               data=np.stack(self._obs_vision, axis=0),
+                               compression="gzip",
+                               compression_opts=4,
+                               chunks=True,)
+        # next_observations group
+        next_obs_grp = offline_data.create_group("next_observations")
+        next_obs_grp.create_dataset("policy", data=np.stack(self._next_obs_policy, axis=0))
+        next_obs_grp.create_dataset("vision",
+                                     data=np.stack(self._next_obs_vision, axis=0),
+                                     compression="gzip",
+                                     compression_opts=4,
+                                     chunks=True,)
+        
+        offline_data.create_dataset("actions", data=np.stack(self._act, axis=0))
+        offline_data.create_dataset("rewards", data=np.asarray(self._rew, dtype=np.float32))
+        offline_data.create_dataset("terminals", data=np.asarray(self._terminals, dtype=np.uint8))
+        offline_data.create_dataset("timeouts", data=np.asarray(self._timeouts, dtype=np.uint8))
+        if len(self._rew_terms) == steps:
+            offline_data.create_dataset("reward_terms", data=np.stack(self._rew_terms, axis=0))
 
-            # action
-            step_grp.create_dataset("action", data=np.asarray(step["action"], dtype=np.float32))
-            act_grp = step_grp.create_group("action_dict")
-            for k, v in step["action_dict"].items():
-                act_grp.create_dataset(k, data=np.asarray(v, dtype=np.float32))
-            
-            # observation 
-            obs_grp = step_grp.create_group("observation")
-            for k, v in step["observation"].items():
-                self._write_obj(obs_grp, k, v)
-            # point cloud (if exists, write to separate dataset per step)
-            # if i < len(self._pending_point_clouds):
-            #     pc = self._pending_point_clouds[i]
-            #     if isinstance(pc, np.ndarray):
-            #         step_grp.create_dataset("point_cloud", data=pc)
-            
-            # step-level attrs
-            step_grp.attrs["reward"] = float(step["reward"])
-            step_grp.attrs["is_first"] = bool(step["is_first"])
-            step_grp.attrs["is_last"] = bool(step["is_last"])
-            step_grp.attrs["is_terminal"] = bool(step["is_terminal"])
-            step_grp.attrs["language_instruction"] = str(step["language_instruction"])
-            step_grp.attrs["discount"] = float(step["discount"])
-        
-        self._finalize_videos_to_h5(group)
-        
         self.h5_file.flush()
-        print(f"[Logger] Saved episode_{self.episode_idx:03d} with {len(self.steps)} steps.")
+        print(f"[Logger] Saved episode_{self.episode_idx:03d} with {len(self._rew)} steps to {self.file_path}")
+
+        self._epi_meta = {}
         self._reset_buffers()
         self.episode_idx += 1
 
     def close(self):
-        if len(self.steps) > 0:
+        if len(self._rew) > 0:
             self.save_episode()
         self.h5_file.close()
-        print(f"[Logger] Closed after {self.episode_idx} episodes.")
+        print(f"[Logger] Closed after {self.episode_idx} episodes saved to {self.file_path}")
+
+
+class SphereWriter:
+    def __init__(self, device, dtype=torch.float32):
+        self.R_buf = torch.empty((1, 3, 3), device=device, dtype=dtype)
+        self.pos_buf = torch.empty((1, 3), device=device, dtype=dtype)
+        self.pose_buf = torch.empty((1, 7), device=device, dtype=dtype)
+
+    def write(self, env, key, H_np):
+        self.R_buf[0].copy_(torch.from_numpy(H_np[:3, :3]).to(self.R_buf.device, dtype=self.R_buf.dtype))
+        self.pos_buf[0].copy_(torch.from_numpy(H_np[:3, 3]).to(self.pos_buf.device, dtype=self.pos_buf.dtype))
+        quat = quat_from_matrix(self.R_buf)  # (1,4)
+        self.pose_buf[:, :3] = self.pos_buf
+        self.pose_buf[:, 3:] = quat
+        env.unwrapped.scene[key].write_root_pose_to_sim(self.pose_buf)

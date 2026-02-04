@@ -145,8 +145,10 @@ class VecEnvWrapper:
         # move time out information to the extras dict
         # this is only needed for infinite horizon tasks
         # note: only useful when `value_bootstrap` is True in the agent configuration
-        if not self.unwrapped.cfg.is_finite_horizon:
-            extras["time_outs"] = truncated.to(device=self._rl_device)
+        # if not self.unwrapped.cfg.is_finite_horizon:
+        #     extras["time_outs"] = truncated.to(device=self._rl_device)
+        extras["terminated"] = terminated.to(device=self._rl_device)
+        extras["time_outs"] = truncated.to(device=self._rl_device)
         # process observations and states
         obs = self._process_obs(obs_dict)
         # move buffers to rl-device
@@ -221,6 +223,10 @@ class VecEnvWrapper:
                             eye_in_hand_img = self._process_image_sequence(value[:, 1]).unsqueeze(1)
                             imgs = torch.cat([agentview_img, eye_in_hand_img], dim=1)
                             obs_dict[key] = imgs
+                        elif obs_dict[key].shape[1] == 1:
+                            obs_dict[key] = self._process_image_sequence(value[:, 0]).unsqueeze(1)
+                        else:
+                            raise RuntimeError(f"[VecEnvWrapper] vision obs has invalid shape: {obs_dict[key].shape}")
                     else:
                         obs_dict[key] = value.clone().to(device=self._rl_device)
                 elif "point_cloud" in key or "depth" in key:
