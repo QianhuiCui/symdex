@@ -14,10 +14,10 @@ import json
 
 from symdex.utils.common import set_random_seed, capture_keyboard_interrupt, preprocess_cfg
 from symdex.utils.trajectory_utils import get_obs, now_ms, as_flag, to_str
-from symdex.env.tasks.manager_based_env_cfg import * 
 from symdex.utils.trajectory_logger import TrajectoryLogger, SphereWriter
-from symdex.utils.action_scaler import ActionScaler, ActionScalerCfg
+from symdex.env.tasks.manager_based_env_cfg import * 
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
+from symdex.utils.delta_action_scaler import DeltaActionScaler
 import sys
 sys.path.append("/home/qianhui/Desktop/dex_bimanual_telep/scripts")
 from zmq_utils import recv_msg
@@ -49,19 +49,13 @@ def recv_teleop():
                 teleop_joint_data["recv_time"] = now_local
 
         time.sleep(0.001)
-
-def do_reset(env, scaler, get_obs_fn, data_lock, teleop_joint_data):
-    initial_obs, _ = env.reset()
-    scaler.reset()
-    prev_obs = get_obs_fn(initial_obs)
-
-    with data_lock:
-        teleop_joint_data["value"] = None
-        teleop_joint_data["timestamp"] = None
-        teleop_joint_data["recv_time"] = None
-
-    reset_recv_time = time.monotonic()
-    return prev_obs, reset_recv_time
+    
+def get_current_qpos(env):
+    robot = env.unwrapped.scene["robot"]
+    robot_left = env.unwrapped.scene["robot_left"]
+    qpos = robot.data.joint_pos[0, :].detach().cpu().numpy().astype(np.float32)
+    qpos_left = robot_left.data.joint_pos[0, :].detach().cpu().numpy().astype(np.float32)
+    return np.concatenate([qpos, qpos_left], axis=0)
 
 
 @hydra.main(
@@ -76,12 +70,18 @@ def main(cfg: DictConfig):
     cfg, env_cfg = preprocess_cfg(cfg)
 
     env = gym.make(cfg.env_name, cfg=env_cfg)
-    env = VecEnvWrapper(env, rl_device=cfg.rl_device) 
-    scaler = ActionScaler(env, env_cfg, ActionScalerCfg(warmup_steps=20, max_delta=0.03, deadband=0.005, ema_alpha=0.75), 
-                          joint_lower=np.concatenate((JOINT_LOWER_LIMIT, JOINT_LOWER_LIMIT_LEFT)),
-                          joint_upper=np.concatenate((JOINT_UPPER_LIMIT, JOINT_UPPER_LIMIT_LEFT))) 
+    env = VecEnvWrapper(env, rl_device=cfg.rl_device)
+    initial_obs, _ = env.reset()
+    prev_obs = get_obs(initial_obs)
+    delta_scaler = DeltaActionScaler(ramp_steps=20, max_delta=0.03, deadband=0.005)
+    delta_scaler.reset()
 
-    prev_obs, last_reset_recv_time = do_reset(env, scaler, get_obs, _data_lock, teleop_joint_data)
+    with _data_lock:
+        teleop_joint_data["value"] = None
+        teleop_joint_data["timestamp"] = None
+        teleop_joint_data["recv_time"] = None
+    last_reset_recv_time = time.monotonic()
+
     action_buf = torch.empty((env.num_envs, env.action_space.shape[1]), device=cfg.rl_device, dtype=torch.float32)
 
     threading.Thread(target=recv_teleop, daemon=True).start()
@@ -111,7 +111,6 @@ def main(cfg: DictConfig):
     while simulation_app.is_running():
         with _data_lock:
             q_value = teleop_joint_data["value"]
-            q_ts_sender = teleop_joint_data["timestamp"]
             q_ts_recv = teleop_joint_data["recv_time"]
             pose_right = teleop_target_poses["right"] 
             pose_left = teleop_target_poses["left"]
@@ -124,9 +123,14 @@ def main(cfg: DictConfig):
             time.sleep(0.001)
             continue
 
-        q_np = scaler.process(np.asarray(q_value, dtype=np.float32))
-        action_buf[0].copy_(torch.from_numpy(q_np).to(action_buf.device))
-        # q_tensor = torch.as_tensor(q_np[None, :], device=cfg.rl_device)
+        q_target = np.asarray(q_value, dtype=np.float32).reshape(-1)
+        q_curr = get_current_qpos(env)
+        if len(q_target) != len(q_curr):
+            raise RuntimeError(f"Received teleop joint data of length {len(q_target)} does not match expected length {len(q_curr)}.")
+        
+        delta_cmd = delta_scaler.process(q_target, q_curr)
+        action_buf.zero_()
+        action_buf[0].copy_(torch.from_numpy(delta_cmd).to(action_buf.device))
 
         next_obs, rew, reset, extras = env.step(action_buf)
 
@@ -159,7 +163,7 @@ def main(cfg: DictConfig):
         if use_logger:
             logger.add_transition(
                 observation=prev_obs,
-                action=q_np,
+                action=delta_cmd,
                 reward=reward,
                 next_observation=obs_vec,
                 terminated=bool(terminated),
@@ -169,10 +173,15 @@ def main(cfg: DictConfig):
         prev_obs = obs_vec
         
         if bool(terminated or truncated or as_flag(reset)):
-            # initial_obs, _ = env.reset()
-            # scaler.reset()
-            # prev_obs = get_obs(initial_obs)
-            prev_obs, last_reset_recv_time = do_reset(env, scaler, get_obs, _data_lock, teleop_joint_data)
+            initial_obs, _ = env.reset()
+            prev_obs = get_obs(initial_obs)
+            delta_scaler.reset()
+
+            with _data_lock:
+                teleop_joint_data["value"] = None
+                teleop_joint_data["timestamp"] = None
+                teleop_joint_data["recv_time"] = None
+            last_reset_recv_time = time.monotonic()
 
             if use_logger:
                 logger.save_episode()
