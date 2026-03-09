@@ -538,44 +538,56 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
+    
+    @configclass
+    class VisionCfg(ObsGroup):
+        """Observations for vision group."""
+
+        # -- robot terms (order preserved)
+        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+    vision: VisionCfg = VisionCfg()
 
 
 @configclass
 class PickObjectActionsCfg:
-    # arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
-    #     asset_name="robot",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    #     joint_lower_limit=JOINT_LOWER_LIMIT,
-    #     joint_upper_limit=JOINT_UPPER_LIMIT,
-    #     alpha=0.2
-    # )
-
-    # arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
-    #     asset_name="robot_left",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    #     joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
-    #     joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
-    #     alpha=0.2
-    # )
-    arm_hand_action = JointPositionActionCfg(
+    arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
+        joint_lower_limit=JOINT_LOWER_LIMIT,
+        joint_upper_limit=JOINT_UPPER_LIMIT,
+        alpha=0.2
     )
-    arm_hand_action_left = JointPositionActionCfg(
+
+    arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
+        joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
+        joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
+        alpha=0.2
     )
+    # arm_hand_action = JointPositionActionCfg(
+    #     asset_name="robot",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    # )
+    # arm_hand_action_left = JointPositionActionCfg(
+    #     asset_name="robot_left",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    # )
 
 
 @configclass

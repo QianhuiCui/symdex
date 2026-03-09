@@ -51,14 +51,14 @@ cam:
       randomize: False
       pos: [0.6, 0.0, 1.0]
       target: [0.13, 0.0, 0.26]
-    cam_2:
-      enable: False
-      randomize: True
-      pos: [0.6, -0.7, 0.5]
-      target: [-0.18, 0.0, 0.06]
-    wrist_cam_left:
-      enable: False 
-      delay: 3
+    # cam_2:
+    #   enable: False
+    #   randomize: True
+    #   pos: [0.6, -0.7, 0.5]
+    #   target: [-0.18, 0.0, 0.06]
+    # wrist_cam_left:
+    #   enable: False 
+    #   delay: 3
 
 randomize:
   enable: False
@@ -109,12 +109,12 @@ multi:
     single_agent_obs_dim: [84, 87]
     single_agent_obs_idx: [[[0, 59], [118, 143]], # 84
                           [[59, 118], [118, 121], [143, 165], [165, 168]]] # 87
-    single_agent_obs_idx_symmetry: [[[59, 115], [56, 59], [118, 121], [143, 165]], # 84
-                                    [[0, 56], [115, 118], [118, 143], [165, 168]]] # 87
+    # single_agent_obs_idx_symmetry: [[[59, 115], [56, 59], [118, 121], [143, 165]], # 84
+    #                                 [[0, 56], [115, 118], [118, 143], [165, 168]]] # 87
     single_agent_rew: [["reaching_object", "object_lifting", "object_goal_tracking", "object_1_in_tote", "reset_robot_joint_pos", "energy", "collision_to_table"],
                        ["reaching_object_left", "object_lifting_left", "object_goal_tracking_left", "object_goal_tracking_left_delay", "object_2_in_tote", "reset_robot_joint_pos_left", "energy_left", "collision_to_table_left"]]
-    single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "object_goal_tracking_symmetry", "object_1_in_tote_symmetry", "reset_robot_joint_pos_symmetry", "energy_left", "collision_to_table_symmetry"],
-                                ["reaching_object_left_symmetry", "object_lifting_left_symmetry", "object_goal_tracking_left_symmetry", "object_goal_tracking_left_delay_symmetry", "object_2_in_tote_symmetry", "reset_robot_joint_pos_left_symmetry", "energy", "collision_to_table_left_symmetry"]]
+    # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "object_goal_tracking_symmetry", "object_1_in_tote_symmetry", "reset_robot_joint_pos_symmetry", "energy_left", "collision_to_table_symmetry"],
+    #                             ["reaching_object_left_symmetry", "object_lifting_left_symmetry", "object_goal_tracking_left_symmetry", "object_goal_tracking_left_delay_symmetry", "object_2_in_tote_symmetry", "reset_robot_joint_pos_left_symmetry", "energy", "collision_to_table_left_symmetry"]]
 
 symmetry:
   reset_symmetry:

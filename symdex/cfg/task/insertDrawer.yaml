@@ -3,34 +3,22 @@ defaults:
   - _self_
 
 env_name: "InsertDrawerEnv-v0"
-rew: {}
+rew: 
   # right
-  # reaching_object: 0.01  # 0.02
-  # object_lifting: 5.0  #1.0
-  # object_goal_tracking: 50.0  #20.0
-  # object_in_drawer: 100.0
-  # reset_robot_joint_pos: 1.0
-  # energy: 0.000001
-  # collision_to_table: 0.000001
-  # # left
-  # reaching_handle: 0.01
-  # moving_drawer: 10
-  # moving_drawer_inside: 10
-  # success_bonus: 5000
-  # energy_left: 0.000001
-  # collision_to_drawer: 0.000001
-
-  # # symmetry
-  # reaching_object_symmetry: 0.01
-  # object_lifting_symmetry: 5.0
-  # object_goal_tracking_symmetry: 50.0
-  # object_in_drawer_symmetry: 100.0
-  # reset_robot_joint_pos_symmetry: 1.0
-  # reaching_handle_symmetry: 0.01
-  # moving_drawer_symmetry: 10
-  # moving_drawer_inside_symmetry: 10
-  # collision_to_table_symmetry: 0.000001
-  # collision_to_drawer_symmetry: 0.000001
+  reaching_object: 0.01  # 0.02
+  object_lifting: 5.0  #1.0
+  object_goal_tracking: 50.0  #20.0
+  object_in_drawer: 100.0
+  reset_robot_joint_pos: 1.0
+  energy: 0.000001
+  collision_to_table: 0.000001
+  # left
+  reaching_handle: 0.01
+  moving_drawer: 10
+  moving_drawer_inside: 10
+  success_bonus: 5000
+  energy_left: 0.000001
+  collision_to_drawer: 0.000001
 
 cam:
   enable: True
@@ -43,14 +31,14 @@ cam:
       randomize: False
       pos: [0.6, 0.0, 1.0]
       target: [0.13, 0.0, 0.26]
-    cam_2:
-      enable: False
-      randomize: True
-      pos: [0.6, -0.7, 0.5]
-      target: [-0.18, 0.0, 0.06]
-    wrist_cam_left:
-      enable: False 
-      delay: 3
+    # cam_2:
+    #   enable: False
+    #   randomize: True
+    #   pos: [0.6, -0.7, 0.5]
+    #   target: [-0.18, 0.0, 0.06]
+    # wrist_cam_left:
+    #   enable: False 
+    #   delay: 3
 
 randomize: 
   enable: False
@@ -94,8 +82,8 @@ multi:
                           [[56, 128], [150, 172]]] # 94
     # single_agent_obs_idx_symmetry: [[[59, 115], [56, 59], [127, 128], [150, 172]], # 82
     #                                 [[56, 59], [0, 56], [115, 150]]] # 94
-    # single_agent_rew: [["reaching_object", "object_lifting", "object_goal_tracking", "object_success_bonus_pos", "object_in_drawer", "reset_robot_joint_pos", "success_bonus"],
-    #                     ["reaching_handle", "moving_drawer", "moving_drawer_inside", "success_bonus"]]
+    single_agent_rew: [["reaching_object", "object_lifting", "object_goal_tracking", "object_success_bonus_pos", "object_in_drawer", "reset_robot_joint_pos", "success_bonus"],
+                       ["reaching_handle", "moving_drawer", "moving_drawer_inside", "success_bonus"]]
     # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "object_goal_tracking_symmetry", 
     #                             "object_success_bonus_pos_symmetry", "object_in_drawer_symmetry", "reset_robot_joint_pos_symmetry", "success_bonus"],
     #                             ["reaching_handle_symmetry", "moving_drawer_symmetry", "moving_drawer_inside_symmetry", "success_bonus"]]

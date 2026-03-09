@@ -3,20 +3,20 @@ defaults:
   - _self_
 
 env_name: "HandoverEnv-v0"
-rew: {}
-  # reaching_object: 0.05
-  # object_goal_tracking: 10.0 
-  # object_goal_orient_tracking: 2.0
-  # middle_success_bonus: 25.0  # 20
-  # contact_bottle_punish: 4.0
-  # reset_robot_joint_pos: 200.0
-  # left_align_hand_pose: 0.2
-  # left_align_finger_joint: 1.0
-  # left_reaching_object: 40.0
-  # left_object_goal_tracking: 20.0 
-  # left_object_goal_orient_tracking: 5.0
-  # middle_success_bonus_left: 20.0
-  # success_bonus: 3000.0
+rew: 
+  reaching_object: 0.05
+  object_goal_tracking: 10.0 
+  object_goal_orient_tracking: 2.0
+  middle_success_bonus: 25.0  # 20
+  contact_bottle_punish: 4.0
+  reset_robot_joint_pos: 200.0
+  left_align_hand_pose: 0.2
+  left_align_finger_joint: 1.0
+  left_reaching_object: 40.0
+  left_object_goal_tracking: 20.0 
+  left_object_goal_orient_tracking: 5.0
+  middle_success_bonus_left: 20.0
+  success_bonus: 3000.0
 
   # symmetry
   # reaching_object_symmetry: 0.05
@@ -67,9 +67,9 @@ multi:
                                     [[0, 56], [112, 158]]]
     single_agent_rew: [["reaching_object", "object_goal_tracking", "object_goal_orient_tracking", "middle_success_bonus", "contact_bottle_punish", "reset_robot_joint_pos", "success_bonus"],
                         ["left_align_hand_pose", "left_align_finger_joint", "left_reaching_object", "left_object_goal_tracking", "left_object_goal_orient_tracking", "middle_success_bonus_left", "success_bonus"]]
-    single_agent_rew_symmetry: [["reaching_object_symmetry", "object_goal_tracking_symmetry", "object_goal_orient_tracking_symmetry", "middle_success_bonus", "contact_bottle_punish_symmetry", "reset_robot_joint_pos_symmetry", "success_bonus_symmetry"],
-                              ["left_align_hand_pose_symmetry", "left_align_finger_joint_symmetry", "left_reaching_object_symmetry", "left_object_goal_tracking_symmetry", "left_object_goal_orient_tracking_symmetry", 
-                              "middle_success_bonus_left_symmetry", "success_bonus_symmetry"]]
+    # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_goal_tracking_symmetry", "object_goal_orient_tracking_symmetry", "middle_success_bonus", "contact_bottle_punish_symmetry", "reset_robot_joint_pos_symmetry", "success_bonus_symmetry"],
+    #                           ["left_align_hand_pose_symmetry", "left_align_finger_joint_symmetry", "left_reaching_object_symmetry", "left_object_goal_tracking_symmetry", "left_object_goal_orient_tracking_symmetry", 
+    #                           "middle_success_bonus_left_symmetry", "success_bonus_symmetry"]]
 
 symmetry:
   reset_symmetry:

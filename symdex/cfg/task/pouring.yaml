@@ -18,19 +18,19 @@ palm_pose:
     object_id: None
     agnostic: False
 
-rew: {}
-  # align_right: 0.05
-  # reach_right: 0.05
-  # lift_right: 4.0
-  # move_right: 2.0
-  # move_ori_right: 4.0
-  # cmd_wait_right: 0.0  # 500.0s
-  # cmd_success_right: 20.0
-  # align_left: 0.05
-  # move_left: 8.0
-  # move_ori_left: 0.5
-  # cmd_success_left: 20.0
-  # success_bonus: 2000.0
+rew: 
+  align_right: 0.05
+  reach_right: 0.05
+  lift_right: 4.0
+  move_right: 2.0
+  move_ori_right: 4.0
+  cmd_wait_right: 0.0  # 500.0s
+  cmd_success_right: 20.0
+  align_left: 0.05
+  move_left: 8.0
+  move_ori_left: 0.5
+  cmd_success_left: 20.0
+  success_bonus: 2000.0
 
 randomize:
   enable: False
@@ -101,8 +101,8 @@ multi:
     single_agent_obs_dim: [92, 85]
     single_agent_obs_idx: [[[0, 63], [119, 126], [133, 155]], 
                           [[63, 119], [126, 133], [155, 177]]] 
-    # single_agent_rew: [["align_right", "reach_right", "lift_right", "move_right", "move_ori_right", "cmd_wait_right", "cmd_success_right", "success_bonus"],
-    #                    ["align_left", "move_left", "move_ori_left", "cmd_success_left", "success_bonus"]]
+    single_agent_rew: [["align_right", "reach_right", "lift_right", "move_right", "move_ori_right", "cmd_wait_right", "cmd_success_right", "success_bonus"],
+                       ["align_left", "move_left", "move_ori_left", "cmd_success_left", "success_bonus"]]
     # single_agent_rew_symmetry: [["align_right_symmetry", "reach_right_symmetry", "lift_right_symmetry", "move_right_symmetry", "move_ori_right_symmetry", "cmd_wait_right_symmetry", "cmd_success_right_symmetry"],
     #                   ["align_left_symmetry", "move_left_symmetry", "move_ori_left_symmetry", "cmd_success_left_symmetry", "success_bonus"]]
 

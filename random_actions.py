@@ -29,7 +29,9 @@ def main(cfg: DictConfig):
     env.unwrapped.update_randomization(0.0)
     while simulation_app.is_running():
         actions = torch.rand(env.action_space.shape) * 2 - 1
-        env.step(actions)
+        obs, rew, dones, extras = env.step(actions)
+        print(f"[INFO]: extras: {extras['detailed_reward']}")
+        print(f"[INFO]: obs: {obs}")
         count += 1
         if count % 10 == 0:
             count = 0

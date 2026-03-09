@@ -4,9 +4,9 @@ from isaaclab.assets import RigidObjectCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 import isaaclab.envs.mdp as mdp
-from isaaclab.markers.config import FRAME_MARKER_CFG 
+# from isaaclab.markers.config import FRAME_MARKER_CFG 
 from isaaclab.envs.mdp.actions import JointPositionActionCfg
-from isaaclab.sensors import CameraCfg
+from isaaclab.sensors import CameraCfg, FrameTransformerCfg
 
 import symdex
 from symdex.env.tasks.manager_based_env_cfg import *
@@ -19,8 +19,8 @@ from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPos
 from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
 import symdex.env.tasks.InsertDrawer.mdps as drawer
 
-FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
-FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
+# FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
+# FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
 
 @configclass
 class InsertDrawerSceneCfg(BaseSceneCfg):
@@ -42,11 +42,11 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
         ),
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
-                "joint1": 0.8,
-                "joint2": 0.3,
-                "joint3": -0.6,
+                "joint1": 0.5,
+                "joint2": 0.0,
+                "joint3": -0.5,
                 "joint4": 0.0,
-                "joint5": -0.8,
+                "joint5": -0.3,
                 "joint6": -1.57,
                 # hand 
                 "jif1": 0.0,
@@ -134,11 +134,11 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
         ),
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
-                "joint1": -0.8,
-                "joint2": 0.3,
-                "joint3": -0.6,
+                "joint1": -0.5,
+                "joint2": 0.0,
+                "joint3": -0.5,
                 "joint4": 0.0,
-                "joint5": -0.8,
+                "joint5": -0.3,
                 "joint6": 1.57,
                 # hand 
                 "jif1": 0.0,
@@ -193,8 +193,8 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
             ),
             "allegro_hand_thumb_2": ImplicitActuatorCfg(
                 joint_names_expr=["jth2"],
-                stiffness=300.0,
-                damping=15.0,
+                stiffness=100.0,
+                damping=5.0,
             ),
             "allegro_hand_thumb_3": ImplicitActuatorCfg(
                 joint_names_expr=["jth3"],
@@ -277,7 +277,34 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
                 damping=1.0,
                 friction=1.0,
             ),
-        },
+        }, 
+    ) 
+
+    task_frames_vis = FrameTransformerCfg(   # for teleop
+        prim_path="{ENV_REGEX_NS}/Robot/palm_link",
+        update_period=0.0,
+        debug_vis=True,
+        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
+            prim_path="/Visuals/insert_drawer_task_frames"
+        ),
+        target_frames=[
+            # FrameTransformerCfg.FrameCfg(
+            #     prim_path="{ENV_REGEX_NS}/Robot/palm_link",
+            #     name="right_palm",
+            # ),
+            # FrameTransformerCfg.FrameCfg(
+            #     prim_path="{ENV_REGEX_NS}/Robot_left/palm_link",
+            #     name="left_palm",
+            # ),
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/Object_0",
+                name="object",
+            ),
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/Drawer/handle_grip",
+                name="drawer_handle",
+            ),
+        ],
     )
 
     # cameras
@@ -519,16 +546,16 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
     #         self.enable_corruption = False
     #         self.concatenate_terms = True
 
-    # @configclass
-    # class VisionCfg(ObsGroup):
-    #     """Observations for vision group."""
+    @configclass
+    class VisionCfg(ObsGroup):
+        """Observations for vision group."""
 
-    #     # -- robot terms (order preserved)
-    #     rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+        # -- robot terms (order preserved)
+        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
 
-    #     def __post_init__(self):
-    #         self.enable_corruption = False
-    #         self.concatenate_terms = True
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
 
     # @configclass
     # class PointCloudCfg(ObsGroup):
@@ -580,44 +607,44 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
 
     # observation groups
     # critic: CriticCfg = CriticCfg()
-    # vision: VisionCfg = VisionCfg()
+    vision: VisionCfg = VisionCfg()
     # point_cloud: PointCloudCfg = PointCloudCfg()
     policy: PolicyCfg = PolicyCfg()
 
 
 @configclass
 class InsertDrawerActionsCfg:
-    # arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
-    #     asset_name="robot",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    #     joint_lower_limit=JOINT_LOWER_LIMIT,
-    #     joint_upper_limit=JOINT_UPPER_LIMIT,
-    #     alpha=0.2
-    # )
-
-    # arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
-    #     asset_name="robot_left",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    #     joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
-    #     joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
-    #     alpha=0.2
-    # )
-    arm_hand_action = JointPositionActionCfg(
+    arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
+        joint_lower_limit=JOINT_LOWER_LIMIT,
+        joint_upper_limit=JOINT_UPPER_LIMIT,
+        alpha=0.2
     )
-    arm_hand_action_left = JointPositionActionCfg(
+
+    arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
-        scale=0.95,
+        scale=1.0,
         use_default_offset=False,
+        joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
+        joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
+        alpha=0.2
     )
+    # arm_hand_action = JointPositionActionCfg(
+    #     asset_name="robot",
+    #     joint_names=[".*"],
+    #     scale=1.0,
+    #     use_default_offset=False,
+    # )
+    # arm_hand_action_left = JointPositionActionCfg(
+    #     asset_name="robot_left",
+    #     joint_names=[".*"],
+    #     scale=0.95,
+    #     use_default_offset=False,
+    # )
 
 
 @configclass
@@ -692,21 +719,22 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
     rewards = InsertDrawerRewardsCfg()
     num_object = 1
     action_dim = 44 # arm + hand
-    action_scale: list = [1.0] * action_dim
-    # action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.015,
-    #                         0.03, 0.03, 0.03, 0.03,
-    #                         0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.015,
-    #                         0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
+    # action_scale: list = [1.0] * action_dim
+    action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
+                            0.03, 0.03, 0.03, 0.03,
+                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
+                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
 
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.viewer.eye = (-1.5, 0.0, 1.5)
+        # self.viewer.eye = (0.8, 1.0, 1.2)
+        self.viewer.eye = (-0.5, 0.0, 1.2)

@@ -4,7 +4,8 @@ from dataclasses import MISSING
 import isaaclab.sim as sim_utils
 from isaaclab.actuators.actuator_cfg import ImplicitActuatorCfg, IdealPDActuatorCfg
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg, RigidObject, RigidObjectCfg
-from isaaclab.sensors import CameraCfg, ContactSensorCfg
+from isaaclab.sensors import CameraCfg, ContactSensorCfg, FrameTransformerCfg
+from isaaclab.markers.config import FRAME_MARKER_CFG 
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
@@ -25,6 +26,9 @@ import symdex
 from symdex.env.mdps.reset_mdps import *
 from symdex.env.mdps.reward_mdps import *
 from symdex.utils.random_cfg import RandomLightCfg
+
+FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
+FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
 
 
 JOINT_LOWER_LIMIT = [-6.283, -2.304, -4.224, -6.283, -2.164, -6.283,
@@ -108,7 +112,7 @@ class BaseSceneCfg(InteractiveSceneCfg):
     target_sphere = RigidObjectCfg(
         prim_path="/World/envs/env_.*/targetSphere",
         spawn=sim_utils.SphereCfg(
-            radius=0.04,
+            radius=0.01,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=True,
                 disable_gravity=True,
@@ -121,7 +125,7 @@ class BaseSceneCfg(InteractiveSceneCfg):
     target_sphere_left = RigidObjectCfg(
         prim_path="/World/envs/env_.*/targetSphere_left",
         spawn=sim_utils.SphereCfg(
-            radius=0.04,
+            radius=0.01,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=True,
                 disable_gravity=True,
@@ -129,7 +133,26 @@ class BaseSceneCfg(InteractiveSceneCfg):
             mass_props=sim_utils.MassPropertiesCfg(mass=0.0),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0), metallic=0.2),  # blue
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.5, -0.5, 0.05)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.5, -0.5, 0.05)), 
+    ) 
+
+    target_frames_vis = FrameTransformerCfg(
+        prim_path="{ENV_REGEX_NS}/targetSphere",
+        update_period=0.0,
+        debug_vis=True,
+        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
+            prim_path="/Visuals/base_target_frames"
+        ),
+        target_frames=[
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/targetSphere",
+                name="target_right",
+            ),
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/targetSphere_left",
+                name="target_left",
+            ),
+        ],
     )
     
     replicate_physics = False
