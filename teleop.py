@@ -27,13 +27,13 @@ import symdex
 
 teleop_joint_data = {"value": None, "timestamp": None, "recv_time": None}
 teleop_target_poses = {"right": None, "left": None}
-record_trigger = {"start": 0, "recv_time": None}
+match_control = {"start": 0, "recv_time": None}
 _data_lock = threading.Lock()
 
 def recv_teleop():
     print("[Teleop Receiver] Listening for teleoperation data...")
     while simulation_app.is_running():
-        topic, msg = recv_msg(["teleop_joint_state", "human_wrist_poses", "record_trigger"])
+        topic, msg = recv_msg(["teleop_joint_state", "human_wrist_poses", "match_control"])
         if msg is None:
             time.sleep(0.01)
             continue
@@ -47,9 +47,10 @@ def recv_teleop():
                 teleop_joint_data["value"] = msg.get("value", None)
                 teleop_joint_data["timestamp"] = msg.get("timestamp", None) 
                 teleop_joint_data["recv_time"] = now_local
-            elif topic == "record_trigger":
+            elif topic == "match_control":
                 if int(msg.get("start", 0) or 0) == 1:
-                    record_trigger["start"] = 1
+                    match_control["start"] = 1
+                    match_control["recv_time"] = now_local
 
         time.sleep(0.001)
     
@@ -85,7 +86,8 @@ def main(cfg: DictConfig):
         teleop_joint_data["value"] = None
         teleop_joint_data["timestamp"] = None
         teleop_joint_data["recv_time"] = None 
-        record_trigger["start"] = 0
+        match_control["start"] = 0
+        match_control["recv_time"] = None
 
     last_reset_recv_time = time.monotonic()
     action_buf = torch.empty((env.num_envs, env.action_space.shape[1]), device=cfg.rl_device, dtype=torch.float32)
@@ -100,7 +102,6 @@ def main(cfg: DictConfig):
         logger = TrajectoryLogger(task_name=cfg.task.env_name)
         print("[Teleop] Logger enabled.")
     # Recording state (independent from teleop)
-    recording_active = False
     episodes_saved = 0
     episode_started = False
     cur_lang = None
@@ -124,8 +125,8 @@ def main(cfg: DictConfig):
             q_ts_recv = teleop_joint_data["recv_time"]
             pose_right = teleop_target_poses["right"] 
             pose_left = teleop_target_poses["left"]
-            trig_start = record_trigger["start"]
-            record_trigger["start"] = 0  # consume trigger once
+            trig_start = match_control["start"]
+            match_control["start"] = 0  # consume trigger once
             # consume joint packet immediately (so we never replay old data if sender stalls)
             teleop_joint_data["value"] = None
             teleop_joint_data["timestamp"] = None
@@ -136,19 +137,6 @@ def main(cfg: DictConfig):
             sphere_writer.write(env, "target_sphere", np.array(pose_right, dtype=np.float32))
         if pose_left is not None:
             sphere_writer.write(env, "target_sphere_left", np.array(pose_left, dtype=np.float32))
-        
-        # ---- start recording if trigger arrives ----
-        if trig_start == 1 and use_logger and (not recording_active):
-            recording_active = True
-            episode_started = True
-            cur_lang = ""
-            logger.start_episode(
-                language_instruction=cur_lang,
-                rew_cfg_hash=rew_cfg_hash,
-                rew_names=rew_names,
-                rew_weights=rew_weights,
-            )
-            print("[Teleop] Recording started.")
                     
         if q_value is None or q_ts_recv is None:
             time.sleep(0.001)
@@ -158,9 +146,7 @@ def main(cfg: DictConfig):
             time.sleep(0.001)
             continue
 
-        have_fresh_packet = (q_value is not None) and (q_ts_recv is not None) and (q_ts_recv >= last_reset_recv_time)
-
-        if have_fresh_packet:
+        if (q_value is not None) and (q_ts_recv is not None) and (q_ts_recv >= last_reset_recv_time):
             q_target = np.asarray(q_value, dtype=np.float32).reshape(-1)
             q_curr = get_current_qpos(env)
             if len(q_target) != len(q_curr):
@@ -195,6 +181,12 @@ def main(cfg: DictConfig):
         terminated = as_flag(extras.get("terminated"))
         truncated = as_flag(extras.get("time_outs"))
 
+        # ---- reward terms ----
+        detailed_reward = extras["detailed_reward"]  # dict: name -> tensor([B])
+        rew_terms = np.asarray([float(detailed_reward[name][0].item()) for name in rew_names], dtype=np.float32)
+        if rew_terms.shape[0] != rew_weights.shape[0]:
+            raise RuntimeError(f"[Teleop] reward_terms K={rew_terms.shape[0]} != rew_weights K={rew_weights.shape[0]}")
+
         # ---- episode metadata ----
         # if (not episode_started) and use_logger:
         #     cur_lang = to_str(extras.get("language_instruction", ""))
@@ -206,19 +198,25 @@ def main(cfg: DictConfig):
         #             rew_weights=rew_weights
         #         )
         #     episode_started = True
-        
-        # ---- reward terms ----
-        detailed_reward = extras["detailed_reward"]  # dict: name -> tensor([B])
-        rew_terms = np.asarray([float(detailed_reward[name][0].item()) for name in rew_names], dtype=np.float32)
-        if rew_terms.shape[0] != rew_weights.shape[0]:
-            raise RuntimeError(f"[Teleop] reward_terms K={rew_terms.shape[0]} != rew_weights K={rew_weights.shape[0]}")
-        
-        if use_logger and episode_started and recording_active:
-            if cur_lang == "":
-                cur_lang = to_str(extras.get("language_instruction", ""))
+        # ---- start recording if trigger arrives & episode metadata ----
+        if trig_start == 1 and use_logger and (not episode_started):
+            episode_started = True
+            cur_lang = to_str(extras.get("language_instruction", ""))
+            logger.start_episode(
+                language_instruction=cur_lang,
+                rew_cfg_hash=rew_cfg_hash,
+                rew_names=rew_names,
+                rew_weights=rew_weights,
+            )
+            print("[Teleop] Recording started.")
+                
+        if use_logger and episode_started:
+            # if cur_lang == "":
+            #     cur_lang = to_str(extras.get("language_instruction", ""))
             logger.add_transition(
                 observation=prev_obs,
-                action=delta_cmd,
+                # action=delta_cmd,
+                action=action_to_log,
                 reward=reward,
                 next_observation=obs_vec,
                 terminated=bool(terminated),
@@ -238,14 +236,14 @@ def main(cfg: DictConfig):
                 teleop_joint_data["value"] = None
                 teleop_joint_data["timestamp"] = None
                 teleop_joint_data["recv_time"] = None
-                record_trigger["start"] = 0
+                match_control["start"] = 0
+                match_control["recv_time"] = None
 
-            if use_logger and episode_started and recording_active:
+            if use_logger and episode_started:
                 logger.save_episode()
                 episodes_saved += 1
                 if (max_episodes is not None) and (episodes_saved >= max_episodes):
                     break
-            recording_active = False
             episode_started = False
             cur_lang = None
 
