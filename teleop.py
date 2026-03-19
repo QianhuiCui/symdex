@@ -224,8 +224,18 @@ def main(cfg: DictConfig):
                 rew_terms=rew_terms,
             )
         prev_obs = obs_vec
+
+        done_flag = bool(terminated or truncated or as_flag(reset))
+
+        if done_flag and not use_logger:
+            if terminated and not truncated:
+                print("[Teleop] Episode finished: SUCCESS or terminal condition reached.")
+            elif truncated:
+                print("[Teleop] Episode finished: TIMEOUT (time limit reached).")
+            else:
+                print("[Teleop] Episode finished: ENV RESET triggered.")
         
-        if bool(terminated or truncated or as_flag(reset)):
+        if done_flag:
             initial_obs, _ = env.reset()
             send_msg("robot_reset", {"t": time.time()})
             prev_obs = get_obs(initial_obs)
