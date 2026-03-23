@@ -5,7 +5,6 @@ import torch
 
 @dataclass
 class ActionScalerCfg:
-    warmup_steps: int = 20
     max_delta: float | np.ndarray = 0.03
     deadband: float | np.ndarray = 0.005
     ema_alpha: float | np.ndarray = 0.75
@@ -32,8 +31,19 @@ class ActionScaler:
         self.deadband = self._as_vec(cfg.deadband, self.action_dim, name="deadband")
         self.ema_alpha = self._as_vec(cfg.ema_alpha, self.action_dim, name="ema_alpha")
 
-        self.joint_lower = np.asarray(joint_lower, dtype=np.float32).reshape(-1) if joint_lower is not None and joint_lower.shape == (self.action_dim,) else None
-        self.joint_upper = np.asarray(joint_upper, dtype=np.float32).reshape(-1) if joint_upper is not None and joint_upper.shape == (self.action_dim,) else None
+        self.joint_lower = (
+            np.asarray(joint_lower, dtype=np.float32).reshape(-1)
+            if joint_lower is not None else None
+        )
+        self.joint_upper = (
+            np.asarray(joint_upper, dtype=np.float32).reshape(-1)
+            if joint_upper is not None else None
+        )
+
+        if self.joint_lower is not None and self.joint_lower.shape != (self.action_dim,):
+            raise ValueError(f"Expected joint_lower to have shape ({self.action_dim},), but got {self.joint_lower.shape}")
+        if self.joint_upper is not None and self.joint_upper.shape != (self.action_dim,):
+            raise ValueError(f"Expected joint_upper to have shape ({self.action_dim},), but got {self.joint_upper.shape}")
 
     def reset(self):
         joints = self.robot.data.joint_pos[0, self.ids].detach().cpu().numpy().astype(np.float32)

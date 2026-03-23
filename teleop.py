@@ -17,7 +17,8 @@ from symdex.utils.trajectory_utils import get_obs, now_ms, as_flag, to_str
 from symdex.utils.trajectory_logger import TrajectoryLogger, SphereWriter
 from symdex.env.tasks.manager_based_env_cfg import * 
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
-from symdex.utils.delta_action_scaler import DeltaActionScaler
+# from symdex.utils.delta_action_scaler import DeltaActionScaler
+from symdex.utils.action_scaler import ActionScaler, ActionScalerCfg
 import sys
 sys.path.append("/home/qianhui/Desktop/dex_bimanual_telep/scripts")
 from zmq_utils import recv_msg, send_msg
@@ -81,6 +82,11 @@ def main(cfg: DictConfig):
     prev_obs = get_obs(initial_obs)
     # delta_scaler = DeltaActionScaler()
     # delta_scaler.reset()
+    joint_lower = np.concatenate([JOINT_LOWER_LIMIT, JOINT_LOWER_LIMIT_LEFT])
+    joint_upper = np.concatenate([JOINT_UPPER_LIMIT, JOINT_UPPER_LIMIT_LEFT])
+    action_scaler_cfg = ActionScalerCfg(max_delta=0.03, deadband=0.005, ema_alpha=0.75)
+    action_scaler = ActionScaler(env=env, env_cfg=env_cfg, cfg=action_scaler_cfg, joint_lower=joint_lower, joint_upper=joint_upper)
+    action_scaler.reset()
 
     with _data_lock:
         teleop_joint_data["value"] = None
@@ -147,15 +153,26 @@ def main(cfg: DictConfig):
             continue
 
         if (q_value is not None) and (q_ts_recv is not None) and (q_ts_recv >= last_reset_recv_time):
+            # delta_cmd
+            # q_target = np.asarray(q_value, dtype=np.float32).reshape(-1)
+            # q_curr = get_current_qpos(env)
+            # if len(q_target) != len(q_curr):
+            #     raise RuntimeError(f"teleop_joint_state length {len(q_target)} != expected {len(q_curr)}.")
+
+            # delta_cmd = (q_target - q_curr).astype(np.float32)
+            # action_buf.zero_()
+            # action_buf[0].copy_(torch.from_numpy(delta_cmd).to(action_buf.device))
+            # action_to_log = delta_cmd
+            # abs_cmd
             q_target = np.asarray(q_value, dtype=np.float32).reshape(-1)
             q_curr = get_current_qpos(env)
             if len(q_target) != len(q_curr):
                 raise RuntimeError(f"teleop_joint_state length {len(q_target)} != expected {len(q_curr)}.")
-
-            delta_cmd = (q_target - q_curr).astype(np.float32)
+            abs_cmd = q_target.astype(np.float32)
+            abs_cmd = action_scaler.process(abs_cmd)
             action_buf.zero_()
-            action_buf[0].copy_(torch.from_numpy(delta_cmd).to(action_buf.device))
-            action_to_log = delta_cmd
+            action_buf[0].copy_(torch.from_numpy(abs_cmd).to(action_buf.device))
+            action_to_log = abs_cmd
         else:
             action_buf.zero_()
             action_to_log = np.zeros(env.action_space.shape[1], dtype=np.float32)
@@ -225,21 +242,18 @@ def main(cfg: DictConfig):
             )
         prev_obs = obs_vec
 
-        done_flag = bool(terminated or truncated or as_flag(reset))
-
-        if done_flag and not use_logger:
+        if bool(terminated or truncated or as_flag(reset)):
             if terminated and not truncated:
                 print("[Teleop] Episode finished: SUCCESS or terminal condition reached.")
             elif truncated:
                 print("[Teleop] Episode finished: TIMEOUT (time limit reached).")
             else:
                 print("[Teleop] Episode finished: ENV RESET triggered.")
-        
-        if done_flag:
             initial_obs, _ = env.reset()
             send_msg("robot_reset", {"t": time.time()})
             prev_obs = get_obs(initial_obs)
             # delta_scaler.reset()
+            action_scaler.reset()
             last_reset_recv_time = time.monotonic()
 
             with _data_lock:
