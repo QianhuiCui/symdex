@@ -42,10 +42,10 @@ class PickObjectSceneCfg(BaseSceneCfg):
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
                 "joint1": 0.5,
-                "joint2": 0.3,
-                "joint3": -0.6,
+                "joint2": 0.0,
+                "joint3": -0.5,
                 "joint4": 0.0,
-                "joint5": -0.8,
+                "joint5": -0.3,
                 "joint6": -1.57,
                 # hand 
                 "jif1": 0.0,
@@ -134,10 +134,10 @@ class PickObjectSceneCfg(BaseSceneCfg):
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
                 "joint1": -0.5,
-                "joint2": 0.3,
-                "joint3": -0.6,
+                "joint2": 0.0,
+                "joint3": -0.5,
                 "joint4": 0.0,
-                "joint5": -0.8,
+                "joint5": -0.3,
                 "joint6": 1.57,
                 # hand 
                 "jif1": 0.0,
@@ -311,10 +311,33 @@ class PickObjectSceneCfg(BaseSceneCfg):
         ),
     )
 
+    task_frames_vis = FrameTransformerCfg(   # for teleop
+        prim_path="{ENV_REGEX_NS}/Robot/palm_link",
+        update_period=0.0,
+        debug_vis=True,
+        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
+            prim_path="/Visuals/pick_object_task_frames"
+        ),
+        target_frames=[
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/Object_0",
+                name="object_0",
+            ),
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/Object_1",
+                name="object_1",
+            ),
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/Object_2",
+                name="object_2",
+            ),
+        ],
+    )
+
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=128, height=128,
+        width=256, height=256,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -549,10 +572,35 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
+    
+    @configclass
+    class PointCloudCfg(ObsGroup):
+        """Observations for point cloud group."""
+
+        # -- robot terms (order preserved)
+        # point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+        #                                                 "wrist_cam_name": [], 
+        #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.01, 0.7]],
+        #                                                 "max_points": 2048, 
+        #                                                 "downsample": "random",
+        #                                                 "add_noise": False})
+        point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+                                                              "wrist_cam_name": [], 
+                                                              "crop_range": [[-0.14, 0.4], [-0.6, 0.0], [0.01, 0.7]],
+                                                              "max_points": 2048, 
+                                                              "downsample": "random",
+                                                              "add_noise": False})
+        point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+                                                             "wrist_cam_name": [], 
+                                                             "crop_range": [[-0.14, 0.4], [0.0, 0.6], [0.01, 0.7]],
+                                                             "max_points": 2048, 
+                                                             "downsample": "random",
+                                                             "add_noise": False})
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
     vision: VisionCfg = VisionCfg()
+    point_cloud: PointCloudCfg = PointCloudCfg()
 
 
 @configclass
@@ -610,89 +658,81 @@ class PickObjectTerminationsCfg(BaseTerminationsCfg):
 class PickObjectRewardsCfg(BaseRewardsCfg):
     """Reward terms for the MDP."""
     reaching_object = RewTerm(func=object_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "object_id": 1}, 
-                                      weight=0.0)
+                              params={"weight": [1.0, 1.0, 1.0, 1.5], "link_name": ["if5", "mf5", "pf5", "th5"], "object_id": 1}, 
+                              weight=0.0)
     object_lifting = RewTerm(func=lift_distance,
-                             params={"command_name": "target_pos", "object_id": 1, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                             weight=0.0,
-                             )
+                             params={"command_name": "target_pos", 
+                                     "object_id": 1, 
+                                     "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
+                             weight=0.0)
     object_goal_tracking = RewTerm(func=pick.object_goal_distance,
-                                   params={"command_name": "target_pos", "object_id": 1, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
-                                   weight=0.0,
-                                   )
-    object_1_in_tote = RewTerm(func=pick.if_in_tote,
-                             params={"object_id": 1, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"], "distance_threshold": 0.15},
-                             weight=0.0,
-                             )
-    reset_robot_joint_pos = RewTerm(func=pick.robot_goal_distance, 
-                              params={"object_id": 1,
-                                      "target_pos": [0.0462, -0.3045, 0.4468], 
-                                      "target_link": "palm_link"}, 
-                                      weight=0.0)
-    reaching_object_left = RewTerm(func=object_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "object_id": 2,
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
-    object_lifting_left = RewTerm(func=lift_distance,
-                             params={"command_name": "target_pos", "object_id": 2, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                             weight=0.0,
-                             )
-    object_goal_tracking_left = RewTerm(func=pick.object_goal_distance,
-                                   params={"command_name": "waiting_pos", 
-                                           "object_id": 2, 
-                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
-                                           "delay": False,
-                                           "switch": True},
-                                   weight=0.0,
-                                   )
-    object_goal_tracking_left_delay = RewTerm(func=pick.object_goal_distance,
                                    params={"command_name": "target_pos", 
+                                           "object_id": 1, 
+                                           "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
+                                   weight=0.0)
+    object_1_in_tote = RewTerm(func=pick.if_in_tote,
+                               params={"object_id": 1, 
+                                       "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"], 
+                                       "distance_threshold": 0.15},
+                               weight=0.0)
+    reset_robot_joint_pos = RewTerm(func=pick.robot_goal_distance, 
+                                    params={"object_id": 1, "target_pos": [0.0462, -0.3045, 0.4468], "target_link": "palm_link"}, 
+                                    weight=0.0)
+    reaching_object_left = RewTerm(func=object_robot_distance, 
+                                   params={"weight": [1.0, 1.0, 1.0, 1.5], 
+                                           "link_name": ["if5", "mf5", "pf5", "th5"], 
                                            "object_id": 2, 
-                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
-                                           "delay": True,
-                                           "switch": False,
-                                           "distance_threshold": 0.2},
-                                   weight=0.0,
-                                   )
+                                           "asset_cfg": SceneEntityCfg("robot_left")}, 
+                                   weight=0.0)
+    object_lifting_left = RewTerm(func=lift_distance,
+                                  params={"command_name": "target_pos", 
+                                          "object_id": 2, 
+                                          "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
+                                  weight=0.0)
+    object_goal_tracking_left = RewTerm(func=pick.object_goal_distance,
+                                        params={"command_name": "waiting_pos", "object_id": 2, 
+                                                "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
+                                                "delay": False, "switch": True},
+                                        weight=0.0)
+    object_goal_tracking_left_delay = RewTerm(func=pick.object_goal_distance,
+                                              params={"command_name": "target_pos", 
+                                                      "object_id": 2, 
+                                                      "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
+                                                      "delay": True,
+                                                      "switch": False,
+                                                      "distance_threshold": 0.2},
+                                              weight=0.0)
     object_2_in_tote = RewTerm(func=pick.if_in_tote,
-                             params={"object_id": 2, 
-                                     "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"], 
-                                     "distance_threshold": 0.2,
-                                     "delay": True},
-                             weight=0.0,
-                             )
+                               params={"object_id": 2, 
+                                       "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"], 
+                                       "distance_threshold": 0.2,
+                                       "delay": True},
+                               weight=0.0)
     reset_robot_joint_pos_left = RewTerm(func=pick.robot_goal_distance, 
-                              params={"object_id": 2, 
-                                      "target_pos": [0.0462, 0.3045, 0.4468], 
-                                      "target_link": "palm_link",
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
+                                         params={"object_id": 2, 
+                                                 "target_pos": [0.0462, 0.3045, 0.4468], 
+                                                 "target_link": "palm_link",
+                                                 "asset_cfg": SceneEntityCfg("robot_left")}, 
+                                         weight=0.0)
     success_bonus = RewTerm(func=pick.success_bonus,
                             params={},
-                            weight=0.0,
-                            )
+                            weight=0.0)
     energy = RewTerm(func=energy_punishment,
-                                  weight=0.0,
-                                  params={"asset_cfg": SceneEntityCfg("robot"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
-                                                                                                  "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
-                                  )
+                     params={"asset_cfg": SceneEntityCfg("robot"), 
+                             "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
+                                               "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
+                     weight=0.0)
     energy_left = RewTerm(func=energy_punishment,
-                                  weight=0.0,
-                                  params={"asset_cfg": SceneEntityCfg("robot_left"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
-                                                                                                  "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
-                                  )
+                          params={"asset_cfg": SceneEntityCfg("robot_left"), 
+                                  "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
+                                                    "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
+                          weight=0.0)
     collision_to_table = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                                weight=0.0,
-                                )
+                                 params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
+                                 weight=0.0)
     collision_to_table_left = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                                weight=0.0,
-                                )
+                                      params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
+                                      weight=0.0)
 
 
 @configclass
@@ -707,20 +747,21 @@ class PickObjectEnvCfg(BaseEnvCfg):
     rewards = PickObjectRewardsCfg()
     num_object = 3
     action_dim = 44 # arm + hand
-    action_scale: list = [1.0] * action_dim
-                        # [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                        #     0.03, 0.03, 0.03, 0.03, 
-                        #     0.03, 0.03, 0.03, 0.03, 
-                        #     0.03, 0.03, 0.03, 0.015,
-                        #     0.03, 0.03, 0.03, 0.03,
-                        #     0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                        #     0.03, 0.03, 0.03, 0.03, 
-                        #     0.03, 0.03, 0.03, 0.03, 
-                        #     0.03, 0.03, 0.03, 0.015,
-                        #     0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
+    # action_scale: list = [1.0] * action_dim
+    action_scale: list = [0.08, 0.08, 0.08, 0.08, 0.08, 0.08,
+                            0.05, 0.05, 0.05, 0.05,
+                            0.05, 0.05, 0.05, 0.05,
+                            0.05, 0.05, 0.05, 0.05,
+                            0.05, 0.05, 0.05, 0.05,
+                          0.08, 0.08, 0.08, 0.08, 0.08, 0.08,
+                            0.05, 0.05, 0.05, 0.05,
+                            0.05, 0.05, 0.05, 0.05,
+                            0.05, 0.05, 0.05, 0.05,
+                            0.05, 0.05, 0.05, 0.05]  # jth3 needs smaller rate
     visualize_marker: bool = False
 
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.viewer.eye = (-1.5, 0.0, 1.5)
+        # self.viewer.eye = (-1.5, 0.0, 1.5)
+        self.viewer.eye = (-0.5, 0.0, 1.0)

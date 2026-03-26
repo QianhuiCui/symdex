@@ -3,58 +3,44 @@ defaults:
   - _self_
 
 env_name: "PickObjectEnv-v0"
-rew: {}
+rew: 
   # right
-  # reaching_object: 0.01
-  # object_lifting: 1.0
-  # object_goal_tracking: 10.0
-  # object_1_in_tote: 2000.0
-  # reset_robot_joint_pos: 200.0
+  reaching_object: 0.01
+  object_lifting: 1.0
+  object_goal_tracking: 10.0
+  object_1_in_tote: 2000.0
+  reset_robot_joint_pos: 200.0
   # # left
-  # reaching_object_left: 0.01
-  # object_lifting_left: 1.0
-  # object_goal_tracking_left: 10.0
-  # object_goal_tracking_left_delay: 50.0
-  # object_2_in_tote: 2000.0
-  # reset_robot_joint_pos_left: 200.0
-  # success_bonus: 1.0
+  reaching_object_left: 0.01
+  object_lifting_left: 1.0
+  object_goal_tracking_left: 10.0
+  object_goal_tracking_left_delay: 50.0
+  object_2_in_tote: 2000.0
+  reset_robot_joint_pos_left: 200.0
+  success_bonus: 1.0
 
-  # # symmetry
-  # reaching_object_symmetry: 0.01
-  # object_lifting_symmetry: 1.0
-  # object_goal_tracking_symmetry: 10.0
-  # object_1_in_tote_symmetry: 2000.0
-  # reset_robot_joint_pos_symmetry: 200.0
-  # # left
-  # reaching_object_left_symmetry: 0.01
-  # object_lifting_left_symmetry: 1.0
-  # object_goal_tracking_left_symmetry: 10.0
-  # object_goal_tracking_left_delay_symmetry: 50.0
-  # object_2_in_tote_symmetry: 2000.0
-  # reset_robot_joint_pos_left_symmetry: 200.0
-
-  # energy: 0.000001
-  # energy_left: 0.000001
-  # collision_to_table: -0.000001
-  # collision_to_table_left: -0.000001
-  # collision_to_table_symmetry: -0.000001
-  # collision_to_table_left_symmetry: -0.000001
+  energy: 0.000001
+  energy_left: 0.000001
+  collision_to_table: -0.000001
+  collision_to_table_left: -0.000001
+  collision_to_table_symmetry: -0.000001
+  collision_to_table_left_symmetry: -0.000001
 
 cam:
   enable: True
   num_cams: 1
   frame_stack: 1
-  resolution: 128
+  resolution: 256
   cam_params:
     cam_1:
       enable: True
-      randomize: False
-      pos: [0.6, 0.0, 1.0]
-      target: [0.13, 0.0, 0.26]
+      randomize: True
+      pos: [-0.5, 0.0, 0.5]
+      target: [0.18, 0.0, 0.06]
     # cam_2:
-    #   enable: False
+    #   enable: False  
     #   randomize: True
-    #   pos: [0.6, -0.7, 0.5]
+    #   pos: [0.5, 0.0, 0.5]
     #   target: [-0.18, 0.0, 0.06]
     # wrist_cam_left:
     #   enable: False 

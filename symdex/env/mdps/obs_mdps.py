@@ -231,10 +231,6 @@ def point_cloud(env: ManagerBasedEnv,
     orientation_offset = []
     for cam_name in camera_name:
         intrinsic_matrix.append(env.scene[cam_name].data.intrinsic_matrices.clone())
-
-        out = env.scene[cam_name].data.output
-        # print(cam_name, list(out.keys()))
-        
         depth.append(env.scene[cam_name].data.output['depth'].clone())
         position_offset.append(env.camera_offset[cam_name]["pos"])
         orientation_offset.append(env.camera_offset[cam_name]["orientation"])
@@ -252,12 +248,12 @@ def point_cloud(env: ManagerBasedEnv,
     position_offset = torch.cat(position_offset, dim=0)
     orientation_offset = torch.cat(orientation_offset, dim=0)
     pc = create_pointcloud_from_depth(intrinsic_matrix=intrinsic_matrix,
-                                                depth=depth,
-                                                position=position_offset,
-                                                orientation=orientation_offset,
-                                                crop_range=crop_range,
-                                                max_points=max_points,
-                                                num_cams=len(camera_name) + len(wrist_cam_name),
-                                                downsample=downsample,
-                                                add_noise=add_noise)
+                                      depth=depth,
+                                      position=position_offset,
+                                      orientation=orientation_offset,
+                                      crop_range=crop_range,
+                                      max_points=max_points,
+                                      num_cams=len(camera_name) + len(wrist_cam_name),
+                                      downsample=downsample,
+                                      add_noise=add_noise)
     return pc

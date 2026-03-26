@@ -14,21 +14,37 @@ class TrajectoryLogger:
     def __init__(self, save_dir: Path=SAVE_DIR, task_name=None):
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
+        self.task_name = task_name
+        self.timestamp = time.strftime("%Y%m%d_%H%M")
 
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        self.file_path = save_dir / f"{task_name}_{timestamp}.h5"
-        self.h5_file = h5py.File(str(self.file_path), "w")
-        self.episode_idx = 0
+        # self.file_path = save_dir / f"{task_name}_{timestamp}.h5"
+        # self.h5_file = h5py.File(str(self.file_path), "w")
+        # self.episode_idx = 0
+        self.success_dir = save_dir / f"{self.task_name}_success"
+        self.failed_dir = save_dir / f"{self.task_name}_failed"
+        self.success_dir.mkdir(parents=True, exist_ok=True)
+        self.failed_dir.mkdir(parents=True, exist_ok=True)
+        self.success_tmp_path = self.success_dir / f"{self.task_name}_{self.timestamp}_success_tmp.h5"
+        self.failed_tmp_path = self.failed_dir / f"{self.task_name}_{self.timestamp}_failed_tmp.h5"
+        self.success_h5 = h5py.File(str(self.success_tmp_path), "w")
+        self.failed_h5 = h5py.File(str(self.failed_tmp_path), "w")
+        self.success_episode_idx = 0
+        self.failed_episode_idx = 0
+
         self._epi_meta = {}
         self._reset_buffers()
-        print(f"[Logger] Initialized trajectory log file: {self.file_path}")
+        # print(f"[Logger] Initialized trajectory log file: {self.file_path}")
+        print(f"[Logger] Initialized success log file: {self.success_tmp_path}")
+        print(f"[Logger] Initialized failed log file: {self.failed_tmp_path}")
 
     def _reset_buffers(self):
         """Internal buffer for current trial data."""
         self._obs_policy = []
         self._obs_vision = []
+        self.obs_pc = []
         self._next_obs_policy = []
         self._next_obs_vision = []
+        self._next_obs_pc = []
 
         self._act = []
         self._rew = []
@@ -48,20 +64,31 @@ class TrajectoryLogger:
     def add_transition(self, *, observation, action, reward, next_observation, terminated: bool, truncated: bool, rew_terms):
         self._obs_policy.append(np.asarray(observation["policy"], dtype=np.float32))
         self._obs_vision.append(np.asarray(observation["vision"], dtype=np.uint8))
+        self.obs_pc.append(np.asarray(observation["point_cloud"], dtype=np.float16))
         self._next_obs_policy.append(np.asarray(next_observation["policy"], dtype=np.float32))
         self._next_obs_vision.append(np.asarray(next_observation["vision"], dtype=np.uint8))
+        self._next_obs_pc.append(np.asarray(next_observation["point_cloud"], dtype=np.float16))
 
         self._act.append(np.asarray(action, dtype=np.float32))
         self._rew.append(float(reward))
         self._terminals.append(np.uint8(1 if terminated else 0))
         self._timeouts.append(np.uint8(1 if truncated else 0))
         self._rew_terms.append(np.asarray(rew_terms, dtype=np.float32))
-    
-    def save_episode(self):
+
+    def save_episode(self, success: bool):
         steps = len(self._rew)
         if len(self._rew) == 0:
             return
-        grp = self.h5_file.create_group(f"episode_{self.episode_idx:03d}")
+        
+        if success:
+            h5_file = self.success_h5
+            episode_idx = self.success_episode_idx
+            file_tag = "success"
+        else:
+            h5_file = self.failed_h5
+            episode_idx = self.failed_episode_idx
+            file_tag = "failed"
+        grp = h5_file.create_group(f"episode_{episode_idx:03d}")
 
         # metadata
         meta = grp.create_group("epi_meta")
@@ -84,6 +111,11 @@ class TrajectoryLogger:
                                compression="gzip",
                                compression_opts=4,
                                chunks=True,)
+        obs_grp.create_dataset("point_cloud", 
+                               data=np.stack(self.obs_pc, axis=0),
+                               compression="gzip",
+                               compression_opts=4,
+                               chunks=True,)
         # next_observations group
         next_obs_grp = offline_data.create_group("next_observations")
         next_obs_grp.create_dataset("policy", data=np.stack(self._next_obs_policy, axis=0))
@@ -92,7 +124,12 @@ class TrajectoryLogger:
                                      compression="gzip",
                                      compression_opts=4,
                                      chunks=True,)
-        
+        next_obs_grp.create_dataset("point_cloud", 
+                                    data=np.stack(self._next_obs_pc, axis=0),
+                                    compression="gzip",
+                                    compression_opts=4,
+                                    chunks=True,)
+
         offline_data.create_dataset("actions", data=np.stack(self._act, axis=0))
         offline_data.create_dataset("rewards", data=np.asarray(self._rew, dtype=np.float32))
         offline_data.create_dataset("terminals", data=np.asarray(self._terminals, dtype=np.uint8))
@@ -100,18 +137,39 @@ class TrajectoryLogger:
         if len(self._rew_terms) == steps:
             offline_data.create_dataset("reward_terms", data=np.stack(self._rew_terms, axis=0))
 
-        self.h5_file.flush()
-        print(f"[Logger] Saved episode_{self.episode_idx:03d} with {len(self._rew)} steps to {self.file_path}")
+        h5_file.flush()
+        if success:
+            self.success_episode_idx += 1
+        else:
+            self.failed_episode_idx += 1
+        print(f"[Logger] Saved {file_tag} episode_{episode_idx:03d} with {steps} steps")
 
         self._epi_meta = {}
         self._reset_buffers()
-        self.episode_idx += 1
+        # self.episode_idx += 1
 
     def close(self):
         if len(self._rew) > 0:
-            self.save_episode()
-        self.h5_file.close()
-        print(f"[Logger] Closed after {self.episode_idx} episodes saved to {self.file_path}")
+            print("[Logger] Warning: unsaved buffered transitions detected. They will not be auto-classified.")
+            self._epi_meta = {}
+            self._reset_buffers()
+
+        self.success_h5.close()
+        self.failed_h5.close()
+
+        success_final_path = self.success_dir / (
+            f"{self.task_name}_{self.timestamp}_success_{self.success_episode_idx:02d}eps.h5"
+        )
+        failed_final_path = self.failed_dir / (
+            f"{self.task_name}_{self.timestamp}_failed_{self.failed_episode_idx:02d}eps.h5"
+        )
+
+        self.success_tmp_path.rename(success_final_path)
+        self.failed_tmp_path.rename(failed_final_path)
+
+        print(f"[Logger] Closed success file: {success_final_path}")
+        print(f"[Logger] Closed failed file: {failed_final_path}")
+        print(f"[Logger] Summary: success={self.success_episode_idx}, failed={self.failed_episode_idx}")
 
 
 class SphereWriter:

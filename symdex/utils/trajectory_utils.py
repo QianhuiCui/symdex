@@ -55,6 +55,8 @@ def get_obs(obs_dict):
                 else:
                     img = img.clip(0, 255).astype(np.uint8)
             obs[key] = img
+        elif "point_cloud" in key or "depth" in key:
+            obs[key] = obs_dict[key][0].detach().cpu().numpy().astype(np.float32, copy=False)
     return obs
 
 def depth_to_gray(depth):
