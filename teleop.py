@@ -62,7 +62,6 @@ def get_current_qpos(env):
     qpos_left = robot_left.data.joint_pos[0, :].detach().cpu().numpy().astype(np.float32)
     return np.concatenate([qpos, qpos_left], axis=0)
 
-
 @hydra.main(
     config_path=symdex.LIB_PATH_PATH.joinpath("cfg").as_posix(),
     config_name="default"
@@ -82,11 +81,12 @@ def main(cfg: DictConfig):
     prev_obs = get_obs(initial_obs)
     # delta_scaler = DeltaActionScaler()
     # delta_scaler.reset()
-    joint_lower = np.concatenate([JOINT_LOWER_LIMIT, JOINT_LOWER_LIMIT_LEFT])
-    joint_upper = np.concatenate([JOINT_UPPER_LIMIT, JOINT_UPPER_LIMIT_LEFT])
-    action_scaler_cfg = ActionScalerCfg(max_delta=0.03, deadband=0.005, ema_alpha=0.75)
-    action_scaler = ActionScaler(env=env, env_cfg=env_cfg, cfg=action_scaler_cfg, joint_lower=joint_lower, joint_upper=joint_upper)
-    action_scaler.reset()
+    # absolute actions 
+    # joint_lower = np.concatenate([JOINT_LOWER_LIMIT, JOINT_LOWER_LIMIT_LEFT])
+    # joint_upper = np.concatenate([JOINT_UPPER_LIMIT, JOINT_UPPER_LIMIT_LEFT])
+    # action_scaler_cfg = ActionScalerCfg(max_delta=0.03, deadband=0.005, ema_alpha=0.75)
+    # action_scaler = ActionScaler(env=env, env_cfg=env_cfg, cfg=action_scaler_cfg, joint_lower=joint_lower, joint_upper=joint_upper)
+    # action_scaler.reset()
 
     with _data_lock:
         teleop_joint_data["value"] = None
@@ -131,7 +131,6 @@ def main(cfg: DictConfig):
             q_ts_recv = teleop_joint_data["recv_time"]
             pose_right = teleop_target_poses["right"] 
             pose_left = teleop_target_poses["left"]
-            trig_start = match_control["start"]
             match_control["start"] = 0  # consume trigger once
             # consume joint packet immediately (so we never replay old data if sender stalls)
             teleop_joint_data["value"] = None
@@ -154,39 +153,25 @@ def main(cfg: DictConfig):
 
         if (q_value is not None) and (q_ts_recv is not None) and (q_ts_recv >= last_reset_recv_time):
             # delta_cmd
-            # q_target = np.asarray(q_value, dtype=np.float32).reshape(-1)
-            # q_curr = get_current_qpos(env)
-            # if len(q_target) != len(q_curr):
-            #     raise RuntimeError(f"teleop_joint_state length {len(q_target)} != expected {len(q_curr)}.")
-
-            # delta_cmd = (q_target - q_curr).astype(np.float32)
-            # action_buf.zero_()
-            # action_buf[0].copy_(torch.from_numpy(delta_cmd).to(action_buf.device))
-            # action_to_log = delta_cmd
-            # abs_cmd
             q_target = np.asarray(q_value, dtype=np.float32).reshape(-1)
             q_curr = get_current_qpos(env)
             if len(q_target) != len(q_curr):
                 raise RuntimeError(f"teleop_joint_state length {len(q_target)} != expected {len(q_curr)}.")
-            abs_cmd = q_target.astype(np.float32)
-            abs_cmd = action_scaler.process(abs_cmd)
+
+            delta_cmd = (q_target - q_curr).astype(np.float32)
+            # delta_cmd = delta_scaler.process(q_target, q_curr)
             action_buf.zero_()
-            action_buf[0].copy_(torch.from_numpy(abs_cmd).to(action_buf.device))
-            action_to_log = abs_cmd
+            action_buf[0].copy_(torch.from_numpy(delta_cmd).to(action_buf.device))
+            action_to_log = delta_cmd
+            # absolute actions 
+            # abs_cmd = q_target.astype(np.float32)
+            # abs_cmd = action_scaler.process(abs_cmd)
+            # action_buf.zero_()
+            # action_buf[0].copy_(torch.from_numpy(abs_cmd).to(action_buf.device))
+            # action_to_log = abs_cmd
         else:
             action_buf.zero_()
             action_to_log = np.zeros(env.action_space.shape[1], dtype=np.float32)
-
-        # q_target = np.asarray(q_value, dtype=np.float32).reshape(-1)
-        # q_curr = get_current_qpos(env)
-        # if len(q_target) != len(q_curr):
-        #     raise RuntimeError(f"Received teleop joint data of length {len(q_target)} does not match expected length {len(q_curr)}.")
-        
-        # delta_cmd = delta_scaler.process(q_target, q_curr)
-        # delta_cmd = (q_target - q_curr).astype(np.float32)
-       
-        # action_buf.zero_()
-        # action_buf[0].copy_(torch.from_numpy(delta_cmd).to(action_buf.device))
 
         next_obs, rew, reset, extras = env.step(action_buf)
 
@@ -204,19 +189,9 @@ def main(cfg: DictConfig):
         if rew_terms.shape[0] != rew_weights.shape[0]:
             raise RuntimeError(f"[Teleop] reward_terms K={rew_terms.shape[0]} != rew_weights K={rew_weights.shape[0]}")
 
-        # ---- episode metadata ----
-        # if (not episode_started) and use_logger:
-        #     cur_lang = to_str(extras.get("language_instruction", ""))
-        #     if use_logger:
-        #         logger.start_episode(
-        #             language_instruction=cur_lang,
-        #             rew_cfg_hash=rew_cfg_hash,
-        #             rew_names=rew_names,
-        #             rew_weights=rew_weights
-        #         )
-        #     episode_started = True
         # ---- start recording if trigger arrives & episode metadata ----
-        if trig_start == 1 and use_logger and (not episode_started):
+        # if trig_start == 1 and use_logger and (not episode_started):
+        if use_logger and (not episode_started):
             episode_started = True
             cur_lang = to_str(extras.get("language_instruction", ""))
             logger.start_episode(
@@ -249,11 +224,12 @@ def main(cfg: DictConfig):
                 print("[Teleop] Episode finished: TIMEOUT (time limit reached).")
             else:
                 print("[Teleop] Episode finished: ENV RESET triggered.")
+
             initial_obs, _ = env.reset()
             send_msg("robot_reset", {"t": time.time()})
             prev_obs = get_obs(initial_obs)
             # delta_scaler.reset()
-            action_scaler.reset()
+            # action_scaler.reset()
             last_reset_recv_time = time.monotonic()
 
             with _data_lock:
@@ -264,7 +240,8 @@ def main(cfg: DictConfig):
                 match_control["recv_time"] = None
 
             if use_logger and episode_started:
-                logger.save_episode()
+                # logger.save_episode()
+                logger.save_episode(success=bool(terminated and not truncated))
                 episodes_saved += 1
                 if (max_episodes is not None) and (episodes_saved >= max_episodes):
                     break
