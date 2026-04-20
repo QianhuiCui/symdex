@@ -1,0 +1,101 @@
+from isaaclab.app import AppLauncher
+
+app_launcher = AppLauncher({"headless": True, "enable_cameras": True})
+simulation_app = app_launcher.app
+
+import hydra
+import wandb
+import gymnasium as gym
+from omegaconf import DictConfig
+
+import symdex
+from symdex.algo import alg_name_to_path
+from symdex.utils.common import init_wandb, set_random_seed, capture_keyboard_interrupt, preprocess_cfg, load_class_from_path
+from symdex.env.tasks.manager_based_env_cfg import *
+from symdex.utils.evaluator_td3bc import EvaluatorTD3BC
+from symdex.utils.rl_env_wrapper import VecEnvWrapper
+from symdex.utils.offline_buffer import OfflineBuffer
+
+
+@hydra.main(config_path=symdex.LIB_PATH_PATH.joinpath('cfg').as_posix(), config_name="default")
+def main(cfg: DictConfig):
+    set_random_seed(cfg.seed)
+    capture_keyboard_interrupt()
+    cfg, env_cfg = preprocess_cfg(cfg)
+    wandb_run = init_wandb(cfg)
+
+    replay_buffer = OfflineBuffer(device=cfg.device, use_vision=cfg.observation.vision, use_pc=cfg.observation.pc)
+    replay_buffer.load_from_dir(cfg.offline.data_dir, pattern=cfg.offline.pattern)
+    if cfg.algo.normalize_states:
+        state_mean, state_std = replay_buffer.normallize_states()
+    else:
+        state_mean, state_std = None, None
+    algo_name = cfg.algo.name
+    algo_class = load_class_from_path(algo_name, alg_name_to_path[algo_name])
+    policy = algo_class(
+        state_dim = replay_buffer.state_dim,
+        action_dim = replay_buffer.action_dim,
+		max_action = cfg.offline.max_action,
+        device = cfg.device,
+        use_vision = cfg.observation.vision,
+        use_pc = cfg.observation.pc,
+		discount=cfg.algo.discount,
+		tau=cfg.algo.tau,
+		policy_noise=cfg.algo.policy_noise,
+		noise_clip=cfg.algo.noise_clip,
+		policy_freq=cfg.algo.policy_freq,
+		alpha=cfg.algo.alpha,
+        actor_lr=cfg.algo.actor_lr,
+        critic_lr=cfg.algo.critic_lr,
+    )
+    
+    if cfg.checkpoint.load_path is not None:
+        policy.load(cfg.checkpoint.load_path)
+
+    env = gym.make(cfg.env_name, cfg=env_cfg)
+    env = VecEnvWrapper(env, rl_device=cfg.rl_device, clip_obs=50.0)
+
+    global_steps = 0
+    success_max = float('-inf')
+    evaluator = EvaluatorTD3BC(cfg=cfg, env_cfg=env_cfg, env=env, wandb_run=wandb_run, state_mean=state_mean, state_std=state_std)
+
+    randomization_state, best_so_far = None, None
+    if cfg.task.randomize.eval:
+        env.unwrapped.update_randomization(1.0)
+    else:
+        env.unwrapped.update_randomization(0.0)
+    
+    for step in range(1, cfg.algo.max_train_steps + 1):
+        global_steps = step
+        log_info = policy.train(replay_buffer, cfg.algo.batch_size)
+
+        if step % cfg.algo.log_freq == 0:
+            log_info["global_steps"] = global_steps
+            log_info["dataset/size"] = replay_buffer.size
+            if randomization_state is not None:
+                for param in randomization_state.keys():
+                    log_info[f'Randomization/{param}_sigma'] = randomization_state[param]['sigma']
+                for parm in curriculum_state.keys():
+                    val = curriculum_state[parm]
+                    if isinstance(val, DictConfig):
+                        continue
+                    log_info[f'Curriculum/{parm}_value'] = val[min(best_so_far, len(val) - 1)]
+                log_info['Randomization/best_so_far'] = best_so_far
+            wandb.log(log_info, step=global_steps)
+        
+        if step % cfg.algo.eval_freq == 0:
+            return_dict, success_max = evaluator.eval_policy(policy=policy, success_max=success_max)
+            wandb.log(return_dict, step=global_steps)
+            if cfg.task.randomize.enable:
+                # domain randomization
+                randomization_state, curriculum_state, best_so_far = env.unwrapped.update_randomization(return_dict["eval/success_rate"])
+                success_max = float('-inf')
+        
+        if evaluator.check_if_should_stop(global_steps):
+            break
+    
+    policy.save(f"{wandb_run.dir}/model_final.pth")
+
+
+if __name__ == '__main__':
+    main()
