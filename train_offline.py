@@ -24,10 +24,10 @@ def main(cfg: DictConfig):
     cfg, env_cfg = preprocess_cfg(cfg)
     wandb_run = init_wandb(cfg)
 
-    replay_buffer = OfflineBuffer(device=cfg.device, use_vision=cfg.observation.vision, use_pc=cfg.observation.pc)
-    replay_buffer.load_from_dir(cfg.offline.data_dir, pattern=cfg.offline.pattern)
+    replay_buffer = OfflineBuffer(device=cfg.device, use_vision=cfg.algo.observation.vision, use_pc=cfg.algo.observation.pc)
+    replay_buffer.load_from_dir(cfg.algo.offline.data_dir, pattern=cfg.algo.offline.pattern)
     if cfg.algo.normalize_states:
-        state_mean, state_std = replay_buffer.normallize_states()
+        state_mean, state_std = replay_buffer.normalize_states()
     else:
         state_mean, state_std = None, None
     algo_name = cfg.algo.name
@@ -35,10 +35,10 @@ def main(cfg: DictConfig):
     policy = algo_class(
         state_dim = replay_buffer.state_dim,
         action_dim = replay_buffer.action_dim,
-		max_action = cfg.offline.max_action,
+		max_action = cfg.algo.offline.max_action,
         device = cfg.device,
-        use_vision = cfg.observation.vision,
-        use_pc = cfg.observation.pc,
+        use_vision = cfg.algo.observation.vision,
+        use_pc = cfg.algo.observation.pc,
 		discount=cfg.algo.discount,
 		tau=cfg.algo.tau,
 		policy_noise=cfg.algo.policy_noise,
@@ -49,8 +49,8 @@ def main(cfg: DictConfig):
         critic_lr=cfg.algo.critic_lr,
     )
     
-    if cfg.checkpoint.load_path is not None:
-        policy.load(cfg.checkpoint.load_path)
+    if cfg.algo.checkpoint.load_path is not None:
+        policy.load(cfg.algo.checkpoint.load_path)
 
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device, clip_obs=50.0)

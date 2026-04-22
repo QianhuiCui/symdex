@@ -562,16 +562,16 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
             self.enable_corruption = False
             self.concatenate_terms = True
     
-    @configclass
-    class VisionCfg(ObsGroup):
-        """Observations for vision group."""
+    # @configclass
+    # class VisionCfg(ObsGroup):
+    #     """Observations for vision group."""
 
-        # -- robot terms (order preserved)
-        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+    #     # -- robot terms (order preserved)
+    #     rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
 
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
+    #     def __post_init__(self):
+    #         self.enable_corruption = False
+    #         self.concatenate_terms = True
     
     @configclass
     class PointCloudCfg(ObsGroup):
@@ -599,7 +599,7 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    vision: VisionCfg = VisionCfg()
+    # vision: VisionCfg = VisionCfg()
     point_cloud: PointCloudCfg = PointCloudCfg()
 
 
@@ -640,17 +640,17 @@ class PickObjectActionsCfg:
 
 @configclass
 class PickObjectTerminationsCfg(BaseTerminationsCfg):
-    out_of_space = DoneTerm(
-        func=pick.obj_out_space,
-        params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 1},
-    )
-    out_of_space_left = DoneTerm(
-        func=pick.obj_out_space,
-        params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 2},
-    )
+    # out_of_space = DoneTerm(
+    #     func=pick.obj_out_space,
+    #     params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 1},
+    # )
+    # out_of_space_left = DoneTerm(
+    #     func=pick.obj_out_space,
+    #     params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 2},
+    # )
     max_consecutive_success = DoneTerm(
         func=pick.max_consecutive_success,
-        params={"num_success": 1},
+        params={"num_success": 10},
     )
 
 

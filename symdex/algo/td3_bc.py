@@ -98,7 +98,7 @@ class MultiModalEncoder(nn.Module):
         if self.use_vision:
             features.append(self.vision_encoder(batch['vision']))
         if self.use_pc:
-            features.append(self.pc_encoder(batch['point_cloud']))
+            features.append(self.pc_encoder(batch['pc']))
         features = torch.cat(features, dim=-1)
         features = self.fusion(features)
         return features
@@ -115,7 +115,7 @@ class Actor(nn.Module):
             nn.Tanh(),
         )
         self.net = nn.Sequential(
-            self.Linear(256, 256),
+            nn.Linear(256, 256),
             nn.ReLU(),
             nn.Linear(256, action_dim),
             nn.Tanh(),
@@ -251,7 +251,7 @@ class TD3BC:
             log_info.update({
                 "train/actor_loss": float(actor_loss.item()),
                 "train/bc_loss": float(bc_loss.item()),
-                "train/Q_meain": float(Q_pi.mean().item()),
+                "train/Q_mean": float(Q_pi.mean().item()),
                 "train/lambda": float(lmbda.item()),
             })
         return log_info

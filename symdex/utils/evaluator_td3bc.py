@@ -31,10 +31,10 @@ class EvaluatorTD3BC:
             batch["state"] = state
 
             # optional vision
-            if getattr(self.cfg.observation, "vision", False):
+            if getattr(self.cfg.algo.observation, "vision", False):
                 batch["vision"] = obs["vision"]
-            if getattr(self.cfg.observation, "pc", False):
-                batch["pc"] = obs["pc"]
+            if getattr(self.cfg.algo.observation, "pc", False):
+                batch["pc"] = obs["point_cloud"]
 
             return batch
         

@@ -23,8 +23,6 @@ rew:
   energy_left: 0.000001
   collision_to_table: -0.000001
   collision_to_table_left: -0.000001
-  collision_to_table_symmetry: -0.000001
-  collision_to_table_left_symmetry: -0.000001
 
 cam:
   enable: True
@@ -57,14 +55,14 @@ randomize:
     static_friction: [0.2, 1.0]
     dynamic_friction: [0.2, 1.0]
     restitution: [0.0, 1.0]
-  # curriculum:
-  #   action_scale: [0.05, 0.04, 0.03]
-  #   energy_penalty: 
-  #     names: ["energy", "energy_left"]
-  #     values: [0.000001, 0.001]
-  #   collision_penalty: 
-  #     names: ["collision_to_table", "collision_to_table_left", "collision_to_table_symmetry", "collision_to_table_left_symmetry"]
-  #     values: [-0.000001, -500.0]
+  curriculum:
+    action_scale: [0.05, 0.04, 0.03]
+    energy_penalty: 
+      names: ["energy", "energy_left"]
+      values: [0.000001, 0.001]
+    collision_penalty: 
+      names: ["collision_to_table", "collision_to_table_left"]
+      values: [-0.000001, -500.0]
   #   reset_pose3:
   #     names: "reset_tote"
   #     values: [[[0.1, 0.1], [0.0, 0.0], [0.0, 0.0]],

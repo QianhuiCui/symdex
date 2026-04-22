@@ -61,8 +61,8 @@ class OfflineBuffer:
                 if self.use_pc:  # point cloud obs
                     pc = np.asarray(base["observations"]["point_cloud"], dtype=np.float32)
                     next_pc = np.asarray(base["next_observations"]["point_cloud"], dtype=np.float32)
-                    out["point_cloud"].append(pc)
-                    out["next_point_cloud"].append(next_pc)
+                    out["pc"].append(pc)
+                    out["next_pc"].append(next_pc)
                 
                 actions = np.asarray(base["actions"], dtype=np.float32)
                 rewards = np.asarray(base["rewards"], dtype=np.float32).reshape(-1, 1)
@@ -139,7 +139,7 @@ class OfflineBuffer:
         if self.use_pc:
             self.pc_dim = self.pc.shape[1:]
         
-    def normallize_states(self, eps = 1e-3):
+    def normalize_states(self, eps = 1e-3):
         mean = self.state.mean(axis=0, keepdims=True).astype(np.float32)
         std = (self.state.std(axis=0, keepdims=True) + eps).astype(np.float32)
         self.state = (self.state - mean) / std
