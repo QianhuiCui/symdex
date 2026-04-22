@@ -107,7 +107,6 @@ multi:
     #                   ["align_left_symmetry", "move_left_symmetry", "move_ori_left_symmetry", "cmd_success_left_symmetry", "success_bonus"]]
 
 symmetry:
-  symmetric_envs: False
   reset_symmetry:
     object_0:
       type: "rigid_object"

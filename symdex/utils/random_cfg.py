@@ -60,7 +60,7 @@ OBJECT: Dict[str, List[str]] = {
     "grasp": [
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_1/visual_model.usd",
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_2/visual_model.usd",
-        f"{symdex.LIB_PATH}/assets/objects/grasping/object_3/visual_model.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/grasping/object_3/visual_model.usd",
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_4/visual_model.usd",
         # f"{symdex.LIB_PATH}/assets/grasp/dog_coacd.usd",
         f"{symdex.LIB_PATH}/assets/objects/grasping/object_5/visual_model.usd",
@@ -92,7 +92,7 @@ OBJECT_CATEGORY: dict[str, str] = {
     "grasp": {
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_1/visual_model.usd": "fist",
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_2/visual_model.usd": "puppy",
-        f"{symdex.LIB_PATH}/assets/objects/grasping/object_3/visual_model.usd": "ox",
+        # f"{symdex.LIB_PATH}/assets/objects/grasping/object_3/visual_model.usd": "ox",
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_4/visual_model.usd": "dolphin",
         # f"{symdex.LIB_PATH}/assets/grasp/dog_coacd.usd": "dog",
         f"{symdex.LIB_PATH}/assets/objects/grasping/object_5/visual_model.usd": "helmet",

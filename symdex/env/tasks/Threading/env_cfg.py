@@ -600,63 +600,63 @@ class ThreadingRewardsCfg(BaseRewardsCfg):
                             )
     
     # symmetry
-    reaching_object_symmetry = RewTerm(func=object_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "object_id": 0,
-                                      "asset_cfg": SceneEntityCfg("robot_left")
-                                      }, 
-                                      weight=0.0)
-    object_lifting_symmetry = RewTerm(func=lift_distance,
-                             params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                             weight=0.0,
-                             )
-    cube_goal_tracking_symmetry = RewTerm(func=threading.object_goal_distance,
-                                   params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],},
-                                   weight=0.0,
-                                   )
-    cube_goal_orient_tracking_symmetry = RewTerm(func=object_goal_distance_orient,
-                                   params={"command_name": "cube_target_pos", 
-                                           "object_id": 0, 
-                                           "axis": "z", 
-                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
-                                           "pos_success_threshold": 0.1,
-                                           },
-                                   weight=0.0,
-                                   )
-    align_hand_to_pos_symmetry = RewTerm(func=align_palm_to_pos,
-                                   params={"link_name": ["palm_link"], "frame_name": "object_approach_frame_symmetry", "asset_cfg": SceneEntityCfg("robot")},
-                                   weight=0.0,
-                                   )
-    align_hand_to_quat_symmetry = RewTerm(func=align_palm_to_quat,
-                                   params={"link_name": ["palm_link"], "frame_name": "object_approach_frame_symmetry", "asset_cfg": SceneEntityCfg("robot")},
-                                   weight=0.0,
-                                   )
-    reaching_drill_symmetry = RewTerm(func=object_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "object_id": 1,
-                                      "asset_cfg": SceneEntityCfg("robot")
-                                      }, 
-                                      weight=0.0)
-    energy = RewTerm(func=energy_punishment,
-                                  weight=0.0,
-                                  params={"asset_cfg": SceneEntityCfg("robot"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
-                                                                                                  "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
-                                  )
-    energy_left = RewTerm(func=energy_punishment,
-                                  weight=0.0,
-                                  params={"asset_cfg": SceneEntityCfg("robot_left"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
-                                                                                                  "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
-                                  )
-    collision_to_table = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                                weight=0.0,
-                                )
-    collision_to_table_symmetry = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                                weight=0.0,
-                                )
+    # reaching_object_symmetry = RewTerm(func=object_robot_distance, 
+    #                           params={"weight": [1.0, 1.0, 1.0, 1.5], 
+    #                                   "link_name": ["if5", "mf5", "pf5", "th5"], 
+    #                                   "object_id": 0,
+    #                                   "asset_cfg": SceneEntityCfg("robot_left")
+    #                                   }, 
+    #                                   weight=0.0)
+    # object_lifting_symmetry = RewTerm(func=lift_distance,
+    #                          params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
+    #                          weight=0.0,
+    #                          )
+    # cube_goal_tracking_symmetry = RewTerm(func=threading.object_goal_distance,
+    #                                params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],},
+    #                                weight=0.0,
+    #                                )
+    # cube_goal_orient_tracking_symmetry = RewTerm(func=object_goal_distance_orient,
+    #                                params={"command_name": "cube_target_pos", 
+    #                                        "object_id": 0, 
+    #                                        "axis": "z", 
+    #                                        "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
+    #                                        "pos_success_threshold": 0.1,
+    #                                        },
+    #                                weight=0.0,
+    #                                )
+    # align_hand_to_pos_symmetry = RewTerm(func=align_palm_to_pos,
+    #                                params={"link_name": ["palm_link"], "frame_name": "object_approach_frame_symmetry", "asset_cfg": SceneEntityCfg("robot")},
+    #                                weight=0.0,
+    #                                )
+    # align_hand_to_quat_symmetry = RewTerm(func=align_palm_to_quat,
+    #                                params={"link_name": ["palm_link"], "frame_name": "object_approach_frame_symmetry", "asset_cfg": SceneEntityCfg("robot")},
+    #                                weight=0.0,
+    #                                )
+    # reaching_drill_symmetry = RewTerm(func=object_robot_distance, 
+    #                           params={"weight": [1.0, 1.0, 1.0, 1.5], 
+    #                                   "link_name": ["if5", "mf5", "pf5", "th5"], 
+    #                                   "object_id": 1,
+    #                                   "asset_cfg": SceneEntityCfg("robot")
+    #                                   }, 
+    #                                   weight=0.0)
+    # energy = RewTerm(func=energy_punishment,
+    #                               weight=0.0,
+    #                               params={"asset_cfg": SceneEntityCfg("robot"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
+    #                                                                                               "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
+    #                               )
+    # energy_left = RewTerm(func=energy_punishment,
+    #                               weight=0.0,
+    #                               params={"asset_cfg": SceneEntityCfg("robot_left"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
+    #                                                                                               "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
+    #                               )
+    # collision_to_table = RewTerm(func=collision_penalty,
+    #                             params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
+    #                             weight=0.0,
+    #                             )
+    # collision_to_table_symmetry = RewTerm(func=collision_penalty,
+    #                             params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
+    #                             weight=0.0,
+    #                             )
 
 
 @configclass
@@ -671,21 +671,22 @@ class ThreadingEnvCfg(BaseEnvCfg):
     rewards = ThreadingRewardsCfg()
     num_object = 2
     action_dim = 44 # arm + hand
-    action_scale: list = [1.0] * action_dim
-    # action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.015,
-    #                         0.03, 0.03, 0.03, 0.03,
-    #                         0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.015,
-    #                         0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
+    # action_scale: list = [1.0] * action_dim
+    action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03,
+                            0.03, 0.03, 0.03, 0.03,
+                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03,
+                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
 
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.viewer.eye = (-1.5, 0.0, 1.5)
+        # self.viewer.eye = (-1.5, 0.0, 1.5)
+        self.viewer.eye = (-0.5, 0.0, 1.0)

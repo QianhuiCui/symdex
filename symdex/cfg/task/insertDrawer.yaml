@@ -10,14 +10,15 @@ rew:
   object_goal_tracking: 50.0  #20.0
   object_in_drawer: 100.0
   reset_robot_joint_pos: 1.0
-  energy: 0.000001
-  collision_to_table: 0.000001
   # left
   reaching_handle: 0.01
   moving_drawer: 10
   moving_drawer_inside: 10
   success_bonus: 5000
+
+  energy: 0.000001
   energy_left: 0.000001
+  collision_to_table: 0.000001
   collision_to_drawer: 0.000001
 
 cam:

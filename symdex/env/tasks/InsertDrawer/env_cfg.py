@@ -557,33 +557,33 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
             self.enable_corruption = False
             self.concatenate_terms = True
 
-    # @configclass
-    # class PointCloudCfg(ObsGroup):
-    #     """Observations for point cloud group."""
+    @configclass
+    class PointCloudCfg(ObsGroup):
+        """Observations for point cloud group."""
 
-    #     # -- robot terms (order preserved)
-    #     point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-    #                                                     "wrist_cam_name": [], 
-    #                                                     "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.015, 0.5]],
-    #                                                     "max_points": 2048, 
-    #                                                     "downsample": "random",
-    #                                                     "add_noise": True})
-    #     # point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-    #     #                                                 "wrist_cam_name": [], 
-    #     #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.1], [0.015, 0.5]],
-    #     #                                                 "max_points": 2048, 
-    #     #                                                 "downsample": "random",
-    #     #                                                 "add_noise": True})
-    #     # point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-    #     #                                                 "wrist_cam_name": [], 
-    #     #                                                 "crop_range": [[-0.14, 0.4], [-0.0, 0.6], [0.015, 0.5]],
-    #     #                                                 "max_points": 2048, 
-    #     #                                                 "downsample": "random",
-    #     #                                                 "add_noise": True})
+        # -- robot terms (order preserved)
+        point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+                                                        "wrist_cam_name": [], 
+                                                        "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.015, 0.5]],
+                                                        "max_points": 2048, 
+                                                        "downsample": "random",
+                                                        "add_noise": True})
+        # point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+        #                                                 "wrist_cam_name": [], 
+        #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.1], [0.015, 0.5]],
+        #                                                 "max_points": 2048, 
+        #                                                 "downsample": "random",
+        #                                                 "add_noise": True})
+        # point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+        #                                                 "wrist_cam_name": [], 
+        #                                                 "crop_range": [[-0.14, 0.4], [-0.0, 0.6], [0.015, 0.5]],
+        #                                                 "max_points": 2048, 
+        #                                                 "downsample": "random",
+        #                                                 "add_noise": True})
 
-    #     def __post_init__(self):
-    #         self.enable_corruption = False
-    #         self.concatenate_terms = True
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
 
     # @configclass
     # class PolicyCfg(ObsGroup):
@@ -608,7 +608,7 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
     # observation groups
     # critic: CriticCfg = CriticCfg()
     vision: VisionCfg = VisionCfg()
-    # point_cloud: PointCloudCfg = PointCloudCfg()
+    point_cloud: PointCloudCfg = PointCloudCfg()
     policy: PolicyCfg = PolicyCfg()
 
 
@@ -721,15 +721,15 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
     action_dim = 44 # arm + hand
     # action_scale: list = [1.0] * action_dim
     action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03,
+                            0.05, 0.05, 0.05, 0.05, 
+                            0.05, 0.05, 0.05, 0.05, 
+                            0.05, 0.05, 0.05, 0.05,
+                            0.05, 0.05, 0.05, 0.05,
                             0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.015,
-                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
+                            0.05, 0.05, 0.05, 0.05, 
+                            0.05, 0.05, 0.05, 0.05, 
+                            0.05, 0.05, 0.05, 0.05,
+                            0.05, 0.05, 0.05, 0.05,]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
 
