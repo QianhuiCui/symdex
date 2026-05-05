@@ -650,7 +650,7 @@ class PickObjectTerminationsCfg(BaseTerminationsCfg):
     # )
     max_consecutive_success = DoneTerm(
         func=pick.max_consecutive_success,
-        params={"num_success": 10},
+        params={"num_success": 1},
     )
 
 

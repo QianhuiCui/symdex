@@ -23,9 +23,22 @@ def main(cfg: DictConfig):
     capture_keyboard_interrupt()
     cfg, env_cfg = preprocess_cfg(cfg)
     wandb_run = init_wandb(cfg)
+    env = gym.make(cfg.env_name, cfg=env_cfg)
+    env = VecEnvWrapper(env, rl_device=cfg.rl_device, clip_obs=50.0)
 
     replay_buffer = OfflineBuffer(device=cfg.device, use_vision=cfg.algo.observation.vision, use_pc=cfg.algo.observation.pc)
     replay_buffer.load_from_dir(cfg.algo.offline.data_dir, pattern=cfg.algo.offline.pattern)
+
+    # DEBUG 
+    action_stats = replay_buffer.action_stats()
+    print(f"[OfflineBuffer] action stats: {action_stats}")
+
+    # Auto max_action
+    # estimated_max_action = replay_buffer.estimate_max_action(quantile=0.99)
+    # print(f"[OfflineBuffer] estimated max_action (q=0.99): {estimated_max_action:.6f}")
+    max_action = env.unwrapped.action_space.high[0]
+    print(f"[Env] action_space high: {max_action:.6f}")
+
     if cfg.algo.normalize_states:
         state_mean, state_std = replay_buffer.normalize_states()
     else:
@@ -35,7 +48,9 @@ def main(cfg: DictConfig):
     policy = algo_class(
         state_dim = replay_buffer.state_dim,
         action_dim = replay_buffer.action_dim,
-		max_action = cfg.algo.offline.max_action,
+        max_action = max_action,
+		# max_action = cfg.algo.offline.max_action,
+        # max_action = estimated_max_action,
         device = cfg.device,
         use_vision = cfg.algo.observation.vision,
         use_pc = cfg.algo.observation.pc,
@@ -47,13 +62,11 @@ def main(cfg: DictConfig):
 		alpha=cfg.algo.alpha,
         actor_lr=cfg.algo.actor_lr,
         critic_lr=cfg.algo.critic_lr,
+        reward_scale=cfg.algo.reward_scale,
     )
     
     if cfg.algo.checkpoint.load_path is not None:
         policy.load(cfg.algo.checkpoint.load_path)
-
-    env = gym.make(cfg.env_name, cfg=env_cfg)
-    env = VecEnvWrapper(env, rl_device=cfg.rl_device, clip_obs=50.0)
 
     global_steps = 0
     success_max = float('-inf')
@@ -67,11 +80,14 @@ def main(cfg: DictConfig):
     
     for step in range(1, cfg.algo.max_train_steps + 1):
         global_steps = step
-        log_info = policy.train(replay_buffer, cfg.algo.batch_size)
+        log_diagnostics = step % cfg.algo.log_freq == 0
+        log_info = policy.train(replay_buffer, cfg.algo.batch_size, log_diagnostics=log_diagnostics)
 
         if step % cfg.algo.log_freq == 0:
             log_info["global_steps"] = global_steps
             log_info["dataset/size"] = replay_buffer.size
+            log_info["dataset/action_abs_p95"] = action_stats["abs_p95"]
+            log_info["dataset/action_abs_p99"] = action_stats["abs_p99"]
             if randomization_state is not None:
                 for param in randomization_state.keys():
                     log_info[f'Randomization/{param}_sigma'] = randomization_state[param]['sigma']

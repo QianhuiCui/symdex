@@ -92,6 +92,26 @@ class OfflineBuffer:
                 out[key] = None
         return out
     
+    def action_stats(self) -> dict:
+        abs_actions = np.abs(self.actions)
+        stats = {
+            "shape": tuple(self.actions.shape),
+            "min": float(self.actions.min()),
+            "max": float(self.actions.max()),
+            "mean": float(self.actions.mean()),
+            "std": float(self.actions.std()),
+            "abs_p95": float(np.quantile(abs_actions, 0.95)),
+            "abs_p99": float(np.quantile(abs_actions, 0.99)),
+            "abs_p999": float(np.quantile(abs_actions, 0.999)),
+        }
+        return stats
+    
+    def estimate_max_action(self, quantile: float = 0.99, min_value: float = 1e-6) -> float:
+        abs_actions = np.abs(self.actions).reshape(-1)
+        max_action = float(np.quantile(abs_actions, quantile))
+        max_action = max(max_action, min_value)
+        return max_action
+    
     def load_from_dir(self, root_dir: str, pattern: str = "*.h5"):
         file_paths = sorted(glob.glob(os.path.join(root_dir, pattern)))
         if len(file_paths) == 0:
