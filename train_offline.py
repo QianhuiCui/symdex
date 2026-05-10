@@ -25,6 +25,10 @@ def main(cfg: DictConfig):
     wandb_run = init_wandb(cfg)
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device, clip_obs=50.0)
+    # DEBUG
+    print("cfg.task.cam.resolution:", cfg.task.cam.resolution)
+    print("env_cfg camera width:", env_cfg.scene.cam_1.width)
+    print("env_cfg camera height:", env_cfg.scene.cam_1.height)
 
     replay_buffer = OfflineBuffer(device=cfg.device, use_vision=cfg.algo.observation.vision, use_pc=cfg.algo.observation.pc)
     replay_buffer.load_from_dir(cfg.algo.offline.data_dir, pattern=cfg.algo.offline.pattern)
@@ -36,8 +40,8 @@ def main(cfg: DictConfig):
     # Auto max_action
     # estimated_max_action = replay_buffer.estimate_max_action(quantile=0.99)
     # print(f"[OfflineBuffer] estimated max_action (q=0.99): {estimated_max_action:.6f}")
-    max_action = env.unwrapped.action_space.high[0]
-    print(f"[Env] action_space high: {max_action:.6f}")
+    # max_action = env.unwrapped.action_space.high
+    # print(f"[Env] action_space high: {max_action:.6f}")
 
     if cfg.algo.normalize_states:
         state_mean, state_std = replay_buffer.normalize_states()
@@ -48,8 +52,8 @@ def main(cfg: DictConfig):
     policy = algo_class(
         state_dim = replay_buffer.state_dim,
         action_dim = replay_buffer.action_dim,
-        max_action = max_action,
-		# max_action = cfg.algo.offline.max_action,
+        # max_action = max_action,
+		max_action = cfg.algo.offline.max_action,
         # max_action = estimated_max_action,
         device = cfg.device,
         use_vision = cfg.algo.observation.vision,

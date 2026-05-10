@@ -274,6 +274,7 @@ class TD3BC:
     def train(self, replay_buffer, batch_size, log_diagnostics=False):
         self.total_it += 1
         batch = replay_buffer.sample(batch_size)
+        actor_batch = replay_buffer.sample_success(batch_size)
 
         actions, not_done = batch['actions'], batch['not_done']
         rewards =  batch['rewards'] * self.reward_scale
@@ -285,6 +286,13 @@ class TD3BC:
         if 'pc' in batch:
             cur_obs['pc'] = batch['pc']
             nxt_obs['pc'] = batch['next_pc']
+        
+        actor_actions = actor_batch["actions"]
+        actor_obs = {"state": actor_batch["state"]}
+        if "vision" in actor_batch:
+            actor_obs["vision"] = actor_batch["vision"]
+        if "pc" in actor_batch:
+            actor_obs["pc"] = actor_batch["pc"]
 
         log_info = {}
 
@@ -296,13 +304,11 @@ class TD3BC:
                 log_info.update(self._tensor_stats("batch/reward", rewards))
                 log_info.update(self._tensor_stats("batch/action", actions))
                 log_info.update(self._tensor_stats("batch/state", cur_obs["state"]))
-
-                log_info["batch/not_done_mean"] = float(not_done.float().mean().item())
+                log_info.update(self._tensor_stats("batch/success_state", actor_obs["state"]))
                 log_info["batch/done_mean"] = float((1.0 - not_done.float()).mean().item())
 
                 action_abs = actions.detach().abs()
-                log_info["batch/dataset_action_saturation_095"] = float((action_abs > 0.95 * self.max_action).float().mean().item())
-                log_info["batch/dataset_action_saturation_099"] = float((action_abs > 0.99 * self.max_action).float().mean().item())
+                log_info["batch/action_out_of_range"] = float((action_abs > self.max_action).float().mean().item())
 
         # -------------------------
         # Critic target
@@ -317,19 +323,11 @@ class TD3BC:
             target_Q_min = torch.min(target_Q1, target_Q2)
             target_Q = rewards + not_done * self.discount * target_Q_min
 
-            log_info.update(self._tensor_stats("target/noise", noise))
-            log_info.update(self._tensor_stats("target/action_raw", nxt_actions_raw))
-            log_info.update(self._tensor_stats("target/action", nxt_actions))
-            log_info.update(self._tensor_stats("target/q1", target_Q1))
-            log_info.update(self._tensor_stats("target/q2", target_Q2))
-            log_info.update(self._tensor_stats("target/q_min", target_Q_min))
-            log_info.update(self._tensor_stats("target/bellman_q", target_Q))
-
-            log_info["target/q_gap_abs_mean"] = float((target_Q1 - target_Q2).abs().mean().item())
-
-            target_action_abs = nxt_actions.detach().abs()
-            log_info["target/action_saturation_095"] = float((target_action_abs > 0.95 * self.max_action).float().mean().item())
-            log_info["target/action_saturation_099"] = float((target_action_abs > 0.99 * self.max_action).float().mean().item())
+            if log_diagnostics:
+                log_info.update(self._tensor_stats("target/q", target_Q))
+                log_info["target/q_gap_abs_mean"] = float((target_Q1 - target_Q2).abs().mean().item())
+                target_action_abs = nxt_actions.detach().abs()
+                log_info["target/action_saturation_099"] = float((target_action_abs > 0.99 * self.max_action).float().mean().item())
 
         # -------------------------
         # Critic update
@@ -340,30 +338,20 @@ class TD3BC:
         critic_loss_q2 = F.mse_loss(current_Q2, target_Q)
         critic_loss = critic_loss_q1 + critic_loss_q2
 
-        with torch.no_grad():
-            td_error1 = current_Q1 - target_Q
-            td_error2 = current_Q2 - target_Q
-            q_gap = current_Q1 - current_Q2
+        if log_diagnostics:
+            with torch.no_grad():
+                q_gap = current_Q1 - current_Q2
 
-            log_info["critic/loss_total"] = float(critic_loss.item())
-            log_info["critic/loss_q1"] = float(critic_loss_q1.item())
-            log_info["critic/loss_q2"] = float(critic_loss_q2.item())
-
-            log_info.update(self._tensor_stats("critic/current_Q1_dataset", current_Q1))
-            log_info.update(self._tensor_stats("critic/current_Q2_dataset", current_Q2))
-            log_info.update(self._tensor_stats("td/error1", td_error1))
-            log_info.update(self._tensor_stats("td/error2", td_error2))
-            log_info.update(self._tensor_stats("critic/q1_q2_gap", q_gap))
-
-            log_info["td/td_error1_abs_mean"] = float(td_error1.abs().mean().item())
-            log_info["td/td_error2_abs_mean"] = float(td_error2.abs().mean().item())
-            log_info["critic/q1_q2_gap_abs_mean"] = float(q_gap.abs().mean().item())
+                log_info["critic/loss_total"] = float(critic_loss.item())
+                log_info["critic/loss_q1"] = float(critic_loss_q1.item())
+                log_info["critic/loss_q2"] = float(critic_loss_q2.item())
+                log_info["critic/q_gap_abs_mean"] = float(q_gap.abs().mean().item())
 
         self.critic_optimizer.zero_grad(set_to_none=True)
         critic_loss.backward()
-        log_info["optim/critic_grad_norm"] = self._grad_norm(self.critic)
+        if log_diagnostics:
+            log_info["optim/critic_grad_norm"] = self._grad_norm(self.critic)
         self.critic_optimizer.step()
-        log_info["optim/critic_param_norm"] = self._param_norm(self.critic)
 
         # -------------------------
         # Delayed actor update
@@ -377,48 +365,41 @@ class TD3BC:
             q_abs_mean = Q_pi.abs().mean().detach()
             lmbda = self.alpha / (q_abs_mean + 1e-6)
 
-            bc_loss = F.mse_loss(pi, actions)
+            pi_bc = self.actor(actor_obs)  # only for bc
+            bc_loss = F.mse_loss(pi_bc, actor_actions)
             actor_q_loss = -lmbda * Q_pi.mean()
             actor_loss = actor_q_loss + bc_loss
 
             self.actor_optimizer.zero_grad(set_to_none=True)
             actor_loss.backward()
-            log_info["optim/actor_grad_norm"] = self._grad_norm(self.actor)
+            if log_diagnostics:
+                log_info["optim/actor_grad_norm"] = self._grad_norm(self.actor)
             self.actor_optimizer.step()
 
             for p in self.critic.parameters():
                 p.requires_grad_(True)
-            log_info["optim/actor_param_norm"] = self._param_norm(self.actor)
 
             # -------------------------
             # Actor / policy diagnostics
             # -------------------------
-            with torch.no_grad():
-                pi_after = self.actor(cur_obs)  # after actor update
-                Q_pi_after = self.critic.Q1(cur_obs, pi_after)
-                Q_data_after = self.critic.Q1(cur_obs, actions)
+            if log_diagnostics:
+                with torch.no_grad():
+                    pi_after = self.actor(actor_obs)  # after actor update
+                    Q_pi_after = self.critic.Q1(actor_obs, pi_after)
+                    Q_data_after = self.critic.Q1(actor_obs, actor_actions)
 
-                action_error = pi_after - actions
+                    log_info["actor/loss"] = float(actor_loss.item())
+                    log_info["actor/q_loss"] = float(actor_q_loss.item())
+                    log_info["actor/bc_loss"] = float(bc_loss.item())
+                    log_info["actor/q_pi_mean"] = float(Q_pi.mean().item())
+                    log_info["actor/lambda"] = float(lmbda.item())
+                    
+                    log_info.update(self._tensor_stats("q_compare/policy_action", Q_pi_after))
+                    log_info.update(self._tensor_stats("q_compare/dataset_action", Q_data_after))
 
-                log_info["actor/loss_total_before_update"] = float(actor_loss.item())
-                log_info["actor/q_loss_before_update"] = float(actor_q_loss.item())
-                log_info["actor/bc_loss_before_update"] = float(bc_loss.item())
-                log_info["actor/q_pi_mean_before_update"] = float(Q_pi.mean().item())
-                log_info["actor/q_pi_abs_mean_before_update"] = float(q_abs_mean.item())
-                log_info["actor/lambda"] = float(lmbda.item())
-
-                log_info.update(self._tensor_stats("policy_after/action", pi_after))
-                log_info.update(self._tensor_stats("policy_after/action_error", action_error))
-                log_info.update(self._tensor_stats("q_compare/policy_action", Q_pi_after))
-                log_info.update(self._tensor_stats("q_compare/dataset_action", Q_data_after))
-
-                log_info["policy_after/action_mse"] = float(F.mse_loss(pi_after, actions).item())
-                log_info["policy_after/action_l1"] = float(F.l1_loss(pi_after, actions).item())
-                log_info["q_compare/policy_minus_dataset"] = float((Q_pi_after - Q_data_after).mean().item())
-
-                policy_abs = pi_after.detach().abs()
-                log_info["policy_after/action_saturation_095"] = float((policy_abs > 0.95 * self.max_action).float().mean().item())
-                log_info["policy_after/action_saturation_099"] = float((policy_abs > 0.99 * self.max_action).float().mean().item())
+                    log_info["policy/action_mse"] = float(F.mse_loss(pi_after, actor_actions).item())
+                    log_info.update(self._tensor_stats("policy/action", pi_after))   # compare with eval/action)abs_mean
+                    log_info["q_compare/policy_minus_dataset"] = float((Q_pi_after - Q_data_after).mean().item())
 
             # -------------------------
             # Target network update
@@ -461,10 +442,10 @@ class TD3BC:
         x = x.detach()
         return {
             f"{name}/mean": float(x.mean().item()),
-            f"{name}/std": float(x.std(unbiased=False).item()),
-            f"{name}/min": float(x.min().item()),
-            f"{name}/max": float(x.max().item()),
-            f"{name}/abs_mean": float(x.abs().mean().item()),
+            # f"{name}/std": float(x.std(unbiased=False).item()),
+            # f"{name}/min": float(x.min().item()),
+            # f"{name}/max": float(x.max().item()),
+            # f"{name}/abs_mean": float(x.abs().mean().item()),
             f"{name}/abs_max": float(x.abs().max().item()),
         }
 
@@ -472,14 +453,14 @@ class TD3BC:
         total_sq = 0.0
         for p in module.parameters():
             if p.grad is not None:
-                param_norm = p.grad.detach().data.norm(2).item()
+                param_norm = p.grad.detach().norm(2).item()
                 total_sq += param_norm ** 2
         return float(total_sq ** 0.5)
 
-    def _param_norm(self, module: nn.Module) -> float:
-        total_sq = 0.0
-        with torch.no_grad():
-            for p in module.parameters():
-                param_norm = p.detach().data.norm(2).item()
-                total_sq += param_norm ** 2
-        return float(total_sq ** 0.5)
+    # def _param_norm(self, module: nn.Module) -> float:
+    #     total_sq = 0.0
+    #     with torch.no_grad():
+    #         for p in module.parameters():
+    #             param_norm = p.detach().data.norm(2).item()
+    #             total_sq += param_norm ** 2
+    #     return float(total_sq ** 0.5)

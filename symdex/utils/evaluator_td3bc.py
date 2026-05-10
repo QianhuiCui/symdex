@@ -35,6 +35,13 @@ class EvaluatorTD3BC:
                 batch["vision"] = obs["vision"]
             if getattr(self.cfg.algo.observation, "pc", False):
                 batch["pc"] = obs["point_cloud"]
+                
+                if not hasattr(self, "_printed_pc_stats"):
+                    self._printed_pc_stats = True
+                    print("[Eval] pc shape:", batch["pc"].shape)
+                    print("[Eval] pc min/max:", batch["pc"].min().item(), batch["pc"].max().item())
+                    print("[Eval] pc mean/std:", batch["pc"].mean().item(), batch["pc"].std().item())
+                    print("[Eval] pc abs max:", batch["pc"].abs().max().item())
 
             return batch
         
@@ -57,12 +64,16 @@ class EvaluatorTD3BC:
         action_mean_list = []
         
         obs, _ = self.env.reset()
-        last_info = info
+        # last_info = None
 
         for _ in range(max_step):
             batch = self._build_policy_input(obs)
             action = policy.select_action(batch)
+            action_abs_list.append(float(action.detach().abs().mean().item()))
+            action_mean_list.append(float(action.detach().mean().item()))
+
             next_obs, reward, done, info = self.env.step(action)
+            last_info = info
 
             current_returns += reward
             current_lengths += 1
@@ -125,7 +136,7 @@ class EvaluatorTD3BC:
             "eval/episode_length": step_mean,
             "eval/success_rate": success_mean,
             "eval/success_std": success_std,
-            "eval/num_episodes": len(return_list),
+            # "eval/num_episodes": len(return_list),
             "eval/action_abs_mean": float(np.mean(action_abs_list)) if len(action_abs_list) > 0 else 0.0,
             "eval/action_mean": float(np.mean(action_mean_list)) if len(action_mean_list) > 0 else 0.0,
         }

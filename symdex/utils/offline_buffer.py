@@ -22,11 +22,27 @@ class OfflineBuffer:
         self.rewards = None
         self.not_done = None
 
+        self.is_success = None
+        self.success_idx = None
+        self.failed_idx = None
+
         self.size = 0
         self.state_dim = None
         self.action_dim = None
         self.vision_dim = None
         self.pc_dim = None
+    
+    def _infer_success_label(self, file_path: str) -> bool:
+        path = file_path.lower()
+        parent = os.path.basename(os.path.dirname(path)).lower()
+        name = os.path.basename(path).lower()
+
+        if "fail" in parent or "fail" in name:
+            return False
+        if "success" in parent or "success" in name:
+            return True
+        # default to success
+        return True
     
     def _load_single_h5(self, file_path: str):
         out = {
@@ -93,13 +109,13 @@ class OfflineBuffer:
         return out
     
     def action_stats(self) -> dict:
-        abs_actions = np.abs(self.actions)
+        abs_actions = np.abs(self.actions_raw).reshape(-1)
         stats = {
-            "shape": tuple(self.actions.shape),
-            "min": float(self.actions.min()),
-            "max": float(self.actions.max()),
-            "mean": float(self.actions.mean()),
-            "std": float(self.actions.std()),
+            "shape": tuple(self.actions_raw.shape),
+            "min": float(self.actions_raw.min()),
+            "max": float(self.actions_raw.max()),
+            "mean": float(self.actions_raw.mean()),
+            "std": float(self.actions_raw.std()),
             "abs_p95": float(np.quantile(abs_actions, 0.95)),
             "abs_p99": float(np.quantile(abs_actions, 0.99)),
             "abs_p999": float(np.quantile(abs_actions, 0.999)),
@@ -128,9 +144,14 @@ class OfflineBuffer:
             "rewards": [],
             "not_done": []
         }
+        success_flags = []
 
         for path in file_paths:
             data = self._load_single_h5(path)
+            num_steps = data["actions"].shape[0]
+            is_success_file = self._infer_success_label(path)
+            success_flags.append(np.full((num_steps,), is_success_file, dtype=np.bool_))
+
             for key in all_data:
                 if data[key] is not None:
                     all_data[key].append(data[key])
@@ -147,9 +168,16 @@ class OfflineBuffer:
         self.next_vision = all_data["next_vision"]
         self.pc = all_data["pc"]
         self.next_pc = all_data["next_pc"]
-        self.actions = all_data["actions"]
+
+        self.actions_raw = all_data["actions"]
+        self.actions = np.clip(all_data["actions"], -1.0, 1.0).astype(np.float32)
+
         self.rewards = all_data["rewards"]
         self.not_done = all_data["not_done"]
+
+        self.is_success = np.concatenate(success_flags, axis=0)
+        self.success_idx = np.where(self.is_success)[0]
+        self.failed_idx = np.where(~self.is_success)[0]
 
         self.size = self.actions.shape[0]
         self.state_dim = self.state.shape[1]
@@ -158,6 +186,13 @@ class OfflineBuffer:
             self.vision_dim = self.vision.shape[1:]
         if self.use_pc:
             self.pc_dim = self.pc.shape[1:]
+            print("[OfflineBuffer] pc shape:", self.pc.shape)
+            print("[OfflineBuffer] pc min/max:", self.pc.min(), self.pc.max())
+            print("[OfflineBuffer] pc mean/std:", self.pc.mean(), self.pc.std())
+            print("[OfflineBuffer] pc abs max:", np.abs(self.pc).max())
+
+        print(f"[OfflineBuffer] loaded {self.size} transitions | "
+              f"success={len(self.success_idx)} | failed={len(self.failed_idx)}")
         
     def normalize_states(self, eps = 1e-3):
         mean = self.state.mean(axis=0, keepdims=True).astype(np.float32)
@@ -166,14 +201,60 @@ class OfflineBuffer:
         self.next_state = (self.next_state - mean) / std
         return mean, std
     
+    # def sample(self, batch_size):
+    #     idx = np.random.randint(0, self.size, size=batch_size)
+    #     batch = {
+    #         "state": torch.as_tensor(self.state[idx], dtype=torch.float32, device=self.device),
+    #         "next_state": torch.as_tensor(self.next_state[idx], dtype=torch.float32, device=self.device),
+    #         "actions": torch.as_tensor(self.actions[idx], dtype=torch.float32, device=self.device),
+    #         "rewards": torch.as_tensor(self.rewards[idx], dtype=torch.float32, device=self.device),
+    #         "not_done": torch.as_tensor(self.not_done[idx], dtype=torch.float32, device=self.device)
+    #     }
+
+    #     if self.use_vision:
+    #         vision = torch.as_tensor(self.vision[idx], dtype=torch.float32, device=self.device) / 255.0
+    #         next_vision = torch.as_tensor(self.next_vision[idx], dtype=torch.float32, device=self.device) / 255.0
+    #         vision = vision.permute(0, 1, 4, 2, 3)  # (B, V, H, W, C) -> (B, V, C, H, W)
+    #         next_vision = next_vision.permute(0, 1, 4, 2, 3)
+    #         batch["vision"] = vision
+    #         batch["next_vision"] = next_vision
+    #     if self.use_pc:
+    #         pc = torch.as_tensor(self.pc[idx], dtype=torch.float32, device=self.device)
+    #         next_pc = torch.as_tensor(self.next_pc[idx], dtype=torch.float32, device=self.device)
+    #         batch["pc"] = pc
+    #         batch["next_pc"] = next_pc
+        
+    #     return batch
+    
     def sample(self, batch_size):
-        idx = np.random.randint(0, self.size, size=batch_size)
+        # critic: 80% success + 20% failed
+        if self.success_idx is not None and self.failed_idx is not None and len(self.success_idx) > 0 and len(self.failed_idx) > 0:
+            failed_bs = max(1, int(batch_size * 0.2))
+            success_bs = batch_size - failed_bs
+            success_sample = np.random.choice(self.success_idx, size=success_bs, replace=True)
+            failed_sample = np.random.choice(self.failed_idx, size=failed_bs, replace=True)
+            idx = np.concatenate([success_sample, failed_sample], axis=0)
+            np.random.shuffle(idx)
+        else:
+            idx = np.random.randint(0, self.size, size=batch_size)
+        return self._make_batch(idx)
+
+
+    def sample_success(self, batch_size):
+        # actor BC: only success
+        if self.success_idx is None or len(self.success_idx) == 0:
+            idx = np.random.randint(0, self.size, size=batch_size)
+        else:
+            idx = np.random.choice(self.success_idx, size=batch_size, replace=True)
+        return self._make_batch(idx)
+    
+    def _make_batch(self, idx):
         batch = {
             "state": torch.as_tensor(self.state[idx], dtype=torch.float32, device=self.device),
             "next_state": torch.as_tensor(self.next_state[idx], dtype=torch.float32, device=self.device),
             "actions": torch.as_tensor(self.actions[idx], dtype=torch.float32, device=self.device),
             "rewards": torch.as_tensor(self.rewards[idx], dtype=torch.float32, device=self.device),
-            "not_done": torch.as_tensor(self.not_done[idx], dtype=torch.float32, device=self.device)
+            "not_done": torch.as_tensor(self.not_done[idx], dtype=torch.float32, device=self.device),
         }
 
         if self.use_vision:
@@ -188,5 +269,5 @@ class OfflineBuffer:
             next_pc = torch.as_tensor(self.next_pc[idx], dtype=torch.float32, device=self.device)
             batch["pc"] = pc
             batch["next_pc"] = next_pc
-        
+
         return batch
