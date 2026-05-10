@@ -46,27 +46,101 @@ class VisionEncoder(nn.Module):
         return features
 
 
+# class PCEncoder(nn.Module):
+#     def __init__(self, pc_dim, out_dim=256):
+#         super().__init__()
+#         self.net = nn.Sequential(
+#             nn.Linear(pc_dim, 64),
+#             nn.ReLU(),
+#             nn.Linear(64, 128),
+#             nn.ReLU(),
+#             nn.Linear(128, 256),
+#             nn.ReLU(),
+#         )
+#         self.fc = nn.Sequential(
+#             nn.Linear(256, out_dim),
+#             nn.ReLU(),
+#         )
+    
+#     def forward(self, pc: torch.Tensor) -> torch.Tensor:
+#         features = self.net(pc)
+#         features = features.max(dim=1).values
+#         features = self.fc(features)
+#         return features
+
+
+class PointNetPCEncoder(nn.Module):
+    def __init__(self, in_dim=3, out_dim=128):
+        super().__init__()
+        self.point_mlp = nn.Sequential(
+            nn.Linear(in_dim * 2, 64),
+            nn.LayerNorm(64),
+            nn.ReLU(),
+            nn.Linear(64, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Linear(128, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+        )
+        # max pool + mean pool + center + radius
+        self.fc = nn.Sequential(
+            nn.Linear(256 * 2 + 4, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+
+            nn.Linear(256, out_dim),
+            nn.LayerNorm(out_dim),
+            nn.ReLU(),
+        )
+    
+    def forward(self, pc_xyz: torch.Tensor) -> torch.Tensor:
+        # pc_xyz: (B, N, 3), return: (B, out_dim)
+        pc_xyz = torch.nan_to_num(pc_xyz, nan=0.0, posinf=0.0, neginf=0.0)
+        valid = pc_xyz.abs().sum(dim=-1) > 1e-8  # (B, N)
+        valid_f = valid.float().unsqueeze(-1)  # (B, N, 1)
+        count = valid_f.sum(dim=1, keepdim=True).clamp_min(1.0)  # (B, 1, 1)
+
+        center = (pc_xyz * valid_f).sum(dim=1, keepdim=True) / count  # (B, 1, 3)
+        pc_centered = pc_xyz - center  # relative position
+        # keep shape and position
+        radius = (pc_centered.norm(dim=-1, keepdim=True) * valid_f).amax(dim=1, keepdim=True).clamp_min(1e-6)  # (B, 1, 1)
+        pc_norm = pc_centered / radius
+
+        # raw xyz provides abs position info; norm xyz provides local geometry info
+        x = torch.cat([pc_xyz, pc_norm], dim=-1)  # (B, N, 6)
+        h = self.point_mlp(x)  # (B, N, 256)
+        # masked max pooling
+        h_max = h.masked_fill(~valid.unsqueeze(-1), -1e9).max(dim=1).values
+        # masked mean pooling
+        h_mean = h.masked_fill(~valid.unsqueeze(-1), 0.0).sum(dim=1) / count.squeeze(1)
+        # center: (B, 3), radius: (B, 1)
+        geom = torch.cat([center.squeeze(1), radius.squeeze(1)], dim=-1)
+        return self.fc(torch.cat([h_max, h_mean, geom], dim=-1))
+
+
 class PCEncoder(nn.Module):
     def __init__(self, pc_dim, out_dim=256):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(pc_dim, 64),
+        self.right_encoder = PointNetPCEncoder(in_dim=3, out_dim=128)
+        self.left_encoder = PointNetPCEncoder(in_dim=3, out_dim=128)
+        self.fusion = nn.Sequential(
+            nn.Linear(128 * 2, 256),
+            nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Linear(64, 128),
-            nn.ReLU(),
-            nn.Linear(128, 256),
-            nn.ReLU(),
-        )
-        self.fc = nn.Sequential(
             nn.Linear(256, out_dim),
+            nn.LayerNorm(out_dim),
             nn.ReLU(),
         )
     
     def forward(self, pc: torch.Tensor) -> torch.Tensor:
-        features = self.net(pc)
-        features = features.max(dim=1).values
-        features = self.fc(features)
-        return features
+        pc_right = pc[..., :3]
+        pc_left = pc[..., 3: 6]
+
+        feat_right = self.right_encoder(pc_right)
+        feat_left = self.left_encoder(pc_left)
+
+        return self.fusion(torch.cat([feat_right, feat_left], dim=-1))
 
 
 class MultiModalEncoder(nn.Module):
