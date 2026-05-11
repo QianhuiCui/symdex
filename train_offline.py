@@ -26,16 +26,16 @@ def main(cfg: DictConfig):
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device, clip_obs=50.0)
     # DEBUG
-    print("cfg.task.cam.resolution:", cfg.task.cam.resolution)
-    print("env_cfg camera width:", env_cfg.scene.cam_1.width)
-    print("env_cfg camera height:", env_cfg.scene.cam_1.height)
+    # print("cfg.task.cam.resolution:", cfg.task.cam.resolution)
+    # print("env_cfg camera width:", env_cfg.scene.cam_1.width)
+    # print("env_cfg camera height:", env_cfg.scene.cam_1.height)
 
     replay_buffer = OfflineBuffer(device=cfg.device, use_vision=cfg.algo.observation.vision, use_pc=cfg.algo.observation.pc)
     replay_buffer.load_from_dir(cfg.algo.offline.data_dir, pattern=cfg.algo.offline.pattern)
 
     # DEBUG 
-    action_stats = replay_buffer.action_stats()
-    print(f"[OfflineBuffer] action stats: {action_stats}")
+    # action_stats = replay_buffer.action_stats()
+    # print(f"[OfflineBuffer] action stats: {action_stats}")
 
     # Auto max_action
     # estimated_max_action = replay_buffer.estimate_max_action(quantile=0.99)
@@ -90,8 +90,8 @@ def main(cfg: DictConfig):
         if step % cfg.algo.log_freq == 0:
             log_info["global_steps"] = global_steps
             log_info["dataset/size"] = replay_buffer.size
-            log_info["dataset/action_abs_p95"] = action_stats["abs_p95"]
-            log_info["dataset/action_abs_p99"] = action_stats["abs_p99"]
+            # log_info["dataset/action_abs_p95"] = action_stats["abs_p95"]
+            # log_info["dataset/action_abs_p99"] = action_stats["abs_p99"]
             if randomization_state is not None:
                 for param in randomization_state.keys():
                     log_info[f'Randomization/{param}_sigma'] = randomization_state[param]['sigma']
@@ -113,8 +113,16 @@ def main(cfg: DictConfig):
         
         if evaluator.check_if_should_stop(global_steps):
             break
-    
-    policy.save(f"{wandb_run.dir}/model_final.pth")
+
+    policy.save(f"{wandb_run.dir}/model_latest.pth")
+    print(f"[INFO] Saved latest model to {wandb_run.dir}/model_latest.pth")
+    # policy.save(f"{wandb_run.dir}/model_final.pth")
+    if state_mean is not None and state_std is not None:
+        torch.save({
+            "state_mean": state_mean,
+            "state_std": state_std,
+            },f"{wandb_run.dir}/state_norm.pth",)
+    OmegaConf.save(cfg, f"{wandb_run.dir}/resolved_cfg.yaml")
 
 
 if __name__ == '__main__':

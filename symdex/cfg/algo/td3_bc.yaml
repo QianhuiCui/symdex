@@ -11,12 +11,12 @@ lambda_entropy: 0.0
 
 discount: 0.99
 tau: 0.005
-policy_noise: 0.1
-noise_clip: 0.2
+policy_noise: 0.0  # 0.1
+noise_clip: 0.0  # 0.2
 policy_freq: 2
-alpha: 2.5
+alpha: 0.0  # 2.5
 
-batch_size: 512
+batch_size: 1024
 max_train_steps: 300000
 # save_freq: 50000
 normalize_states: True
@@ -29,8 +29,8 @@ observation:
 
 offline:
   data_dir: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/teleop_logs/PickObjectEnv-v0_success"
-  pattern: "*.h5"  # "PickObjectEnv-v0_*/*.h5"
-  # max_action: 2.0
+  pattern: "*.h5"  # "*.h5"  # "PickObjectEnv-v0_*/*.h5"
+  max_action: 1.0
 
 checkpoint:
   load_path: null

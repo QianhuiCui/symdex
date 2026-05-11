@@ -188,7 +188,10 @@ class BaseEnv(ManagerBasedRLEnv):
         # update last action inferred from the policy. this is different from the last action used in IsaacLab action manager
         self.last_action = action.clone()
         # scale the action
-        action = action * self._scale
+        # action = action * self._scale
+        # super().step(action)
+        self.last_scaled_action = action * self._scale
+        action = self.last_scaled_action
         super().step(action)
 
         self.extras['success'] = self.success_tracker
@@ -385,6 +388,10 @@ class BaseEnv(ManagerBasedRLEnv):
         for obj_id in range(self.num_object):
             spawn_cfg = getattr(self.cfg.scene, f"object_{obj_id}").spawn
             prims = [stage.GetPrimAtPath(f"/World/envs/env_{e_id}/Object_{obj_id}") for e_id in env_id_list]
+            # ---- safe defaults ----
+            object_label = [getattr(spawn_cfg, "usd_path", f"object_{obj_id}")] * len(prims)
+            color_label = ["unknown"] * len(prims)
+            description = ["unknown"] * len(prims)
             # get object category
             if getattr(spawn_cfg, "obj_label", False):
                 object_label = get_object_label(spawn_cfg.usd_path, prims)
