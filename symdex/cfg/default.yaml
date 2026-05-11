@@ -24,5 +24,13 @@ artifact_critic: null
 save_model: False
 
 logger: False
-max_episodes: 10
+max_episodes: 10  # for teleop data collection & visualization
 dataset_path: null  # path to dataset h5 file
+
+replay:
+  show_vision: False
+  show_pc: False
+  point_size: 2.0
+  compare_policy: False
+  max_steps: -1
+  vision_scale: 4
