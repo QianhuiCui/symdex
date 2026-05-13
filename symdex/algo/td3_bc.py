@@ -333,9 +333,8 @@ class TD3BC:
             if log_diagnostics:
                 log_info.update(self._tensor_stats("target/q", target_Q))
                 log_info["target/q_gap_abs_mean"] = float((target_Q1 - target_Q2).abs().mean().item())
-                log_info["target/action_saturation_099"] = float((nxt_actions.detach().abs() > 0.99 * self.max_action).float().mean().item())
                 log_info.update(self._action_group_stats("target/action_raw", nxt_actions_raw))
-                log_info.update(self._action_group_stats("target/action_noisy", nxt_actions))
+                # log_info.update(self._action_group_stats("target/action_noisy", nxt_actions))
 
         # -------------------------
         # Critic update
@@ -405,11 +404,11 @@ class TD3BC:
                     log_info.update(self._tensor_stats("q_compare/policy_action", Q_pi_after))
                     log_info.update(self._tensor_stats("q_compare/dataset_action", Q_data_after))
 
-                    log_info["policy/action_mse"] = float(F.mse_loss(pi_after, actor_actions).item())
+                    # log_info["policy/action_mse"] = float(F.mse_loss(pi_after, actor_actions).item())
                     # log_info.update(self._tensor_stats("policy/action", pi_after))   # compare with eval/action)abs_mean
                     log_info["q_compare/policy_minus_dataset"] = float((Q_pi_after - Q_data_after).mean().item())
                     log_info.update(self._action_group_stats("policy/action", pi_after))
-                    log_info.update(self._action_group_stats("dataset/success_action", actor_actions))
+                    # log_info.update(self._action_group_stats("dataset/success_action", actor_actions))
                     log_info.update(self._action_group_mse("policy_vs_success", pi_after, actor_actions))
 
             # -------------------------
@@ -465,7 +464,7 @@ class TD3BC:
         out = {
             f"{prefix}/mean": float(pc.mean().item()),
             f"{prefix}/std": float(pc.std(unbiased=False).item()),
-            f"{prefix}/abs_max": float(pc.abs().max().item()),
+            # f"{prefix}/abs_max": float(pc.abs().max().item()),s
         }
 
         right = pc[..., :3]
@@ -479,10 +478,10 @@ class TD3BC:
         out[f"{prefix}/left_valid_ratio"] = float(left_valid.mean().item())
         out[f"{prefix}/right_empty_ratio"] = float((right_count == 0).float().mean().item())
         out[f"{prefix}/left_empty_ratio"] = float((left_count == 0).float().mean().item())
-        out[f"{prefix}/right_valid_points_mean"] = float(right_count.mean().item())
-        out[f"{prefix}/left_valid_points_mean"] = float(left_count.mean().item())
-        out[f"{prefix}/right_abs_max"] = float(right.abs().max().item())
-        out[f"{prefix}/left_abs_max"] = float(left.abs().max().item())
+        # out[f"{prefix}/right_valid_points_mean"] = float(right_count.mean().item())
+        # out[f"{prefix}/left_valid_points_mean"] = float(left_count.mean().item())
+        # out[f"{prefix}/right_abs_max"] = float(right.abs().max().item())
+        # out[f"{prefix}/left_abs_max"] = float(left.abs().max().item())
         return out
     
     def _action_group_stats(self, prefix: str, action: torch.Tensor) -> dict:
@@ -523,10 +522,10 @@ class TD3BC:
 
         for name, (p, t) in groups.items():
             out[f"{prefix}/{name}_mse"] = float(F.mse_loss(p, t).item())
-            out[f"{prefix}/{name}_mae"] = float(F.l1_loss(p, t).item())
+            # out[f"{prefix}/{name}_mae"] = float(F.l1_loss(p, t).item())
 
         out[f"{prefix}/all_mse"] = float(F.mse_loss(pred, target).item())
-        out[f"{prefix}/all_mae"] = float(F.l1_loss(pred, target).item())
+        # out[f"{prefix}/all_mae"] = float(F.l1_loss(pred, target).item())
         return out
 
     def _grad_norm(self, module: nn.Module) -> float:

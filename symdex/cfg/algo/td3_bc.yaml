@@ -6,7 +6,7 @@ name: "TD3BC"
 actor_lr: 1e-4
 critic_lr: 1e-4
 log_freq: 100
-eval_freq: 2000
+eval_freq: 1000
 lambda_entropy: 0.0 
 
 discount: 0.99
@@ -16,8 +16,8 @@ noise_clip: 0.0  # 0.2
 policy_freq: 2
 alpha: 0.0  # 2.5
 
-batch_size: 1024
-max_train_steps: 300000
+batch_size: 512
+max_train_steps: 100000
 # save_freq: 50000
 normalize_states: True
 

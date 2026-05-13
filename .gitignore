@@ -3,4 +3,5 @@ __pycache__
 *.egg-info
 outputs/
 teleop_logs/
+traj_logs/
 *.parquet

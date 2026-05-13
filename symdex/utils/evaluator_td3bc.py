@@ -249,15 +249,15 @@ class EvaluatorTD3BC:
 
         return_dict = {
             "eval/return": return_mean,
-            "eval/return_std": return_std,
-            "eval/return_min": return_min,
-            "eval/return_max": return_max,
+            # "eval/return_std": return_std,
+            # "eval/return_min": return_min,
+            # "eval/return_max": return_max,
             "eval/episode_length": step_mean,
             "eval/success_rate": success_mean,
-            "eval/success_std": success_std,
-            "eval/action_abs_mean": float(np.mean(action_abs_list)) if len(action_abs_list) > 0 else 0.0,
-            "eval/action_mean": float(np.mean(action_mean_list)) if len(action_mean_list) > 0 else 0.0,
-            "eval/action_saturation_099": float(np.mean(action_sat_list)) if len(action_sat_list) > 0 else 0.0,
+            # "eval/success_std": success_std,
+            # "eval/action_abs_mean": float(np.mean(action_abs_list)) if len(action_abs_list) > 0 else 0.0,
+            # "eval/action_mean": float(np.mean(action_mean_list)) if len(action_mean_list) > 0 else 0.0,
+            # "eval/action_saturation_099": float(np.mean(action_sat_list)) if len(action_sat_list) > 0 else 0.0,
         }
 
         # -------------------------
@@ -265,15 +265,15 @@ class EvaluatorTD3BC:
         # -------------------------
         if len(right_arm_abs_list) > 0:
             return_dict.update({
-                "eval/action_abs/right_arm": float(np.mean(right_arm_abs_list)),
-                "eval/action_abs/right_hand": float(np.mean(right_hand_abs_list)),
-                "eval/action_abs/left_arm": float(np.mean(left_arm_abs_list)),
-                "eval/action_abs/left_hand": float(np.mean(left_hand_abs_list)),
+                "eval_action/abs/right_arm": float(np.mean(right_arm_abs_list)),
+                "eval_action/abs/right_hand": float(np.mean(right_hand_abs_list)),
+                "eval_action/abs/left_arm": float(np.mean(left_arm_abs_list)),
+                "eval_action/abs/left_hand": float(np.mean(left_hand_abs_list)),
 
-                "eval/action_sat/right_arm": float(np.mean(right_arm_sat_list)),
-                "eval/action_sat/right_hand": float(np.mean(right_hand_sat_list)),
-                "eval/action_sat/left_arm": float(np.mean(left_arm_sat_list)),
-                "eval/action_sat/left_hand": float(np.mean(left_hand_sat_list)),
+                "eval_action/sat/right_arm": float(np.mean(right_arm_sat_list)),
+                "eval_action/sat/right_hand": float(np.mean(right_hand_sat_list)),
+                "eval_action/sat/left_arm": float(np.mean(left_arm_sat_list)),
+                "eval_action/sat/left_hand": float(np.mean(left_hand_sat_list)),
             })
 
         # -------------------------
@@ -281,21 +281,18 @@ class EvaluatorTD3BC:
         # -------------------------
         if len(pc_right_valid_list) > 0:
             return_dict.update({
-                "eval/pc/right_valid_ratio": float(np.mean(pc_right_valid_list)),
-                "eval/pc/left_valid_ratio": float(np.mean(pc_left_valid_list)),
-                "eval/pc/right_empty_ratio": float(np.mean(pc_right_empty_list)),
-                "eval/pc/left_empty_ratio": float(np.mean(pc_left_empty_list)),
+                "eval_pc/right_valid_ratio": float(np.mean(pc_right_valid_list)),
+                "eval_pc/left_valid_ratio": float(np.mean(pc_left_valid_list)),
+                "eval_pc/right_empty_ratio": float(np.mean(pc_right_empty_list)),
+                "eval_pc/left_empty_ratio": float(np.mean(pc_left_empty_list)),
             })
 
         # -------------------------
         # Env action path logs
         # -------------------------
-        if len(last_action_diff_list) > 0:
-            return_dict.update({
-                "eval/env_last_action_diff_mean": float(np.mean(last_action_diff_list)),
-                "eval/env_last_action_diff_max": float(np.mean(last_action_diff_max_list)),
-            })
-
+        # if len(last_action_diff_list) > 0:
+            # return_dict.update({"eval/env_last_action_diff_mean": float(np.mean(last_action_diff_list)),
+            #                     "eval/env_last_action_diff_max": float(np.mean(last_action_diff_max_list)),})
         if len(scaled_action_abs_list) > 0:
             return_dict["eval/scaled_action_abs_mean"] = float(np.mean(scaled_action_abs_list))
 
