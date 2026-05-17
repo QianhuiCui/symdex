@@ -18,8 +18,8 @@ from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPos
 from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
 import symdex.env.tasks.PickObject.mdps as pick
 
-FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
-FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
+# FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
+# FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
 
 @configclass
 class PickObjectSceneCfg(BaseSceneCfg):
@@ -311,28 +311,28 @@ class PickObjectSceneCfg(BaseSceneCfg):
         ),
     )
 
-    task_frames_vis = FrameTransformerCfg(   # for teleop
-        prim_path="{ENV_REGEX_NS}/Robot/palm_link",
-        update_period=0.0,
-        debug_vis=True,
-        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
-            prim_path="/Visuals/pick_object_task_frames"
-        ),
-        target_frames=[
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Object_0",
-                name="object_0",
-            ),
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Object_1",
-                name="object_1",
-            ),
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Object_2",
-                name="object_2",
-            ),
-        ],
-    )
+    # task_frames_vis = FrameTransformerCfg(   # for teleop
+    #     prim_path="{ENV_REGEX_NS}/Robot/palm_link",
+    #     update_period=0.0,
+    #     debug_vis=True,
+    #     visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
+    #         prim_path="/Visuals/pick_object_task_frames"
+    #     ),
+    #     target_frames=[
+    #         FrameTransformerCfg.FrameCfg(
+    #             prim_path="{ENV_REGEX_NS}/Object_0",
+    #             name="object_0",
+    #         ),
+    #         FrameTransformerCfg.FrameCfg(
+    #             prim_path="{ENV_REGEX_NS}/Object_1",
+    #             name="object_1",
+    #         ),
+    #         FrameTransformerCfg.FrameCfg(
+    #             prim_path="{ENV_REGEX_NS}/Object_2",
+    #             name="object_2",
+    #         ),
+    #     ],
+    # )
 
     # cameras
     cam_1 = CameraCfg(
@@ -340,7 +340,7 @@ class PickObjectSceneCfg(BaseSceneCfg):
         width=256, height=256,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
-                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+                focal_length=13.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.05, 5.0)
             ),  # default parameters
         offset=CameraCfg.OffsetCfg(convention="opengl"),
     )
@@ -375,30 +375,6 @@ class PickObjectSceneCfg(BaseSceneCfg):
         update_period=0.0, 
         debug_vis=True,
     )
-    # contact_sensors_0_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot_left/if5",  # index
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
-    # )
-    # contact_sensors_1_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot_left/mf5",  # middle
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
-    # )
-    # contact_sensors_2_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot_left/pf5",  # pinky
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
-    # )
-    # contact_sensors_3_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot_left/th5",  # thumb
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_1"],
-    # )
     contact_sensors_0_left = ContactSensorCfg(
         prim_path="/World/envs/env_.*/Robot_left/if5",  # index
         update_period=0.0, 
@@ -428,30 +404,6 @@ class PickObjectSceneCfg(BaseSceneCfg):
         update_period=0.0, 
         debug_vis=True,
     )
-    # contact_sensors_0_left_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot/if5",  # index
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
-    # )
-    # contact_sensors_1_left_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot/mf5",  # middle
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
-    # )
-    # contact_sensors_2_left_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot/pf5",  # pinky
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
-    # )
-    # contact_sensors_3_left_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot/th5",  # thumb
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_2"],
-    # )
 
 
 @configclass
@@ -482,7 +434,7 @@ class PickObjectEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.1, 0.1], "y": [-0.35, -0.35], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]}, 
+            "pose_range": {"x": [0.05, 0.15], "y": [-0.3, -0.4], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]}, 
             "velocity_range": {},
             "object_id": 1,
         },
@@ -492,7 +444,7 @@ class PickObjectEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.1, 0.1], "y": [0.35, 0.35], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]},
+            "pose_range": {"x": [0.05, 0.15], "y": [0.3, 0.4], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]},
             "velocity_range": {},
             "object_id": 2,
         },
@@ -536,20 +488,16 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
                                                                            "joint_lower_limit": JOINT_LOWER_LIMIT, 
                                                                            "joint_upper_limit": JOINT_UPPER_LIMIT,}, noise=Gnoise(std=0.005))
         joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
-        object_pos_1 = ObsTerm(
-            func=object_pos,
-            params={"object_id": 1}, noise=Unoise(n_min=0.0, n_max=0.015)
-        )
+        object_pos_1 = ObsTerm(func=object_pos, params={"object_id": 1}, noise=Unoise(n_min=0.0, n_max=0.015))
+        object_rot_1 = ObsTerm(func=object_quat, params={"object_id": 1, "symmetry": True})
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
         joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
                                                                           "asset_cfg": SceneEntityCfg("robot_left")}, noise=Gnoise(std=0.005))
         joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
-        object_pos_2 = ObsTerm(
-            func=object_pos,
-            params={"object_id": 2}, noise=Unoise(n_min=0.0, n_max=0.015)
-        )
+        object_pos_2 = ObsTerm(func=object_pos, params={"object_id": 2}, noise=Unoise(n_min=0.0, n_max=0.015))
+        object_rot_2 = ObsTerm(func=object_quat, params={"object_id": 2, "symmetry": True})
         tote_pos = ObsTerm(
             func=object_pos,
             params={"object_id": 0}
@@ -562,16 +510,16 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
             self.enable_corruption = False
             self.concatenate_terms = True
     
-    # @configclass
-    # class VisionCfg(ObsGroup):
-    #     """Observations for vision group."""
+    @configclass
+    class VisionCfg(ObsGroup):
+        """Observations for vision group."""
 
-    #     # -- robot terms (order preserved)
-    #     rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+        # -- robot terms (order preserved)
+        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
 
-    #     def __post_init__(self):
-    #         self.enable_corruption = False
-    #         self.concatenate_terms = True
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
     
     @configclass
     class PointCloudCfg(ObsGroup):
@@ -586,20 +534,20 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
         #                                                 "add_noise": False})
         point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
                                                               "wrist_cam_name": [], 
-                                                              "crop_range": [[-0.14, 0.4], [-0.6, 0.0], [0.01, 0.7]],
+                                                              "crop_range": [[-0.14, 0.4], [-0.7, 0.0], [0.01, 0.7]],
                                                               "max_points": 2048, 
                                                               "downsample": "random",
                                                               "add_noise": False})
         point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
                                                              "wrist_cam_name": [], 
-                                                             "crop_range": [[-0.14, 0.4], [0.0, 0.6], [0.01, 0.7]],
+                                                             "crop_range": [[-0.14, 0.4], [0.0, 0.7], [0.01, 0.7]],
                                                              "max_points": 2048, 
                                                              "downsample": "random",
                                                              "add_noise": False})
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    # vision: VisionCfg = VisionCfg()
+    vision: VisionCfg = VisionCfg()
     point_cloud: PointCloudCfg = PointCloudCfg()
 
 
@@ -748,20 +696,30 @@ class PickObjectEnvCfg(BaseEnvCfg):
     num_object = 3
     action_dim = 44 # arm + hand
     # action_scale: list = [1.0] * action_dim
-    action_scale: list = [0.08, 0.08, 0.08, 0.08, 0.08, 0.08,
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05,
-                          0.08, 0.08, 0.08, 0.08, 0.08, 0.08,
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05]  # jth3 needs smaller rate
-    visualize_marker: bool = False
+    # action_scale: list = [0.03, 0.03, 0.03, 0.03, 0.03, 0.03,
+    #                         0.05, 0.05, 0.05, 0.05,
+    #                         0.05, 0.05, 0.05, 0.05,
+    #                         0.05, 0.05, 0.05, 0.05,
+    #                         0.05, 0.05, 0.05, 0.05,
+    #                       0.03, 0.03, 0.03, 0.03, 0.03, 0.03,
+    #                         0.05, 0.05, 0.05, 0.05,
+    #                         0.05, 0.05, 0.05, 0.05,
+    #                         0.05, 0.05, 0.05, 0.05,
+    #                         0.05, 0.05, 0.05, 0.05]  # jth3 needs smaller rate
+    action_scale: list = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
+                            0.03, 0.03, 0.03, 0.03,
+                          0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
+                            0.03, 0.03, 0.03, 0.03]
+    visualize_marker: bool = True
 
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
         # self.viewer.eye = (-1.5, 0.0, 1.5)
-        self.viewer.eye = (-0.5, 0.0, 1.0)
+        self.viewer.eye = (-0.6, 0.0, 1.0)

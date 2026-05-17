@@ -219,7 +219,7 @@ class BaseEnv(ManagerBasedRLEnv):
                                restitution_range=list(self.cfg.hydra_cfg.task.randomize.randomization.restitution), 
                                num_buckets=250)
         if "action_scale" in randomized_values:
-            self._scale[:6] = randomized_values["action_scale"]
+            self._scale[:] = randomized_values["action_scale"]
         if "energy_penalty" in randomized_values:
             for rew_name in curriculum_state["energy_penalty"]["names"]:
                 randomize_rew_weight(self, rew_name, randomized_values["energy_penalty"])

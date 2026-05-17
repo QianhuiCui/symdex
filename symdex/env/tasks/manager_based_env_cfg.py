@@ -27,8 +27,8 @@ from symdex.env.mdps.reset_mdps import *
 from symdex.env.mdps.reward_mdps import *
 from symdex.utils.random_cfg import RandomLightCfg
 
-FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
-FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
+# FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
+# FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
 
 
 JOINT_LOWER_LIMIT = [-6.283, -2.304, -4.224, -6.283, -2.164, -6.283,
@@ -136,24 +136,24 @@ class BaseSceneCfg(InteractiveSceneCfg):
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.5, -0.5, 0.05)), 
     ) 
 
-    target_frames_vis = FrameTransformerCfg(
-        prim_path="{ENV_REGEX_NS}/targetSphere",
-        update_period=0.0,
-        debug_vis=True,
-        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
-            prim_path="/Visuals/base_target_frames"
-        ),
-        target_frames=[
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/targetSphere",
-                name="target_right",
-            ),
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/targetSphere_left",
-                name="target_left",
-            ),
-        ],
-    )
+    # target_frames_vis = FrameTransformerCfg(
+    #     prim_path="{ENV_REGEX_NS}/targetSphere",
+    #     update_period=0.0,
+    #     debug_vis=True,
+    #     visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
+    #         prim_path="/Visuals/base_target_frames"
+    #     ),
+    #     target_frames=[
+    #         FrameTransformerCfg.FrameCfg(
+    #             prim_path="{ENV_REGEX_NS}/targetSphere",
+    #             name="target_right",
+    #         ),
+    #         FrameTransformerCfg.FrameCfg(
+    #             prim_path="{ENV_REGEX_NS}/targetSphere_left",
+    #             name="target_left",
+    #         ),
+    #     ],
+    # )
     
     replicate_physics = False
 

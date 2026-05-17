@@ -7,7 +7,7 @@ from isaaclab.utils.math import quat_from_matrix
 
 from pathlib import Path
 LOGGER_ROOT = Path(__file__).resolve().parents[1] 
-SAVE_DIR = LOGGER_ROOT / "teleop_logs"  # / "policy"
+SAVE_DIR = LOGGER_ROOT / "teleop_logs"  #  / "test"  # / "policy"
 
 
 class TrajectoryLogger:
@@ -52,12 +52,15 @@ class TrajectoryLogger:
         self._timeouts = []
         self._rew_terms = []
 
-    def start_episode(self, *, language_instruction: str, rew_cfg_hash: str | None, rew_names: list[str] | None, rew_weights: np.ndarray | None):
+    def start_episode(self, *, language_instruction: str, rew_cfg_hash: str | None, rew_names: list[str] | None, rew_weights: np.ndarray | None, init_meta: dict | None = None):
         """episode metadata when starting a new episode."""
         self._epi_meta = {
             "language_instruction": str(language_instruction),
             "rew_cfg_hash": "" if rew_cfg_hash is None else str(rew_cfg_hash),
         }
+        if init_meta is not None:
+            for k, v in init_meta.items():
+                self._epi_meta[k] = v
         self._epi_meta["reward_names"] = [str(name) for name in rew_names] if rew_names is not None else []
         self._epi_meta["reward_weights"] = np.asarray(rew_weights, dtype=np.float32) if rew_weights is not None else np.array([], dtype=np.float32)
 

@@ -280,32 +280,32 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
         }, 
     ) 
 
-    task_frames_vis = FrameTransformerCfg(   # for teleop
-        prim_path="{ENV_REGEX_NS}/Robot/palm_link",
-        update_period=0.0,
-        debug_vis=True,
-        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
-            prim_path="/Visuals/insert_drawer_task_frames"
-        ),
-        target_frames=[
-            # FrameTransformerCfg.FrameCfg(
-            #     prim_path="{ENV_REGEX_NS}/Robot/palm_link",
-            #     name="right_palm",
-            # ),
-            # FrameTransformerCfg.FrameCfg(
-            #     prim_path="{ENV_REGEX_NS}/Robot_left/palm_link",
-            #     name="left_palm",
-            # ),
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Object_0",
-                name="object",
-            ),
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Drawer/handle_grip",
-                name="drawer_handle",
-            ),
-        ],
-    )
+    # task_frames_vis = FrameTransformerCfg(   # for teleop
+    #     prim_path="{ENV_REGEX_NS}/Robot/palm_link",
+    #     update_period=0.0,
+    #     debug_vis=True,
+    #     visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
+    #         prim_path="/Visuals/insert_drawer_task_frames"
+    #     ),
+    #     target_frames=[
+    #         # FrameTransformerCfg.FrameCfg(
+    #         #     prim_path="{ENV_REGEX_NS}/Robot/palm_link",
+    #         #     name="right_palm",
+    #         # ),
+    #         # FrameTransformerCfg.FrameCfg(
+    #         #     prim_path="{ENV_REGEX_NS}/Robot_left/palm_link",
+    #         #     name="left_palm",
+    #         # ),
+    #         FrameTransformerCfg.FrameCfg(
+    #             prim_path="{ENV_REGEX_NS}/Object_0",
+    #             name="object",
+    #         ),
+    #         FrameTransformerCfg.FrameCfg(
+    #             prim_path="{ENV_REGEX_NS}/Drawer/handle_grip",
+    #             name="drawer_handle",
+    #         ),
+    #     ],
+    # )
 
     # cameras
     cam_1 = CameraCfg(

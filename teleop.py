@@ -54,6 +54,69 @@ def recv_teleop():
                     match_control["recv_time"] = now_local
 
         time.sleep(0.001)
+
+def get_action_terms(env):
+    action_manager = env.unwrapped.action_manager
+    right_term = action_manager.get_term("arm_hand_action")
+    left_term = action_manager.get_term("arm_hand_action_left")
+    return right_term, left_term
+
+def get_action_manager_state(env):
+    right_term, left_term = get_action_terms(env)
+    q_init_right = right_term.init_joint_pos[0].detach().cpu().numpy().astype(np.float32)
+    q_init_left = left_term.init_joint_pos[0].detach().cpu().numpy().astype(np.float32)
+    del_right = right_term.del_action[0].detach().cpu().numpy().astype(np.float32)
+    del_left = left_term.del_action[0].detach().cpu().numpy().astype(np.float32)
+    q_init = np.concatenate([q_init_right, q_init_left], axis=0)
+    del_action = np.concatenate([del_right, del_left], axis=0)
+    return q_init, del_action
+
+def clip_qtarget_to_joint_limits(q_target: np.ndarray) -> np.ndarray:
+    joint_lower = np.asarray(JOINT_LOWER_LIMIT + JOINT_LOWER_LIMIT_LEFT, dtype=np.float32)
+    joint_upper = np.asarray(JOINT_UPPER_LIMIT + JOINT_UPPER_LIMIT_LEFT, dtype=np.float32)
+    return np.clip(q_target, joint_lower, joint_upper).astype(np.float32)
+
+def make_clean_env_action_from_qtarget(env, q_target: np.ndarray):
+    """
+    Convert absolute teleop joint target into the normalized action expected by:
+    VecEnvWrapper -> BaseEnv.action_scale -> EMACumulativeRelativeJointPositionAction.
+    Returns:
+        action_exec: action to send into env.step and save into H5 offline_data/actions.
+    """
+    q_target = np.asarray(q_target, dtype=np.float32).reshape(-1)
+    if q_target.shape[0] != 44:
+        raise RuntimeError(f"q_target must have dim 44, got {q_target.shape}")
+
+    q_target = clip_qtarget_to_joint_limits(q_target)
+    q_init, del_action = get_action_manager_state(env)
+    action_scale = env.unwrapped._scale.detach().cpu().numpy().astype(np.float32)
+    # action_scale = np.maximum(np.abs(action_scale), 1e-6)
+
+    # Required scaled increment before BaseEnv action_scale.
+    scaled_increment = q_target - q_init - del_action
+    # Convert to normalized env action.
+    action_raw = scaled_increment / action_scale
+    # Actual action sent to VecEnvWrapper / env.step.
+    action_exec = np.clip(action_raw, -1.0, 1.0).astype(np.float32)
+    return action_exec
+
+def get_episode_init_meta(env, cfg):
+    meta = {}
+    for obj_id in [0, 1, 2]:
+        obj = env.unwrapped.scene[f"object_{obj_id}"]
+        meta[f"object_{obj_id}_init_pos_w"] = obj.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
+        meta[f"object_{obj_id}_init_quat_w"] = obj.data.root_quat_w[0, :4].detach().cpu().numpy().astype(np.float32)
+    robot = env.unwrapped.scene["robot"]
+    robot_left = env.unwrapped.scene["robot_left"]
+    meta["robot_init_qpos"] = robot.data.joint_pos[0, :].detach().cpu().numpy().astype(np.float32)
+    meta["robot_left_init_qpos"] = robot_left.data.joint_pos[0, :].detach().cpu().numpy().astype(np.float32)
+
+    if hasattr(env.unwrapped, "camera_offset") and "cam_1" in env.unwrapped.camera_offset:
+        meta["cam_1_init_pos"] = env.unwrapped.camera_offset["cam_1"]["pos"][0].detach().cpu().numpy().astype(np.float32)
+        meta["cam_1_init_quat"] = env.unwrapped.camera_offset["cam_1"]["orientation"][0].detach().cpu().numpy().astype(np.float32)
+
+    meta["seed"] = np.asarray([cfg.seed if cfg.seed is not None else -1], dtype=np.int64)
+    return meta
     
 def get_current_qpos(env):
     robot = env.unwrapped.scene["robot"]
@@ -68,6 +131,9 @@ def get_current_qpos(env):
 )
 def main(cfg: DictConfig):
     torch.set_printoptions(sci_mode=False, precision=3)
+    if cfg.seed is None or int(cfg.seed) < 0:
+        cfg.seed = int(time.time() * 1000) % (2**31 - 1)
+    print(f"[Teleop] Using seed: {cfg.seed}")
     set_random_seed(cfg.seed)
     capture_keyboard_interrupt()
 
@@ -76,8 +142,8 @@ def main(cfg: DictConfig):
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device)
     initial_obs, _ = env.reset()
+    pending_init_meta = get_episode_init_meta(env, cfg)
     send_msg("robot_reset", {"t": time.time()})
-
     prev_obs = get_obs(initial_obs)
     # delta_scaler = DeltaActionScaler()
     # delta_scaler.reset()
@@ -158,8 +224,9 @@ def main(cfg: DictConfig):
             if len(q_target) != len(q_curr):
                 raise RuntimeError(f"teleop_joint_state length {len(q_target)} != expected {len(q_curr)}.")
 
-            delta_cmd = (q_target - q_curr).astype(np.float32)
+            # delta_cmd = (q_target - q_curr).astype(np.float32)
             # delta_cmd = delta_scaler.process(q_target, q_curr)
+            delta_cmd = make_clean_env_action_from_qtarget(env, q_target)
             action_buf.zero_()
             action_buf[0].copy_(torch.from_numpy(delta_cmd).to(action_buf.device))
             action_to_log = delta_cmd
@@ -199,6 +266,7 @@ def main(cfg: DictConfig):
                 rew_cfg_hash=rew_cfg_hash,
                 rew_names=rew_names,
                 rew_weights=rew_weights,
+                init_meta=pending_init_meta,
             )
             print("[Teleop] Recording started.")
                 
@@ -226,6 +294,7 @@ def main(cfg: DictConfig):
                 print("[Teleop] Episode finished: ENV RESET triggered.")
 
             initial_obs, _ = env.reset()
+            pending_init_meta = get_episode_init_meta(env, cfg)
             send_msg("robot_reset", {"t": time.time()})
             prev_obs = get_obs(initial_obs)
             # delta_scaler.reset()
