@@ -5,3 +5,6 @@ outputs/
 teleop_logs/
 traj_logs/
 *.parquet
+.vscode/
+.codex/
+.agents/

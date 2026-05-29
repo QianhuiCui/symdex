@@ -97,102 +97,71 @@ class StateEncoder(nn.Module):
         return self.fusion(torch.cat([z_right, z_left], dim=-1))
 
 
-class EdgeConvBlock(nn.Module):
-    def __init__(self, in_dim, out_dim, k=16):
-        super().__init__()
-        self.k = k
-        self.net = nn.Sequential(
-            nn.Conv2d(in_dim * 2, out_dim, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_dim),
-            nn.ReLU(),
-            nn.Conv2d(out_dim, out_dim, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_dim),
-            nn.ReLU(),
-        )
-
-    def forward(self, x: torch.Tensor, xyz: torch.Tensor) -> torch.Tensor:
-        B, C, N = x.shape
-        k = min(self.k, N - 1)
-        if k <= 0:
-            return x.new_zeros(B, self.net[-2].num_features, N)
-
-        dist = torch.cdist(xyz.transpose(1, 2), xyz.transpose(1, 2))
-        idx = dist.topk(k=k + 1, dim=-1, largest=False).indices[:, :, 1:]
-
-        idx_base = torch.arange(B, device=x.device).view(B, 1, 1) * N
-        idx = (idx + idx_base).reshape(-1)
-
-        x_t = x.transpose(1, 2).contiguous()
-        neighbors = x_t.reshape(B * N, C)[idx].reshape(B, N, k, C)
-        center = x_t.reshape(B, N, 1, C).expand(-1, -1, k, -1)
-
-        edge = torch.cat([center, neighbors - center], dim=-1)
-        edge = edge.permute(0, 3, 1, 2).contiguous()
-        return self.net(edge).max(dim=-1).values
-
-
-class GeometryPCBranch(nn.Module):
-    def __init__(self, out_dim=128, k=16, max_points=2048):
+class LightPCBranch(nn.Module):
+    def __init__(self, out_dim: int = 128, max_points: int = 512):
         super().__init__()
         self.max_points = max_points
-        self.edge1 = EdgeConvBlock(3, 64, k)
-        self.edge2 = EdgeConvBlock(64, 128, k)
-        self.proj = MLPBlock(
-            in_dim=64 + 128 + 13,
-            out_dim=out_dim,
-            hidden_dims=[256],
-            act=nn.ReLU,
-            layer_norm=True,
-            activate_last=True,
+        self.point_mlp = nn.Sequential(
+            nn.Linear(6, 64),
+            nn.LayerNorm(64),
+            nn.ReLU(),
+            nn.Linear(64, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+        )
+        self.agg = nn.Sequential(
+            nn.Linear(128 * 2 + 13, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Linear(256, out_dim),
+            nn.LayerNorm(out_dim),
+            nn.ReLU(),
         )
 
-    def forward(self, pc_xyz: torch.Tensor) -> torch.Tensor:
-        if pc_xyz.ndim != 3 or pc_xyz.shape[-1] != 3:
-            raise RuntimeError(f"Expected pc_xyz shape (B, N, 3), got {tuple(pc_xyz.shape)}")
-
-        pc_xyz = torch.nan_to_num(pc_xyz, nan=0.0, posinf=0.0, neginf=0.0)
-        B, N, _ = pc_xyz.shape
+    def forward(self, xyz: torch.Tensor) -> torch.Tensor:
+        if xyz.ndim != 3 or xyz.shape[-1] != 3:
+            raise RuntimeError(f"Expected xyz shape (B, N, 3), got {tuple(xyz.shape)}")
+        xyz = torch.nan_to_num(xyz, nan=0.0, posinf=0.0, neginf=0.0)
+        B, N, _ = xyz.shape
         if N > self.max_points:
-            idx = torch.randperm(N, device=pc_xyz.device)[: self.max_points]
-            pc_xyz = pc_xyz[:, idx]
+            idx = torch.randperm(N, device=xyz.device)[:self.max_points]
+            xyz = xyz[:, idx]
 
-        valid = pc_xyz.abs().sum(dim=-1) > 1e-8
+        valid = xyz.abs().sum(dim=-1) > 1e-8
         no_valid = valid.sum(dim=1) == 0
         if no_valid.any():
             valid = valid.clone()
             valid[no_valid, 0] = True
 
         valid_f = valid.float().unsqueeze(-1)
-        count = valid_f.sum(dim=1, keepdim=True).clamp_min(1.0)
-        center = (pc_xyz * valid_f).sum(dim=1, keepdim=True) / count
-        centered = pc_xyz - center
-        radius = (centered.norm(dim=-1, keepdim=True) * valid_f).amax(dim=1, keepdim=True).clamp_min(1e-6)
+        count   = valid_f.sum(dim=1, keepdim=True).clamp_min(1.0)
 
+        center   = (xyz * valid_f).sum(dim=1, keepdim=True) / count
+        centered = xyz - center
+        radius   = (centered.norm(dim=-1, keepdim=True) * valid_f
+                    ).amax(dim=1, keepdim=True).clamp_min(1e-6)
         norm_xyz = centered / radius
-        x0 = norm_xyz.transpose(1, 2).contiguous()
-        xyz = norm_xyz.transpose(1, 2).contiguous()
 
-        h1 = self.edge1(x0, xyz)
-        h2 = self.edge2(h1, xyz)
-
-        mask = valid.unsqueeze(1)
-        h1_global = h1.masked_fill(~mask, -1e9).max(dim=-1).values
-        h2_global = h2.masked_fill(~mask, -1e9).max(dim=-1).values
-
-        centered_valid = centered * valid_f
-        cov = torch.bmm(centered_valid.transpose(1, 2), centered_valid)
+        c_valid = centered * valid_f
+        cov = torch.bmm(c_valid.transpose(1, 2), c_valid)
         cov = cov / count.squeeze(1).unsqueeze(-1).clamp_min(1.0)
-        cov_feat = cov.reshape(B, 9)
 
-        geom = torch.cat([center.squeeze(1), radius.squeeze(1), cov_feat], dim=-1)
-        return self.proj(torch.cat([h1_global, h2_global, geom], dim=-1))
+        x = torch.cat([xyz, norm_xyz], dim=-1)
+        h = self.point_mlp(x)
+
+        mask   = valid.unsqueeze(-1)
+        h_max  = h.masked_fill(~mask, -1e9).max(dim=1).values
+        h_mean = (h * valid_f).sum(dim=1) / count.squeeze(1)
+
+        geom = torch.cat([center.squeeze(1), radius.squeeze(1), cov.reshape(B, 9)], dim=-1)
+        return self.agg(torch.cat([h_max, h_mean, geom], dim=-1))
 
 
 class PCEncoder(nn.Module):
-    def __init__(self, out_dim=256, branch_dim=128, k=16, max_points=2048):
+    def __init__(self, out_dim: int = 256, branch_dim: int = 128, max_points: int = 512):
         super().__init__()
-        self.right_encoder = GeometryPCBranch(out_dim=branch_dim, k=k, max_points=max_points)
-        self.left_encoder = GeometryPCBranch(out_dim=branch_dim, k=k, max_points=max_points)
+        self.right_encoder = LightPCBranch(out_dim=branch_dim, max_points=max_points)
+        self.left_encoder  = LightPCBranch(out_dim=branch_dim, max_points=max_points)
         self.fusion = MLPBlock(
             in_dim=branch_dim * 2,
             out_dim=out_dim,
@@ -207,7 +176,7 @@ class PCEncoder(nn.Module):
             raise RuntimeError(f"Expected pc shape (B, N, 6), got {tuple(pc.shape)}")
         pc = torch.nan_to_num(pc, nan=0.0, posinf=0.0, neginf=0.0)
         z_right = self.right_encoder(pc[..., :3])
-        z_left = self.left_encoder(pc[..., 3:6])
+        z_left  = self.left_encoder(pc[..., 3:6])
         return self.fusion(torch.cat([z_right, z_left], dim=-1))
 
 
@@ -237,9 +206,9 @@ class StateActionProbe(nn.Module):
 
 
 class PCActionProbe(nn.Module):
-    def __init__(self, action_dim, pc_k=16, pc_max_points=512):
+    def __init__(self, action_dim, pc_max_points=512):
         super().__init__()
-        self.pc_encoder = PCEncoder(out_dim=256, k=pc_k, max_points=pc_max_points)
+        self.pc_encoder = PCEncoder(out_dim=256, max_points=pc_max_points)
         self.head = MLPHead(256, action_dim)
 
     def forward(self, state, pc):
@@ -247,10 +216,10 @@ class PCActionProbe(nn.Module):
 
 
 class StatePCActionProbe(nn.Module):
-    def __init__(self, action_dim, pc_k=16, pc_max_points=512):
+    def __init__(self, action_dim, pc_max_points=512):
         super().__init__()
         self.state_encoder = StateEncoder(PICKOBJECT_TD3BC_MULTI_CFG, out_dim=256)
-        self.pc_encoder = PCEncoder(out_dim=256, k=pc_k, max_points=pc_max_points)
+        self.pc_encoder = PCEncoder(out_dim=256, max_points=pc_max_points)
         self.head = MLPHead(512, action_dim)
 
     def forward(self, state, pc):
@@ -260,10 +229,20 @@ class StatePCActionProbe(nn.Module):
 
 
 class PCLabelProbe(nn.Module):
-    def __init__(self, label_dim, pc_k=16, pc_max_points=512):
+    def __init__(self, label_dim, pc_max_points=512):
         super().__init__()
-        self.pc_encoder = PCEncoder(out_dim=256, k=pc_k, max_points=pc_max_points)
+        self.pc_encoder = PCEncoder(out_dim=256, max_points=pc_max_points)
         self.head = MLPHead(256, label_dim)
+
+    def forward(self, state, pc):
+        return self.head(self.pc_encoder(pc))
+
+
+class PCMultiLabelProbe(nn.Module):
+    def __init__(self, label_dims: list, pc_max_points: int = 512):
+        super().__init__()
+        self.pc_encoder = PCEncoder(out_dim=256, max_points=pc_max_points)
+        self.head = MLPHead(256, sum(label_dims))
 
     def forward(self, state, pc):
         return self.head(self.pc_encoder(pc))
@@ -373,7 +352,7 @@ def train_probe(name, model, state, pc, target, train_idx, val_idx, device, epoc
             best_val = val_loss
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
 
-        if epoch == 1 or epoch == epochs or epoch % 20 == 0:
+        if epoch == 1 or epoch == epochs or epoch % 10 == 0:
             print(f"epoch {epoch:04d} | train_mse={train_loss:.6f} | val_mse={val_loss:.6f}")
 
     model.load_state_dict(best_state)
@@ -448,7 +427,6 @@ def main(cfg: DictConfig):
         seed=int(pretrain_cfg.seed),
     )
     action_dim = action.shape[-1]
-    pc_k = int(pretrain_cfg.get("pc_k", 16))
     pc_max_points = int(pretrain_cfg.get("pc_max_points", 512))
     if pc.shape[1] > pc_max_points:
         idx = torch.randperm(pc.shape[1])[:pc_max_points]
@@ -458,6 +436,7 @@ def main(cfg: DictConfig):
     state_action_model = None
     pc_action_model = None
     state_pc_action_model = None
+    pc_multilabel_model = None
 
     if pretrain_cfg.train_state_action:
         state_action_model, info = train_probe(
@@ -478,7 +457,7 @@ def main(cfg: DictConfig):
     if pretrain_cfg.train_pc_action:
         pc_action_model, info = train_probe(
             name="pc_encoder -> action",
-            model=PCActionProbe(action_dim, pc_k=pc_k, pc_max_points=pc_max_points),
+            model=PCActionProbe(action_dim, pc_max_points=pc_max_points),
             state=state,
             pc=pc,
             target=action,
@@ -494,7 +473,7 @@ def main(cfg: DictConfig):
     if pretrain_cfg.train_state_pc_action:
         state_pc_action_model, info = train_probe(
             name="state_encoder + pc_encoder -> action",
-            model=StatePCActionProbe(action_dim, pc_k=pc_k, pc_max_points=pc_max_points),
+            model=StatePCActionProbe(action_dim, pc_max_points=pc_max_points),
             state=state,
             pc=pc,
             target=action,
@@ -507,16 +486,40 @@ def main(cfg: DictConfig):
         )
         results["state_pc_action"] = info
 
+    if pretrain_cfg.train_pc_labels and len(list(pretrain_cfg.labels)) > 0:
+        joint_label_names = list(pretrain_cfg.labels)
+        for n in joint_label_names:
+            if n not in LABEL_IDX:
+                raise RuntimeError(f"Unknown pretrain label: {n}. Valid labels: {sorted(LABEL_IDX)}")
+        joint_target = torch.cat(
+            [state[:, LABEL_IDX[n][0]:LABEL_IDX[n][1]] for n in joint_label_names], dim=-1
+        )
+        label_dims = [LABEL_IDX[n][1] - LABEL_IDX[n][0] for n in joint_label_names]
+        pc_multilabel_model, info = train_probe(
+            name=f"pc_encoder -> {'+'.join(joint_label_names)}",
+            model=PCMultiLabelProbe(label_dims=label_dims, pc_max_points=pc_max_points),
+            state=state,
+            pc=pc,
+            target=joint_target,
+            train_idx=train_idx,
+            val_idx=val_idx,
+            device=device,
+            epochs=int(pretrain_cfg.epochs),
+            batch_size=int(pretrain_cfg.batch_size),
+            lr=float(pretrain_cfg.lr),
+        )
+        results["pc_multilabel"] = info
+
     for label_name in list(pretrain_cfg.labels):
         if label_name not in LABEL_IDX:
             raise RuntimeError(f"Unknown pretrain label: {label_name}. Valid labels: {sorted(LABEL_IDX)}")
         start, end = LABEL_IDX[label_name]
         label = state[:, start:end]
 
-        if pretrain_cfg.train_pc_labels:
+        if pretrain_cfg.train_pc_labels and pc_multilabel_model is None:
             _, info = train_probe(
                 name=f"pc_encoder -> {label_name}",
-                model=PCLabelProbe(label_dim=end - start, pc_k=pc_k, pc_max_points=pc_max_points),
+                model=PCLabelProbe(label_dim=end - start, pc_max_points=pc_max_points),
                 state=state,
                 pc=pc,
                 target=label,
@@ -563,8 +566,12 @@ def main(cfg: DictConfig):
             state_encoder = state_action_model.state_encoder
             pc_encoder = pc_action_model.pc_encoder
             main_task = "separate state_action and pc_action"
+        elif pc_multilabel_model is not None:
+            state_encoder = None
+            pc_encoder = pc_multilabel_model.pc_encoder
+            main_task = f"pc_encoder -> {'+'.join(list(pretrain_cfg.labels))}"
         else:
-            raise RuntimeError("Cannot save encoder checkpoint without trained state and pc encoders.")
+            raise RuntimeError("Cannot save encoder checkpoint: no trained model available.")
 
         ckpt_path = Path(pretrain_cfg.checkpoint_path)
         if not ckpt_path.is_absolute():
@@ -573,35 +580,23 @@ def main(cfg: DictConfig):
 
         torch.save(
             {
-                "state_encoder": state_encoder.state_dict(),
                 "pc_encoder": pc_encoder.state_dict(),
-                "state_encoder_from_state_action": (
-                    state_action_model.state_encoder.state_dict() if state_action_model is not None else None
-                ),
-                "pc_encoder_from_pc_action": (
-                    pc_action_model.pc_encoder.state_dict() if pc_action_model is not None else None
-                ),
+                "state_encoder": state_encoder.state_dict() if state_encoder is not None else None,
                 "results": clean_results(results),
-                "multi_cfg": {
-                    "single_agent_obs_dim": PICKOBJECT_TD3BC_MULTI_CFG.single_agent_obs_dim,
-                    "single_agent_obs_idx": PICKOBJECT_TD3BC_MULTI_CFG.single_agent_obs_idx,
-                },
                 "encoder_config": {
-                    "state_out_dim": 256,
                     "pc_out_dim": 256,
                     "pc_branch_dim": 128,
-                    "pc_k": pc_k,
                     "pc_max_points": pc_max_points,
                 },
-                "state_dim": int(state.shape[-1]),
                 "pc_shape": tuple(pc.shape[1:]),
-                "action_dim": int(action_dim),
                 "main_pretrain_task": main_task,
                 "cfg": OmegaConf.to_container(cfg, resolve=True),
             },
             ckpt_path,
         )
-        print(f"\n[Checkpoint] encoder-only checkpoint saved to: {ckpt_path}")
+        print(f"\n[Checkpoint] saved to: {ckpt_path}")
+        print(f"[Checkpoint] main task: {main_task}")
+        print(f"[Checkpoint] pc_encoder: saved | state_encoder: {'saved' if state_encoder is not None else 'not saved'}")
 
 
 if __name__ == "__main__":
