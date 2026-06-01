@@ -181,14 +181,14 @@ class OfflineBuffer:
         if self.use_pc:
             pc = torch.as_tensor(self.pc[idx], dtype=torch.float32, device=self.device)
             next_pc = torch.as_tensor(self.next_pc[idx], dtype=torch.float32, device=self.device)
-            pc, next_pc = self._downsample(pc, next_pc)
+            # pc, next_pc = self._downsample(pc, next_pc)
             batch["pc"] = pc
             batch["next_pc"] = next_pc
         return batch
     
-    def _downsample(self, pc: torch.Tensor, next_pc: torch.Tensor):
-        point_idx = torch.randint(0, pc.shape[1], size=(1024,), device=self.device)
-        return pc[:, point_idx], next_pc[:, point_idx]
+    # def _downsample(self, pc: torch.Tensor, next_pc: torch.Tensor):
+    #     point_idx = torch.randint(0, pc.shape[1], size=(1024,), device=self.device)
+    #     return pc[:, point_idx], next_pc[:, point_idx]
     
     def _infer_success_label(self, file_path: str) -> bool:
         path = file_path.lower()

@@ -6,7 +6,8 @@ simulation_app = app_launcher.app
 import hydra
 import wandb
 import gymnasium as gym
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
+from types import SimpleNamespace
 
 import symdex
 from symdex.algo import alg_name_to_path
@@ -49,24 +50,34 @@ def main(cfg: DictConfig):
         state_mean, state_std = None, None
     algo_name = cfg.algo.name
     algo_class = load_class_from_path(algo_name, alg_name_to_path[algo_name])
+
+    multi_td3bc = cfg.task.multi.TD3BC
+    actor_cfg = SimpleNamespace(
+        single_agent_obs_dim=list(multi_td3bc.actor_obs_dim),
+        single_agent_obs_idx=multi_td3bc.actor_obs_idx,
+    )
+    critic_cfg = SimpleNamespace(
+        single_agent_obs_dim=list(multi_td3bc.single_agent_obs_dim),
+        single_agent_obs_idx=multi_td3bc.single_agent_obs_idx,
+    )
+
     policy = algo_class(
-        state_dim = replay_buffer.state_dim,
-        action_dim = replay_buffer.action_dim,
-        # max_action = max_action,
-		max_action = cfg.algo.offline.max_action,
-        # max_action = estimated_max_action,
-        device = cfg.device,
-        use_vision = cfg.algo.observation.vision,
-        use_pc = cfg.algo.observation.pc,
-		discount=cfg.algo.discount,
-		tau=cfg.algo.tau,
-		policy_noise=cfg.algo.policy_noise,
-		noise_clip=cfg.algo.noise_clip,
-		policy_freq=cfg.algo.policy_freq,
-		alpha=cfg.algo.alpha,
+        actor_cfg=actor_cfg,
+        critic_cfg=critic_cfg,
+        action_dim=replay_buffer.action_dim,
+        max_action=cfg.algo.offline.max_action,
+        device=cfg.device,
+        discount=cfg.algo.discount,
+        tau=cfg.algo.tau,
+        policy_noise=cfg.algo.policy_noise,
+        noise_clip=cfg.algo.noise_clip,
+        policy_freq=cfg.algo.policy_freq,
+        alpha=cfg.algo.alpha,
         actor_lr=cfg.algo.actor_lr,
         critic_lr=cfg.algo.critic_lr,
         reward_scale=cfg.algo.reward_scale,
+        pc_max_points=cfg.algo.get("pc_max_points", 512),
+        pretrain_ckpt_path=cfg.algo.checkpoint.get("pretrain_encoder_path", None),
     )
     
     if cfg.algo.checkpoint.load_path is not None:

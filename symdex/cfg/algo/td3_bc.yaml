@@ -11,12 +11,13 @@ lambda_entropy: 0.0
 
 discount: 0.99
 tau: 0.005
-policy_noise: 0.0  # 0.1
-noise_clip: 0.0  # 0.2
+policy_noise: 0.1
+noise_clip: 0.2
 policy_freq: 2
-alpha: 0.0  # 2.5
+alpha: 0.05  # 2.5
+pc_max_points: 512
 
-batch_size: 512
+batch_size: 1024
 max_train_steps: 100000
 # save_freq: 50000
 normalize_states: True
@@ -34,3 +35,23 @@ offline:
 
 checkpoint:
   load_path: null
+  pretrain_encoder_path: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/checkpoint/pc_encoder_multiLabel_pretrain.pt"
+
+pretrain:
+  epochs: 50
+  batch_size: 128
+  lr: 1e-3
+  save_checkpoint: False
+  checkpoint_path: "checkpoints/encoder_pretrain.pth"
+  val_ratio: 0.2
+  seed: 42
+  pc_k: 16
+  pc_max_points: 512
+
+  train_state_action: False
+  train_pc_action: False
+  train_state_pc_action: False
+  train_pc_labels: True
+  train_state_labels: False
+
+  labels: ["object_pos_1", "object_pos_2"]  # , "target_pos"]

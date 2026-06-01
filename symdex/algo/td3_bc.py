@@ -3,262 +3,101 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-class StateEncoder(nn.Module):
-    def __init__(self, state_dim, out_dim=256):
-        super().__init__() 
-        self.net = nn.Sequential(
-            nn.Linear(state_dim, 256),
-            nn.ReLU(),
-            nn.Linear(256, out_dim),
-            nn.ReLU(),
-        )
-    
-    def forward(self, state: torch.Tensor) -> torch.Tensor:
-        return self.net(state)
-
-
-class VisionEncoder(nn.Module):
-    def __init__(self, in_channels=3, out_dim=256):
-        super().__init__()
-        self.cnn = nn.Sequential(
-            nn.Conv2d(in_channels, 32, kernel_size=8, stride=4, padding=2),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.AdaptiveAvgPool2d((1, 1)),
-        )
-        self.fc = nn.Sequential(
-            nn.Linear(128, out_dim),
-            nn.ReLU(),
-        )
-    
-    def forward(self, img: torch.Tensor) -> torch.Tensor:
-        # img shape: (B, V, C, H, W)
-        b, v, c, h, w = img.shape
-        img = img.reshape(b * v, c, h, w)
-        features = self.cnn(img).reshape(b * v, -1)
-        features = self.fc(features)
-        features = features.reshape(b, v, -1)
-        features = features.mean(dim=1)
-        return features
-
-
-# class PCEncoder(nn.Module):
-#     def __init__(self, pc_dim, out_dim=256):
-#         super().__init__()
-#         self.net = nn.Sequential(
-#             nn.Linear(pc_dim, 64),
-#             nn.ReLU(),
-#             nn.Linear(64, 128),
-#             nn.ReLU(),
-#             nn.Linear(128, 256),
-#             nn.ReLU(),
-#         )
-#         self.fc = nn.Sequential(
-#             nn.Linear(256, out_dim),
-#             nn.ReLU(),
-#         )
-    
-#     def forward(self, pc: torch.Tensor) -> torch.Tensor:
-#         features = self.net(pc)
-#         features = features.max(dim=1).values
-#         features = self.fc(features)
-#         return features
-
-
-class PointNetPCEncoder(nn.Module):
-    def __init__(self, in_dim=3, out_dim=128):
-        super().__init__()
-        self.point_mlp = nn.Sequential(
-            nn.Linear(in_dim * 2, 64),
-            nn.LayerNorm(64),
-            nn.ReLU(),
-            nn.Linear(64, 128),
-            nn.LayerNorm(128),
-            nn.ReLU(),
-            # nn.Linear(128, 256),
-            # nn.LayerNorm(256),
-            # nn.ReLU(),
-        )
-        # max pool + mean pool + center + radius
-        self.fc = nn.Sequential(
-            nn.Linear(128 * 2 + 4, 128),
-            nn.LayerNorm(128),
-            nn.ReLU(),
-
-            nn.Linear(128, out_dim),
-            nn.LayerNorm(out_dim),
-            nn.ReLU(),
-        )
-    
-    def forward(self, pc_xyz: torch.Tensor) -> torch.Tensor:
-        # pc_xyz: (B, N, 3), return: (B, out_dim)
-        pc_xyz = torch.nan_to_num(pc_xyz, nan=0.0, posinf=0.0, neginf=0.0)
-        valid = pc_xyz.abs().sum(dim=-1) > 1e-8  # (B, N)
-        # Protect against empty crop.
-        no_valid = valid.sum(dim=1) == 0
-        if no_valid.any():
-            valid = valid.clone()
-            valid[no_valid, 0] = True
-        valid_f = valid.float().unsqueeze(-1)  # (B, N, 1)
-        count = valid_f.sum(dim=1, keepdim=True).clamp_min(1.0)  # (B, 1, 1)
-
-        center = (pc_xyz * valid_f).sum(dim=1, keepdim=True) / count  # (B, 1, 3)
-        pc_centered = pc_xyz - center  # relative position
-        # keep shape and position
-        radius = (pc_centered.norm(dim=-1, keepdim=True) * valid_f).amax(dim=1, keepdim=True).clamp_min(1e-6)  # (B, 1, 1)
-        pc_norm = pc_centered / radius
-
-        # raw xyz provides abs position info; norm xyz provides local geometry info
-        x = torch.cat([pc_xyz, pc_norm], dim=-1)  # (B, N, 6)
-        h = self.point_mlp(x)  # (B, N, 256)
-        # masked max pooling
-        h_max = h.masked_fill(~valid.unsqueeze(-1), -1e9).max(dim=1).values
-        # masked mean pooling
-        h_mean = h.masked_fill(~valid.unsqueeze(-1), 0.0).sum(dim=1) / count.squeeze(1)
-        # center: (B, 3), radius: (B, 1)
-        geom = torch.cat([center.squeeze(1), radius.squeeze(1)], dim=-1)
-        return self.fc(torch.cat([h_max, h_mean, geom], dim=-1))
-
-
-class PCEncoder(nn.Module):
-    def __init__(self, pc_dim, out_dim=256):
-        super().__init__()
-        self.right_encoder = PointNetPCEncoder(in_dim=3, out_dim=128)
-        self.left_encoder = PointNetPCEncoder(in_dim=3, out_dim=128)
-        self.fusion = nn.Sequential(
-            nn.Linear(128 * 2, 256),
-            nn.LayerNorm(256),
-            nn.ReLU(),
-            nn.Linear(256, out_dim),
-            nn.LayerNorm(out_dim),
-            nn.ReLU(),
-        )
-    
-    def forward(self, pc: torch.Tensor) -> torch.Tensor:
-        pc_right = pc[..., :3]
-        pc_left = pc[..., 3: 6]
-
-        feat_right = self.right_encoder(pc_right)
-        feat_left = self.left_encoder(pc_left)
-
-        return self.fusion(torch.cat([feat_right, feat_left], dim=-1))
-
-
-class MultiModalEncoder(nn.Module):
-    def __init__(self, state_dim, use_vision=False, use_pc=False, vision_channels=3, pc_dim=6, out_dim=256):
-        super().__init__()
-        self.use_vision = use_vision
-        self.use_pc = use_pc
-        self.state_encoder = StateEncoder(state_dim, out_dim)
-        feat_dim = [out_dim]
-        if use_vision:
-            self.vision_encoder = VisionEncoder(vision_channels, out_dim)
-            feat_dim.append(out_dim)
-        else:
-            self.vision_encoder = None
-        if use_pc:
-            self.pc_encoder = PCEncoder(pc_dim, out_dim)
-            feat_dim.append(out_dim)
-        else:
-            self.pc_encoder = None
-        
-        self.fusion = nn.Sequential(
-            nn.Linear(sum(feat_dim), 512),
-            nn.ReLU(),
-            nn.Linear(512, out_dim),
-        )
-    
-    def forward(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
-        features = [self.state_encoder(batch['state'])]
-        if self.use_vision:
-            features.append(self.vision_encoder(batch['vision']))
-        if self.use_pc:
-            features.append(self.pc_encoder(batch['pc']))
-        features = torch.cat(features, dim=-1)
-        features = self.fusion(features)
-        return features
+from symdex.algo.network.mlp import MLPBlock, MLPNet
+from symdex.algo.network.network_td3bc import StateEncoder, MultiModalEncoder
 
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, max_action, use_vision=False, use_pc=False):
+    def __init__(
+        self,
+        actor_cfg,
+        action_dim: int,
+        max_action: float,
+        pc_max_points: int = 512,
+        pretrain_ckpt_path: str = None,
+    ):
         super().__init__()
-        self.encoder = MultiModalEncoder(state_dim, use_vision, use_pc)
-        self.net = nn.Sequential(
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, action_dim),
-            nn.Tanh(),
-        )
         self.max_action = max_action
+        self.encoder = MultiModalEncoder(actor_cfg, pc_max_points=pc_max_points)
+        self.policy = MLPNet(
+            in_dim=256,
+            out_dim=action_dim,
+            hidden_layers=[256, 256],
+        )
 
-    def forward(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
-        features = self.encoder(batch)
-        actions = self.net(features)
-        return actions * self.max_action
+        if pretrain_ckpt_path is not None:
+            ckpt = torch.load(pretrain_ckpt_path, map_location="cpu", weights_only=False)
+            self.encoder.pc_encoder.load_state_dict(ckpt["pc_encoder"])
+            val_mse = ckpt.get("results", {}).get("pc_multilabel", {}).get("best_val_mse", None)
+            mse_str = f"{val_mse:.6f}" if val_mse is not None else "N/A"
+            print(f"[Actor] Loaded pretrained pc_encoder from {pretrain_ckpt_path}, val_mse={mse_str}")
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        z = self.encoder(batch)                          # (B, 256)
+        return self.policy(z).tanh() * self.max_action  # (B, action_dim)
 
 
 class Critic(nn.Module):
-    def __init__(self, state_dim, action_dim, use_vision=False, use_pc=False):
+    def __init__(self, critic_cfg, action_dim: int):
         super().__init__()
-        self.encoder1 = MultiModalEncoder(state_dim, use_vision, use_pc)
-        self.encoder2 = MultiModalEncoder(state_dim, use_vision, use_pc)
+        self.encoder = StateEncoder(critic_cfg, out_dim=256)
+        # self.q1 = nn.Sequential(
+        #     nn.Linear(256 + action_dim, 256),
+        #     nn.ELU(),
+        #     nn.Linear(256, 256),
+        #     nn.ELU(),
+        #     nn.Linear(256, 1),
+        # )
+        # self.q2 = nn.Sequential(
+        #     nn.Linear(256 + action_dim, 256),
+        #     nn.ELU(),
+        #     nn.Linear(256, 256),
+        #     nn.ELU(),
+        #     nn.Linear(256, 1),
+        # )
+        self.q1 = MLPNet(in_dim=256 + action_dim, out_dim=1, hidden_layers=[256, 256])
+        self.q2 = MLPNet(in_dim=256 + action_dim, out_dim=1, hidden_layers=[256, 256])
 
-        self.q1 = nn.Sequential(
-            nn.Linear(256 + action_dim, 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, 1),
-        )
-        self.q2 = nn.Sequential(
-            nn.Linear(256 + action_dim, 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, 1),
-        )
-    
-    def forward(self, batch: dict[str, torch.Tensor], action: torch.Tensor):
-        features1 = self.encoder1(batch)
-        features2 = self.encoder2(batch)
-        q1 = self.q1(torch.cat([features1, action], dim=-1))
-        q2 = self.q2(torch.cat([features2, action], dim=-1))
-        return q1, q2
-    
-    def Q1(self, batch: dict[str, torch.Tensor], action: torch.Tensor):
-        features = self.encoder1(batch)
-        return self.q1(torch.cat([features, action], dim=-1))
+    def _encode(self, batch: dict) -> torch.Tensor:
+        return self.encoder(batch['state'])              # (B, 256)
+
+    def forward(self, batch: dict, action: torch.Tensor):
+        z  = self._encode(batch)
+        za = torch.cat([z, action], dim=-1)              # (B, 256 + action_dim)
+        return self.q1(za), self.q2(za)
+
+    def Q1(self, batch: dict, action: torch.Tensor) -> torch.Tensor:
+        z  = self._encode(batch)
+        za = torch.cat([z, action], dim=-1)
+        return self.q1(za)
     
 
 class TD3BC:
     def __init__(
-        self, 
-        state_dim,
-		action_dim,
-		max_action,
+        self,
+        actor_cfg,
+        critic_cfg,
+        action_dim,
+        max_action,
         device,
-        use_vision = False,
-        use_pc = False,
-		discount=0.99,
-		tau=0.005,
-		policy_noise=0.2,
-		noise_clip=0.5,
-		policy_freq=2,
-		alpha=2.5,
+        discount=0.99,
+        tau=0.005,
+        policy_noise=0.2,
+        noise_clip=0.5,
+        policy_freq=2,
+        alpha=2.5,
         actor_lr=3e-4,
         critic_lr=3e-4,
         reward_scale=1.0,
+        pc_max_points=512,
+        pretrain_ckpt_path: str = None,
     ):
         self.device = torch.device(device)
-        self.actor = Actor(state_dim, action_dim, max_action, use_vision, use_pc).to(self.device)
+        self.actor = Actor(actor_cfg, action_dim, max_action, pc_max_points, pretrain_ckpt_path).to(self.device)
         self.actor_target = copy.deepcopy(self.actor)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
 
-        self.critic = Critic(state_dim, action_dim, use_vision, use_pc).to(self.device)
+        self.critic = Critic(critic_cfg, action_dim).to(self.device)
         self.critic_target = copy.deepcopy(self.critic)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr)
 
@@ -356,6 +195,7 @@ class TD3BC:
 
         self.critic_optimizer.zero_grad(set_to_none=True)
         critic_loss.backward()
+        nn.utils.clip_grad_norm_(self.critic.parameters(), 1.0)
         if log_diagnostics:
             log_info["optim/critic_grad_norm"] = self._grad_norm(self.critic)
         self.critic_optimizer.step()

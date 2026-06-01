@@ -193,3 +193,22 @@ class MLPCritic(nn.Module):
 
     def forward(self, state: Tensor) -> Tensor:
         return self.critic(state)  # advantage value
+
+
+class MLPBlock(nn.Module):
+    def __init__(self, in_dim, out_dim, hidden_dims, act, layer_norm=False, dropout=0.0, activate_last=False):
+        super().__init__()
+        dims = [in_dim, *hidden_dims, out_dim]
+        layers: list[nn.Module] = []
+        for i in range(len(dims) - 1):
+            layers.append(nn.Linear(dims[i], dims[i + 1]))
+            if (not (i == len(dims)-2)) or activate_last:
+                if layer_norm:
+                    layers.append(nn.LayerNorm(dims[i + 1]))
+                layers.append(act())
+                if dropout > 0:
+                    layers.append(nn.Dropout(dropout))
+        self.net = nn.Sequential(*layers)
+    
+    def forward(self, state):
+        return self.net(state)

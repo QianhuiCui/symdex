@@ -510,16 +510,16 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
             self.enable_corruption = False
             self.concatenate_terms = True
     
-    @configclass
-    class VisionCfg(ObsGroup):
-        """Observations for vision group."""
+    # @configclass
+    # class VisionCfg(ObsGroup):
+    #     """Observations for vision group."""
 
-        # -- robot terms (order preserved)
-        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+    #     # -- robot terms (order preserved)
+    #     rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
 
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
+    #     def __post_init__(self):
+    #         self.enable_corruption = False
+    #         self.concatenate_terms = True
     
     @configclass
     class PointCloudCfg(ObsGroup):
@@ -547,7 +547,7 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    vision: VisionCfg = VisionCfg()
+    # vision: VisionCfg = VisionCfg()
     point_cloud: PointCloudCfg = PointCloudCfg()
 
 

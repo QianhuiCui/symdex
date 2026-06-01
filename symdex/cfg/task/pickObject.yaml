@@ -32,9 +32,11 @@ cam:
   cam_params:
     cam_1:
       enable: True
-      randomize: True
-      pos: [-0.5, 0.0, 0.5]
-      target: [0.18, 0.0, 0.06]
+      randomize: False
+      # pos: [-0.5, 0.0, 0.5]
+      # target: [0.18, 0.0, 0.06]
+      pos: [-0.42, 0.0, 0.46]
+      target: [0.08, 0.0, 0.07]
     # cam_2:
     #   enable: False  
     #   randomize: True
@@ -99,6 +101,16 @@ multi:
                        ["reaching_object_left", "object_lifting_left", "object_goal_tracking_left", "object_goal_tracking_left_delay", "object_2_in_tote", "reset_robot_joint_pos_left", "energy_left", "collision_to_table_left"]]
     # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "object_goal_tracking_symmetry", "object_1_in_tote_symmetry", "reset_robot_joint_pos_symmetry", "energy_left", "collision_to_table_symmetry"],
     #                             ["reaching_object_left_symmetry", "object_lifting_left_symmetry", "object_goal_tracking_left_symmetry", "object_goal_tracking_left_delay_symmetry", "object_2_in_tote_symmetry", "reset_robot_joint_pos_left_symmetry", "energy", "collision_to_table_left_symmetry"]]
+  TD3BC:
+    single_agent_action_dim: 22
+    single_agent_obs_dim: [93, 96]  # 189
+    single_agent_obs_idx: [[[0, 68], [139, 161], [186, 189]],  # 93
+                          [[68, 136],[136, 139], [161, 186]]]  # 96
+    single_agent_rew: [["reaching_object", "object_lifting", "object_goal_tracking", "object_1_in_tote", "reset_robot_joint_pos", "energy", "collision_to_table"],
+                       ["reaching_object_left", "object_lifting_left", "object_goal_tracking_left", "object_goal_tracking_left_delay", "object_2_in_tote", "reset_robot_joint_pos_left", "energy_left", "collision_to_table_left"]]
+    actor_obs_dim: [81, 84]
+    actor_obs_idx: [[[0, 56], [139, 161], [186, 189]],
+                    [[68, 124], [136, 139], [161, 186]]]
 
 symmetry:
   reset_symmetry:
@@ -126,3 +138,16 @@ symmetry:
     critic_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "R3", "Q_js"],
                          ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "R3", "Q_js", "R3"]]
     critic_output_fields: [["irrep_0"], ["irrep_0"]] # 1
+  TD3BC:
+    # actor network  (robot-only: ee_pose + jp + jv + last_action + cmd, NO obj_pos/rot)
+    # right 81: R3(3)+SO3_flat(9)+Q_js(22)+TqQ_js(22) | Q_js(22) | R3(3)
+    # left  84: R3(3)+SO3_flat(9)+Q_js(22)+TqQ_js(22) | R3(3) | Q_js(22)+R3(3)
+    actor_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "Q_js", "R3"],
+                         ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "Q_js", "R3"]]
+    actor_output_fields: [["Q_js"], ["Q_js"]]  # 22
+    # critic network  (full privileged: adds obj_pos + obj_rot per branch)
+    # right 93: R3(3)+SO3_flat(9)+Q_js(22)+TqQ_js(22)+R3(3)+SO3_flat(9) | Q_js(22) | R3(3)
+    # left  96: R3(3)+SO3_flat(9)+Q_js(22)+TqQ_js(22)+R3(3)+SO3_flat(9) | R3(3) | Q_js(22)+R3(3)
+    critic_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "Q_js", "R3"],
+                          ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "Q_js", "R3"]]
+    critic_output_fields: [["irrep_0"], ["irrep_0"]]  # scalar Q per branch

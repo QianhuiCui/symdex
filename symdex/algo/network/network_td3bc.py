@@ -56,113 +56,86 @@ class StateEncoder(nn.Module):
         return z
 
 
-class EdgeConvBlock(nn.Module):
-    def __init__(self, in_dim, out_dim, k=16):
+class PCBranch(nn.Module):
+    def __init__(self, out_dim: int = 128, max_points: int = 512):
         super().__init__()
-        self.k = k
-        self.net = nn.Sequential(
-            nn.Conv2d(in_dim * 2, out_dim, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_dim),
+        self.max_points = max_points  # downsample
+
+        # Per-point MLP: abs_xyz(3) + norm_xyz(3) = 6 input dims
+        self.point_mlp = nn.Sequential(
+            nn.Linear(6, 64),
+            nn.LayerNorm(64),
             nn.ReLU(),
-            nn.Conv2d(out_dim, out_dim, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_dim),
+            nn.Linear(64, 128),
+            nn.LayerNorm(128),
             nn.ReLU(),
         )
-    
-    def forward(self, x: torch.Tensor, xyz: torch.Tensor) -> torch.Tensor:
-        # x: (B, C, N), xyz: (B, 3, N)
-        B, C, N = x.shape
-        k = min(self.k, N-1)
-        if k <= 0:
-            return x.new_zeros(B, self.net[-2].num_features, N)
-        
-        dist = torch.cdist(xyz.transpose(1, 2), xyz.transpose(1, 2))  # (B, N, N)
-        idx = dist.topk(k=k + 1, dim=-1, largest=False).indices[:, :, 1:]
 
-        idx_base = torch.arange(B, device=x.device).view(B, 1, 1) * N
-        idx = (idx + idx_base).reshape(-1)
-
-        x_t = x.transpose(1, 2).contiguous()
-        neighbors = x_t.reshape(B * N, C)[idx].reshape(B, N, k, C)
-        center = x_t.reshape(B, N, 1, C).expand(-1, -1, k, -1)
-
-        edge = torch.cat([center, neighbors - center], dim=-1)  
-        edge = edge.permute(0, 3, 1, 2).contiguous()  # (B, 2C, N, k)
-
-        out = self.net(edge)
-        return out.max(dim=-1).values
-
-
-class GeometryPCBranch(nn.Module):
-    def __init__(self, out_dim, k, max_points):
-        super().__init__()
-        self.max_points = max_points
-        self.edge1 = EdgeConvBlock(3, 64, k)
-        self.edge2 = EdgeConvBlock(64, 128, k)
-
-        # h1_global: 64, h2_global: 128, geom: center(3) + radius(1) + cov(9)
-        self.proj = MLPBlock(
-            in_dim=64 + 128 + 13,
-            out_dim=out_dim,
-            hidden_dims=[256],
-            act=nn.ReLU,
-            layer_norm=True,
-            activate_last=True,
+        # max_pool(128) + mean_pool(128) + geom: center(3)+radius(1)+cov(9) = 13
+        self.agg = nn.Sequential(
+            nn.Linear(128 * 2 + 13, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Linear(256, out_dim),
+            nn.LayerNorm(out_dim),
+            nn.ReLU(),
         )
 
-    def forward(self, pc_xyz: torch.Tensor) -> torch.Tensor:
-        # pc_xyz: (B, N, 3)
-        if pc_xyz.ndim != 3 or pc_xyz.shape[-1] != 3:
-            raise RuntimeError(f"Expected pc_xyz shape (B, N, 3), got {tuple(pc_xyz.shape)}")
-        pc_xyz = torch.nan_to_num(pc_xyz, nan=0.0, posinf=0.0, neginf=0.0)
-        B, N, _ = pc_xyz.shape
+    def forward(self, xyz: torch.Tensor) -> torch.Tensor:
+        # xyz: (B, N, 3)
+        if xyz.ndim != 3 or xyz.shape[-1] != 3:
+            raise RuntimeError(f"Expected xyz shape (B, N, 3), got {tuple(xyz.shape)}")
+
+        xyz = torch.nan_to_num(xyz, nan=0.0, posinf=0.0, neginf=0.0)
+        B, N, _ = xyz.shape
+
         if N > self.max_points:
-            idx = torch.randperm(N, device=pc_xyz.device)[:self.max_points]
-            pc_xyz = pc_xyz[:, idx]
-        
-        valid = pc_xyz.abs().sum(dim=-1) > 1e-8
+            idx = torch.randperm(N, device=xyz.device)[:self.max_points]
+            xyz = xyz[:, idx]
+
+        valid = xyz.abs().sum(dim=-1) > 1e-8  # (B, N)
         no_valid = valid.sum(dim=1) == 0
         if no_valid.any():
             valid = valid.clone()
             valid[no_valid, 0] = True
-        
+
         valid_f = valid.float().unsqueeze(-1)  # (B, N, 1)
         count = valid_f.sum(dim=1, keepdim=True).clamp_min(1.0)  # (B, 1, 1)
-        center = (pc_xyz * valid_f).sum(dim=1, keepdim=True) / count  # (B, 1, 3)
-        centered = pc_xyz - center
+
+        center = (xyz * valid_f).sum(dim=1, keepdim=True) / count  # (B, 1, 3)
+        centered = xyz - center  # (B, N, 3)
         radius = (centered.norm(dim=-1, keepdim=True) * valid_f).amax(dim=1, keepdim=True).clamp_min(1e-6)  # (B, 1, 1)
+        norm_xyz = centered / radius  # (B, N, 3), local shape of object
 
-        norm_xyz = centered / radius
-        x0 = norm_xyz.transpose(1, 2).contiguous()   # (B, 3, N)
-        xyz = norm_xyz.transpose(1, 2).contiguous()  # (B, 3, N)
+        c_valid = centered * valid_f
+        cov = torch.bmm(c_valid.transpose(1, 2), c_valid)
+        cov = cov / count.squeeze(1).unsqueeze(-1).clamp_min(1.0)  # (B, 3, 3)
 
-        h1 = self.edge1(x0, xyz)  # (B, 64, N)
-        h2 = self.edge2(h1, xyz)  # (B, 128, N)
+        x = torch.cat([xyz, norm_xyz], dim=-1)  # (B, N, 6)
+        h = self.point_mlp(x)  # (B, N, 128), learned point features
 
-        mask = valid.unsqueeze(1)  # (B, 1, N)
+        mask   = valid.unsqueeze(-1)  # (B, N, 1)
+        h_max  = h.masked_fill(~mask, -1e9).max(dim=1).values  # (B, 128), masked max pooling
+        h_mean = (h * valid_f).sum(dim=1) / count.squeeze(1)  # (B, 128), masked mean pooling
 
-        h1_global = h1.masked_fill(~mask, -1e9).max(dim=-1).values
-        h2_global = h2.masked_fill(~mask, -1e9).max(dim=-1).values
+        geom = torch.cat([center.squeeze(1),
+                          radius.squeeze(1),
+                          cov.reshape(B, 9),], dim=-1)  # (B, 13)
 
-        centered_valid = centered * valid_f
-        cov = torch.bmm(centered_valid.transpose(1, 2), centered_valid)
-        cov = cov / count.squeeze(1).unsqueeze(-1).clamp_min(1.0)
-        cov_feat = cov.reshape(B, 9)
-
-        geom = torch.cat([center.squeeze(1),  # (B, 3)
-                          radius.squeeze(1),  # (B, 1)
-                          cov_feat,           # (B, 9)
-                         ],dim=-1,)
-
-        return self.proj(torch.cat([h1_global, h2_global, geom], dim=-1))
+        return self.agg(torch.cat([h_max, h_mean, geom], dim=-1))    # (B, out_dim)
 
 
 class PCEncoder(nn.Module):
-    def __init__(self, out_dim=256, branch_dim=128, k=16, max_points=2048):
-        super().__init__()
+    """
+    Dual-branch PointNet encoder for sim-to-real Actor.
+      pc[..., :3]  -> right branch (object_1 side)
+      pc[..., 3:6] -> left  branch (object_2 side)
+    """
 
-        self.right_encoder = GeometryPCBranch(out_dim=branch_dim, k=k, max_points=max_points)
-        self.left_encoder = GeometryPCBranch(out_dim=branch_dim, k=k, max_points=max_points)
+    def __init__(self, out_dim: int = 256, branch_dim: int = 128, max_points: int = 512):
+        super().__init__()
+        self.right_encoder = PCBranch(out_dim=branch_dim, max_points=max_points)
+        self.left_encoder  = PCBranch(out_dim=branch_dim, max_points=max_points)
 
         self.fusion = MLPBlock(
             in_dim=branch_dim * 2,
@@ -174,17 +147,31 @@ class PCEncoder(nn.Module):
         )
 
     def forward(self, pc: torch.Tensor) -> torch.Tensor:
-        # pc: (B, N, 6), right xyz + left xyz
+        # pc: (B, N, 6)
         if pc.ndim != 3 or pc.shape[-1] != 6:
             raise RuntimeError(f"Expected pc shape (B, N, 6), got {tuple(pc.shape)}")
 
         pc = torch.nan_to_num(pc, nan=0.0, posinf=0.0, neginf=0.0)
+        z_right = self.right_encoder(pc[..., :3])
+        z_left  = self.left_encoder(pc[..., 3:6])
+        return self.fusion(torch.cat([z_right, z_left], dim=-1))
 
-        pc_right = pc[..., :3]
-        pc_left = pc[..., 3:6]
 
-        z_right = self.right_encoder(pc_right)  # (B, branch_dim)
-        z_left = self.left_encoder(pc_left)     # (B, branch_dim)
-
-        z_pc = self.fusion(torch.cat([z_right, z_left], dim=-1))
-        return z_pc  # (B, out_dim)
+class MultiModalEncoder(nn.Module):
+    def __init__(self, actor_cfg, state_out_dim=256, pc_out_dim=256, out_dim=256, pc_max_points=512):
+        super().__init__()
+        self.state_encoder = StateEncoder(actor_cfg, out_dim=state_out_dim)
+        self.pc_encoder = PCEncoder(out_dim=pc_out_dim, max_points=pc_max_points)
+        self.fusion = MLPBlock(
+            in_dim=state_out_dim + pc_out_dim,
+            out_dim=out_dim,
+            hidden_dims=[512, 256],
+            act=nn.ReLU,
+            layer_norm=True,
+            activate_last=True,
+        )
+    
+    def forward(self, batch: dict) -> torch.Tensor:
+        z_state = self.state_encoder(batch['state'])
+        z_pc = self.pc_encoder(batch['pc'])
+        return self.fusion(torch.cat([z_state, z_pc], dim=-1))
