@@ -3,73 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from symdex.algo.network.mlp import MLPBlock, MLPNet
-from symdex.algo.network.network_td3bc import StateEncoder, MultiModalEncoder
-
-
-class Actor(nn.Module):
-    def __init__(
-        self,
-        actor_cfg,
-        action_dim: int,
-        max_action: float,
-        pc_max_points: int = 512,
-        pretrain_ckpt_path: str = None,
-    ):
-        super().__init__()
-        self.max_action = max_action
-        self.encoder = MultiModalEncoder(actor_cfg, pc_max_points=pc_max_points)
-        self.policy = MLPNet(
-            in_dim=256,
-            out_dim=action_dim,
-            hidden_layers=[256, 256],
-        )
-
-        if pretrain_ckpt_path is not None:
-            ckpt = torch.load(pretrain_ckpt_path, map_location="cpu", weights_only=False)
-            self.encoder.pc_encoder.load_state_dict(ckpt["pc_encoder"])
-            val_mse = ckpt.get("results", {}).get("pc_multilabel", {}).get("best_val_mse", None)
-            mse_str = f"{val_mse:.6f}" if val_mse is not None else "N/A"
-            print(f"[Actor] Loaded pretrained pc_encoder from {pretrain_ckpt_path}, val_mse={mse_str}")
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        z = self.encoder(batch)                          # (B, 256)
-        return self.policy(z).tanh() * self.max_action  # (B, action_dim)
-
-
-class Critic(nn.Module):
-    def __init__(self, critic_cfg, action_dim: int):
-        super().__init__()
-        self.encoder = StateEncoder(critic_cfg, out_dim=256)
-        # self.q1 = nn.Sequential(
-        #     nn.Linear(256 + action_dim, 256),
-        #     nn.ELU(),
-        #     nn.Linear(256, 256),
-        #     nn.ELU(),
-        #     nn.Linear(256, 1),
-        # )
-        # self.q2 = nn.Sequential(
-        #     nn.Linear(256 + action_dim, 256),
-        #     nn.ELU(),
-        #     nn.Linear(256, 256),
-        #     nn.ELU(),
-        #     nn.Linear(256, 1),
-        # )
-        self.q1 = MLPNet(in_dim=256 + action_dim, out_dim=1, hidden_layers=[256, 256])
-        self.q2 = MLPNet(in_dim=256 + action_dim, out_dim=1, hidden_layers=[256, 256])
-
-    def _encode(self, batch: dict) -> torch.Tensor:
-        return self.encoder(batch['state'])              # (B, 256)
-
-    def forward(self, batch: dict, action: torch.Tensor):
-        z  = self._encode(batch)
-        za = torch.cat([z, action], dim=-1)              # (B, 256 + action_dim)
-        return self.q1(za), self.q2(za)
-
-    def Q1(self, batch: dict, action: torch.Tensor) -> torch.Tensor:
-        z  = self._encode(batch)
-        za = torch.cat([z, action], dim=-1)
-        return self.q1(za)
+from symdex.algo.network import model_name_to_path
     
 
 class TD3BC:
@@ -86,20 +20,18 @@ class TD3BC:
         noise_clip=0.5,
         policy_freq=2,
         alpha=2.5,
-        actor_lr=3e-4,
-        critic_lr=3e-4,
-        reward_scale=1.0,
+        # reward_scale=1.0,
         pc_max_points=512,
         pretrain_ckpt_path: str = None,
     ):
         self.device = torch.device(device)
-        self.actor = Actor(actor_cfg, action_dim, max_action, pc_max_points, pretrain_ckpt_path).to(self.device)
+        self.actor = Actor(actor_cfg, action_dim, max_action).to(self.device)  #, pc_max_points, pretrain_ckpt_path).to(self.device)
         self.actor_target = copy.deepcopy(self.actor)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.cfg.algo.actor_lr)
 
         self.critic = Critic(critic_cfg, action_dim).to(self.device)
         self.critic_target = copy.deepcopy(self.critic)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.cfg.algo.critic_lr)
 
         self.max_action = max_action
         self.discount = discount
@@ -109,7 +41,7 @@ class TD3BC:
         self.policy_freq = policy_freq
         self.alpha = alpha
         self.total_it = 0
-        self.reward_scale = reward_scale
+        # self.reward_scale = reward_scale
     
     @torch.no_grad()
     def select_action(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -121,7 +53,7 @@ class TD3BC:
         actor_batch = replay_buffer.sample_success(batch_size)
 
         actions, not_done = batch['actions'], batch['not_done']
-        rewards =  batch['rewards'] * self.reward_scale
+        rewards =  batch['rewards']  #  * self.reward_scale
         cur_obs = {"state": batch['state']}
         nxt_obs = {"state": batch['next_state']}
         if 'vision' in batch:
