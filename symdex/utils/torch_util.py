@@ -6,6 +6,12 @@ from torch import distributions as pyd
 from torch.distributions.transforms import TanhTransform
 
 
+@torch.no_grad()
+def soft_update(target_net, current_net, tau: float):
+    for tar, cur in zip(target_net.parameters(), current_net.parameters()):
+        tar.data.copy_(cur.data * tau + tar.data * (1.0 - tau))
+        
+
 class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
     def __init__(self, loc, scale):
         self.loc = loc
