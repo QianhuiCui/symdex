@@ -1,317 +1,225 @@
-import copy
+from copy import deepcopy
+from dataclasses import dataclass
+
+import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
+from symdex.algo.ac_base import ActorCriticBase
+from symdex.replay.nstep_replay import NStepReplay
+from symdex.utils.noise import add_mixed_normal_noise, add_normal_noise
+from symdex.utils.schedule_util import ExponentialSchedule, LinearSchedule
+from symdex.utils.torch_util import soft_update
+from symdex.utils.common import handle_timeout, load_class_from_path
 from symdex.algo.network import model_name_to_path
-    
+from symdex.utils.symmetry import load_symmetric_system, SymmetryManager
 
-class TD3BC:
-    def __init__(
-        self,
-        actor_cfg,
-        critic_cfg,
-        action_dim,
-        max_action,
-        device,
-        discount=0.99,
-        tau=0.005,
-        policy_noise=0.2,
-        noise_clip=0.5,
-        policy_freq=2,
-        alpha=2.5,
-        # reward_scale=1.0,
-        pc_max_points=512,
-        pretrain_ckpt_path: str = None,
-    ):
-        self.device = torch.device(device)
-        self.actor = Actor(actor_cfg, action_dim, max_action).to(self.device)  #, pc_max_points, pretrain_ckpt_path).to(self.device)
-        self.actor_target = copy.deepcopy(self.actor)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.cfg.algo.actor_lr)
+@dataclass
+class AgentITD3BC(ActorCriticBase):
+    def __post_init__(self):
+        super().__post_init__()
+        self.single_obs_dim = list(self.cfg.task.multi.TD3BC.single_agent_obs_dim)
+        self.single_action_dim = int(self.cfg.task.multi.TD3BC.single_agent_action_dim)
+        self.obs_dim = self.cfg.task.multi.shared_obs_dim
+        self.action_dim = self.single_action_dim * 2
+        act_class = load_class_from_path(self.cfg.algo.act_class,
+                                         model_name_to_path[self.cfg.algo.act_class])
+        cri_class = load_class_from_path(self.cfg.algo.cri_class,
+                                         model_name_to_path[self.cfg.algo.cri_class])
+        if "Equivariant" in self.cfg.algo.act_class:
+            self.G = load_symmetric_system(cfg=self.cfg.task.symmetry)
+            self.actor = act_class(self.G, self.cfg.task.symmetry.actor_input_fields[0], self.cfg.task.symmetry.actor_output_fields[0], self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
+            self.actor_left = act_class(self.G, self.cfg.task.symmetry.actor_input_fields[1], self.cfg.task.symmetry.actor_output_fields[1], self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
+        else:
+            self.actor = act_class(self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
+            self.actor_left = act_class(self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
+        if "Equivariant" in self.cfg.algo.cri_class:
+            self.G = load_symmetric_system(cfg=self.cfg.task.symmetry)
+            self.critic = cri_class(self.G, self.cfg.task.symmetry.critic_input_fields[0] + ['Q_js'], self.cfg.task.symmetry.critic_output_fields[0], self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
+            self.critic_left = cri_class(self.G, self.cfg.task.symmetry.critic_input_fields[1] + ['Q_js'], self.cfg.task.symmetry.critic_output_fields[1], self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
+        else:
+            self.critic = cri_class(self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
+            self.critic_left = cri_class(self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.cfg.algo.actor_lr)
+        self.actor_optimizer_left = torch.optim.Adam(self.actor_left.parameters(), self.cfg.algo.actor_lr)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.cfg.algp.critic_lr)
+        self.critic_optimizer_left = torch.optim.Adam(self.critic_left.parameters(), self.cfg.algo.critic_lr)
 
-        self.critic = Critic(critic_cfg, action_dim).to(self.device)
-        self.critic_target = copy.deepcopy(self.critic)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.cfg.algo.critic_lr)
+        self.critic_target = deepcopy(self.critic)
+        self.critic_target_left = deepcopy(self.critic_left)
+        self.actor_target = deepcopy(self.actor) if not self.cfg.algo.no_tgt_actor else self.actor
+        self.actor_target_left = deepcopy(self.actor_left) if not self.cfg.algo.no_tgt_actor else self.actor_left
 
-        self.max_action = max_action
-        self.discount = discount
-        self.tau = tau
-        self.policy_noise = policy_noise * self.max_action
-        self.noise_clip = noise_clip * self.max_action
-        self.policy_freq = policy_freq
-        self.alpha = alpha
-        self.total_it = 0
-        # self.reward_scale = reward_scale
-    
-    @torch.no_grad()
-    def select_action(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
-        return self.actor(batch)
-    
-    def train(self, replay_buffer, batch_size, log_diagnostics=False):
-        self.total_it += 1
-        batch = replay_buffer.sample(batch_size)
-        actor_batch = replay_buffer.sample_success(batch_size)
-
-        actions, not_done = batch['actions'], batch['not_done']
-        rewards =  batch['rewards']  #  * self.reward_scale
-        cur_obs = {"state": batch['state']}
-        nxt_obs = {"state": batch['next_state']}
-        if 'vision' in batch:
-            cur_obs['vision'] = batch['vision']
-            nxt_obs['vision'] = batch['next_vision']
-        if 'pc' in batch:
-            cur_obs['pc'] = batch['pc']
-            nxt_obs['pc'] = batch['next_pc']
+        if self.cfg.algo.noise.decay == 'linear':
+            self.noise_scheduler = LinearSchedule(start_val=self.cfg.algo.noise.std_max,
+                                                  end_val=self.cfg.algo.noise.std_min,
+                                                  total_iters=self.cfg.algo.noise.lin_decay_iters)
+        elif self.cfg.algo.noise.decay == 'exp':
+            self.noise_scheduler = ExponentialSchedule(start_val=self.cfg.algo.noise.std_max,
+                                                       gamma=self.cfg.algo.exp_decay_rate,
+                                                       end_val=self.cfg.algo.noise.std_min)
+        else:
+            self.noise_scheduler = None
         
-        actor_actions = actor_batch["actions"]
-        actor_obs = {"state": actor_batch["state"]}
-        if "vision" in actor_batch:
-            actor_obs["vision"] = actor_batch["vision"]
-        if "pc" in actor_batch:
-            actor_obs["pc"] = actor_batch["pc"]
+        self.n_step_buffer = NStepReplay(self.obs_dim,
+                                         self.action_dim,
+                                         self.cfg.num_envs,
+                                         self.cfg.algo.nstep,
+                                         device=self.device,
+                                         left_agent=True)
+        self.symmetry_manager = SymmetryManager(self.cfg.task.multi.TD3BC, self.cfg.task.symmetry.symmetric_envs)
+        self._critic_update_count = 0   # for delayed actor update
 
-        log_info = {}
+    def get_noise_std(self):
+        if self.noise_scheduler is None:
+            return self.cfg.algo.noise.std_max
+        else:
+            return self.noise_scheduler.val()
 
-        # -------------------------
-        # Batch statistics
-        # -------------------------
-        if log_diagnostics:
-            with torch.no_grad():
-                log_info.update(self._tensor_stats("batch/reward", rewards))
-                log_info.update(self._tensor_stats("batch/action", actions))
-                log_info.update(self._tensor_stats("batch/state", cur_obs["state"]))
-                log_info.update(self._tensor_stats("batch/success_state", actor_obs["state"]))
-                if "pc" in cur_obs:
-                    log_info.update(self._pc_stats("pc/cur_obs", cur_obs["pc"]))
-                if "pc" in actor_obs:
-                    log_info.update(self._pc_stats("pc/actor_obs", actor_obs["pc"]))
-                log_info["batch/done_mean"] = float((1.0 - not_done.float()).mean().item())
-                log_info["batch/action_out_of_range"] = float((actions.detach().abs() > self.max_action).float().mean().item())
+    def update_noise(self):
+        if self.noise_scheduler is not None:
+            self.noise_scheduler.step()
+        
+    def get_actions(self, obs, cur_symmetry_tracker, sample=True):
+        if self.cfg.algo.obs_norm:
+            obs = self.obs_rms.normalize(obs)
+        ob_right, ob_left = self.symmetry_manager.get_multi_agent_obs(obs, cur_symmetry_tracker)
+        actions_right = self.actor(ob_right)
+        actions_left = self.actor_left(ob_left)
+        actions = self.symmetry_manager.get_execute_action(actions_right, actions_left, cur_symmetry_tracker)
+        if sample:
+            if self.cfg.algo.noise.type == 'fixed':
+                actions = add_normal_noise(actions,
+                                           std=self.get_noise_std(),
+                                           out_bounds=[-1., 1.])
+            elif self.cfg.algo.noise.type == 'mixed':
+                actions = add_mixed_normal_noise(actions,
+                                                 std_min=self.cfg.algo.noise.std_min,
+                                                 std_max=self.cfg.algo.noise.std_max,
+                                                 out_bounds=[-1., 1.])
+            else:
+                raise NotImplementedError
+        return actions
 
-        # -------------------------
-        # Critic target
-        # -------------------------
-        with torch.no_grad():
-            noise = (torch.randn_like(actions) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
+    @torch.no_grad()
+    def get_tgt_policy_actions(self, actor_target, obs, sample=True):
+        actions = actor_target(obs)
+        if sample:
+            actions = add_normal_noise(actions,
+                                       std=self.cfg.algo.noise.tgt_pol_std,
+                                       noise_bounds=[-self.cfg.algo.noise.tgt_pol_noise_bound,
+                                                      self.cfg.algo.noise.tgt_pol_noise_bound],
+                                       out_bounds=[-1., 1.])
+        return actions
 
-            nxt_actions_raw = self.actor_target(nxt_obs)
-            nxt_actions = (nxt_actions_raw + noise).clamp(-self.max_action, self.max_action)
+    def explore_env(self, env, timesteps: int, random: bool = False) -> list:
+        obs_dim = (self.obs_dim,) if isinstance(self.obs_dim, int) else self.obs_dim
+        traj_states = torch.empty((self.cfg.num_envs, timesteps) + (*obs_dim,), device=self.device)
+        traj_actions = torch.empty((self.cfg.num_envs, timesteps) + (self.action_dim,), device=self.device)
+        traj_rewards = torch.empty((self.cfg.num_envs, timesteps), device=self.device)
+        traj_rewards_left = torch.empty((self.cfg.num_envs, timesteps), device=self.device)
+        traj_next_states = torch.empty((self.cfg.num_envs, timesteps) + (*obs_dim,), device=self.device)
+        traj_dones = torch.empty((self.cfg.num_envs, timesteps), device=self.device)
 
-            target_Q1, target_Q2 = self.critic_target(nxt_obs, nxt_actions)
-            target_Q_min = torch.min(target_Q1, target_Q2)
-            target_Q = rewards + not_done * self.discount * target_Q_min
+        obs = self.obs
+        for i in range(timesteps):
+            if self.cfg.algo.obs_norm:
+                self.obs_rms.update(obs)
+            cur_symmetry_tracker = env.unwrapped.symmetry_tracker
+            if random:
+                action = torch.rand((self.cfg.num_envs, self.action_dim),
+                                    device=self.cfg.device) * 2.0 - 1.0
+            else:
+                action = self.get_actions(obs, cur_symmetry_tracker, sample=True)
+            
+            next_obs, reward, done, info = env.step(action)
+            reward_right, reward_left = self.symmetry_manager.get_multi_agent_rew(info['detailed_reward'], cur_symmetry_tracker)
+            self.update_tracker(reward_right + reward_left, done, info)
+            if self.cfg.algo.handle_timeout:
+                done = handle_timeout(done, info)
 
-            if log_diagnostics:
-                log_info.update(self._tensor_stats("target/q", target_Q))
-                log_info["target/q_gap_abs_mean"] = float((target_Q1 - target_Q2).abs().mean().item())
-                log_info.update(self._action_group_stats("target/action_raw", nxt_actions_raw))
-                # log_info.update(self._action_group_stats("target/action_noisy", nxt_actions))
+            traj_states[:, i] = obs
+            traj_actions[:, i] = action
+            traj_dones[:, i] = done
+            traj_rewards[:, i] = reward_right
+            traj_rewards_left[:, i] = reward_left
+            traj_next_states[:, i] = next_obs
+            obs = next_obs
+        self.obs = obs
 
-        # -------------------------
-        # Critic update
-        # -------------------------
-        current_Q1, current_Q2 = self.critic(cur_obs, actions)
+        traj_rewards = self.cfg.algo.reward_scale * traj_rewards.reshape(self.cfg.num_envs, timesteps, 1)
+        traj_rewards_left = self.cfg.algo.reward_scale * traj_rewards_left.reshape(self.cfg.num_envs, timesteps, 1)
+        traj_dones = traj_dones.reshape(self.cfg.num_envs, timesteps, 1)
+        data = self.n_step_buffer.add_to_buffer(traj_states, traj_actions, traj_rewards, traj_dones, reward_left=traj_rewards_left)
+        return data, timesteps * self.cfg.num_envs
+    
+    def update_net(self, memory):
+        critic_loss_list = list()
+        critic_loss_left_list = list()
+        actor_loss_list = list()
+        actor_loss_left_list = list()
+        for _ in range(self.cfg.algo.update_times):
+            obs, action, reward_right, next_obs, done, reward_left = memory.sample_batch(self.cfg.algo.batch_size)
+            if self.cfg.algo.obs_norm:
+                obs = self.obs_rms.normalize(obs)
+                next_obs = self.obs_rms.normalize(next_obs)
+            obs_right, obs_left = self.symmetry_manager.get_multi_agent_obs(obs, None)
+            next_obs_right, next_obs_left = self.symmetry_manager.get_multi_agent_obs(next_obs, None)
+            action_right, action_left = action[:, :22], action[:, 22:]
 
-        critic_loss_q1 = F.mse_loss(current_Q1, target_Q)
-        critic_loss_q2 = F.mse_loss(current_Q2, target_Q)
-        critic_loss = critic_loss_q1 + critic_loss_q2
+            critic_loss, critic_grad_norm = self.update_critic(self.critic, self.critic_target, self.critic_optimizer, self.actor_target,
+                                                               obs_right, action_right, reward_right, next_obs_right, done)
+            critic_loss_list.append(critic_loss)
+            critic_loss_left, critic_grad_norm_left = self.update_critic(self.critic_left, self.critic_target_left, self.critic_optimizer_left, self.actor_target_left,
+                                                               obs_left, action_left, reward_left, next_obs_left, done)
+            critic_loss_left_list.append(critic_loss_left)
+            self._critic_update_count += 1
 
-        if log_diagnostics:
-            with torch.no_grad():
-                q_gap = current_Q1 - current_Q2
-
-                log_info["critic/loss_total"] = float(critic_loss.item())
-                log_info["critic/loss_q1"] = float(critic_loss_q1.item())
-                log_info["critic/loss_q2"] = float(critic_loss_q2.item())
-                log_info["critic/q_gap_abs_mean"] = float(q_gap.abs().mean().item())
-
-        self.critic_optimizer.zero_grad(set_to_none=True)
-        critic_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), 1.0)
-        if log_diagnostics:
-            log_info["optim/critic_grad_norm"] = self._grad_norm(self.critic)
-        self.critic_optimizer.step()
-
-        # -------------------------
-        # Delayed actor update
-        # -------------------------
-        if self.total_it % self.policy_freq == 0:
-            for p in self.critic.parameters():
-                p.requires_grad_(False)
-            pi = self.actor(cur_obs)
-            Q_pi = self.critic.Q1(cur_obs, pi)
-
-            q_abs_mean = Q_pi.abs().mean().detach()
-            lmbda = self.alpha / (q_abs_mean + 1e-6)
-
-            pi_bc = self.actor(actor_obs)  # only for bc
-            bc_loss = F.mse_loss(pi_bc, actor_actions)
-            actor_q_loss = -lmbda * Q_pi.mean()
-            actor_loss = actor_q_loss + bc_loss
-
-            self.actor_optimizer.zero_grad(set_to_none=True)
-            actor_loss.backward()
-            if log_diagnostics:
-                log_info["optim/actor_grad_norm"] = self._grad_norm(self.actor)
-            self.actor_optimizer.step()
-
-            for p in self.critic.parameters():
-                p.requires_grad_(True)
-
-            # -------------------------
-            # Actor / policy diagnostics
-            # -------------------------
-            if log_diagnostics:
-                with torch.no_grad():
-                    pi_after = self.actor(actor_obs)  # after actor update
-                    Q_pi_after = self.critic.Q1(actor_obs, pi_after)
-                    Q_data_after = self.critic.Q1(actor_obs, actor_actions)
-
-                    log_info["actor/loss"] = float(actor_loss.item())
-                    log_info["actor/q_loss"] = float(actor_q_loss.item())
-                    log_info["actor/bc_loss"] = float(bc_loss.item())
-                    log_info["actor/q_pi_mean"] = float(Q_pi.mean().item())
-                    log_info["actor/lambda"] = float(lmbda.item())
-                    
-                    log_info.update(self._tensor_stats("q_compare/policy_action", Q_pi_after))
-                    log_info.update(self._tensor_stats("q_compare/dataset_action", Q_data_after))
-
-                    # log_info["policy/action_mse"] = float(F.mse_loss(pi_after, actor_actions).item())
-                    # log_info.update(self._tensor_stats("policy/action", pi_after))   # compare with eval/action)abs_mean
-                    log_info["q_compare/policy_minus_dataset"] = float((Q_pi_after - Q_data_after).mean().item())
-                    log_info.update(self._action_group_stats("policy/action", pi_after))
-                    # log_info.update(self._action_group_stats("dataset/success_action", actor_actions))
-                    log_info.update(self._action_group_mse("policy_vs_success", pi_after, actor_actions))
-
-            # -------------------------
-            # Target network update
-            # -------------------------
-            # for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
-            #     target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
-            # for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
-            #     target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
-            with torch.no_grad():
-                for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
-                    target_param.copy_(self.tau * param + (1.0 - self.tau) * target_param)
-                for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
-                    target_param.copy_(self.tau * param + (1.0 - self.tau) * target_param)
-
+            if self._critic_update_count % self.cfg.algo.policy_delay == 0:
+                actor_loss, actor_grad_norm = self.update_actor(self.actor, self.actor_optimizer, self.critic, obs_right, action_right)
+                actor_loss_list.append(actor_loss)
+                actor_loss_left, actor_grad_norm_left = self.update_actor(self.actor_left, self.actor_optimizer_left, self.critic_left, obs_left, action_left)
+                actor_loss_left_list.append(actor_loss_left)
+                
+                if not self.cfg.algo.no_tgt_actor:
+                    soft_update(self.actor_target, self.actor, self.cfg.algo.tau)
+                    soft_update(self.actor_target_left, self.actor_left, self.cfg.algo.tau)
+                
+            soft_update(self.critic_target, self.critic, self.cfg.algo.tau)
+            soft_update(self.critic_target_left, self.critic_left, self.cfg.algo.tau)
+        
+        log_info = {
+            "train/critic_loss": np.mean(critic_loss_list),
+            "train/critic_loss_left": np.mean(critic_loss_left_list),
+            "train/actor_loss": np.mean(actor_loss_list),
+            "train/actor_loss_left": np.mean(actor_loss_left_list),
+            "train/return": self.return_tracker.mean(),
+            "train/episode_length": self.step_tracker.mean(),
+            "train/success_rate": self.success_tracker.mean(),
+        }
         return log_info
+
+    def update_critic(self, critic, critic_target, critic_optimizer, actor_target, obs, action, reward, next_obs, done):
+        with torch.no_grad():
+            next_actions = self.get_tgt_policy_actions(actor_target, next_obs)
+            target_Q = critic_target.get_q_min(next_obs, next_actions)
+            target_Q = reward + (1 - done) * (self.cfg.algo.gamma ** self.cfg.algo.nstep) * target_Q
+        
+        current_Q1, current_Q2 = critic.get_q1_q2(obs, action)
+        critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
+        grad_norm = self.optimizer_update(critic_optimizer, critic_loss)
+        return critic_loss.item(), grad_norm
     
-    def save(self, path):
-        torch.save({
-            'actor': self.actor.state_dict(),
-            'actor_target': self.actor_target.state_dict(),
-            'critic': self.critic.state_dict(),
-            'critic_target': self.critic_target.state_dict(),
-            'actor_optimizer': self.actor_optimizer.state_dict(),
-            'critic_optimizer': self.critic_optimizer.state_dict(),
-            'total_it': self.total_it,
-        }, path)
-    
-    def load(self, path):
-        checkpoint = torch.load(path, map_location=self.device)
-        self.actor.load_state_dict(checkpoint['actor'])
-        self.actor_target.load_state_dict(checkpoint['actor_target'])
-        self.critic.load_state_dict(checkpoint['critic'])
-        self.critic_target.load_state_dict(checkpoint['critic_target'])
-        self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer'])
-        self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer'])
-        self.total_it = checkpoint.get('total_it', 0)
-    
-    # ================ Helper functions ================
-    def _tensor_stats(self, name: str, x: torch.Tensor) -> dict:
-        x = x.detach()
-        return {
-            f"{name}/mean": float(x.mean().item()),
-            # f"{name}/std": float(x.std(unbiased=False).item()),
-            # f"{name}/min": float(x.min().item()),
-            # f"{name}/max": float(x.max().item()),
-            # f"{name}/abs_mean": float(x.abs().mean().item()),
-            f"{name}/abs_max": float(x.abs().max().item()),
-        }
-    
-    def _pc_stats(self, prefix: str, pc: torch.Tensor) -> dict:
-        pc = pc.detach()
-        out = {
-            f"{prefix}/mean": float(pc.mean().item()),
-            f"{prefix}/std": float(pc.std(unbiased=False).item()),
-            # f"{prefix}/abs_max": float(pc.abs().max().item()),s
-        }
-
-        right = pc[..., :3]
-        left = pc[..., 3:6]
-        right_valid = (right.abs().sum(dim=-1) > 1e-8).float()
-        left_valid = (left.abs().sum(dim=-1) > 1e-8).float()
-        right_count = right_valid.sum(dim=1)
-        left_count = left_valid.sum(dim=1)
-
-        out[f"{prefix}/right_valid_ratio"] = float(right_valid.mean().item())
-        out[f"{prefix}/left_valid_ratio"] = float(left_valid.mean().item())
-        out[f"{prefix}/right_empty_ratio"] = float((right_count == 0).float().mean().item())
-        out[f"{prefix}/left_empty_ratio"] = float((left_count == 0).float().mean().item())
-        # out[f"{prefix}/right_valid_points_mean"] = float(right_count.mean().item())
-        # out[f"{prefix}/left_valid_points_mean"] = float(left_count.mean().item())
-        # out[f"{prefix}/right_abs_max"] = float(right.abs().max().item())
-        # out[f"{prefix}/left_abs_max"] = float(left.abs().max().item())
-        return out
-    
-    def _action_group_stats(self, prefix: str, action: torch.Tensor) -> dict:
-        action = action.detach()
-        groups = {
-            "right_arm": action[:, 0:6],
-            "right_hand": action[:, 6:22],
-            "left_arm": action[:, 22:28],
-            "left_hand": action[:, 28:44],
-        }
-        out = {}
-
-        for name, x in groups.items():
-            abs_x = x.abs()
-            out[f"{prefix}/{name}_mean"] = float(x.mean().item())
-            # out[f"{prefix}/{name}_abs_mean"] = float(abs_x.mean().item())
-            out[f"{prefix}/{name}_abs_max"] = float(abs_x.max().item())
-            # out[f"{prefix}/{name}_sat_095"] = float((abs_x > 0.95 * self.max_action).float().mean().item())
-            # out[f"{prefix}/{name}_sat_099"] = float((abs_x > 0.99 * self.max_action).float().mean().item())
-
-        out[f"{prefix}/all_mean"] = float(action.mean().item())
-        # out[f"{prefix}/all_abs_mean"] = float(action.abs().mean().item())
-        out[f"{prefix}/all_abs_max"] = float(action.abs().max().item())
-        # out[f"{prefix}/all_sat_099"] = float((action.abs() > 0.99 * self.max_action).float().mean().item())
-        return out
-
-    def _action_group_mse(self, prefix: str, pred: torch.Tensor, target: torch.Tensor) -> dict:
-        pred = pred.detach()
-        target = target.detach()
-
-        groups = {
-            "right_arm": (pred[:, 0:6], target[:, 0:6]),
-            "right_hand": (pred[:, 6:22], target[:, 6:22]),
-            "left_arm": (pred[:, 22:28], target[:, 22:28]),
-            "left_hand": (pred[:, 28:44], target[:, 28:44]),
-        }
-        out = {}
-
-        for name, (p, t) in groups.items():
-            out[f"{prefix}/{name}_mse"] = float(F.mse_loss(p, t).item())
-            # out[f"{prefix}/{name}_mae"] = float(F.l1_loss(p, t).item())
-
-        out[f"{prefix}/all_mse"] = float(F.mse_loss(pred, target).item())
-        # out[f"{prefix}/all_mae"] = float(F.l1_loss(pred, target).item())
-        return out
-
-    def _grad_norm(self, module: nn.Module) -> float:
-        total_sq = 0.0
-        for p in module.parameters():
-            if p.grad is not None:
-                param_norm = p.grad.detach().norm(2).item()
-                total_sq += param_norm ** 2
-        return float(total_sq ** 0.5)
-
-    # def _param_norm(self, module: nn.Module) -> float:
-    #     total_sq = 0.0
-    #     with torch.no_grad():
-    #         for p in module.parameters():
-    #             param_norm = p.detach().data.norm(2).item()
-    #             total_sq += param_norm ** 2
-    #     return float(total_sq ** 0.5)
+    def update_actor(self, actor, actor_optimizer, critic, obs, action_dataset):
+        critic.requires_grad_(False)
+        action_pred = actor(obs)
+        with torch.no_grad():
+            Q_dataset = critic.get_q1(obs, action_dataset)
+            lmbda = self.cfg.algo.alpha / Q_dataset.abs().mean()
+        
+        Q_policy = critic.get_q1(obs, action_pred)
+        bc_loss = F.mse_loss(action_pred, action_dataset)
+        actor_loss = -lmbda * Q_policy.mean() + bc_loss
+        grad_norm = self.optimizer_update(actor_optimizer, actor_loss)
+        critic.requires_grad_(True)
+        return actor_loss.item(), grad_norm

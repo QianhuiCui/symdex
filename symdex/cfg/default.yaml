@@ -11,20 +11,22 @@ sim_device: ${.device}
 rl_device: ${.device}
 graphics_device_id: 0
 
-seed: 42
+seed: 42  # 42  # -1 for teleop
 max_step: null
 max_time: 36000 # in seconds
 eval_headless: True
 headless: True
-
-max_episode_length: 1000
                       
 artifact: null
 artifact_critic: null
 save_model: False
 
+record_video: False   # record a video from cam_1 (env 0) during each eval rollout
+video_freq: 5         # record every N eval calls (1 = every eval)
+
 logger: False
-max_episodes: 10  # for teleop data collection & visualization
+max_episodes: 5  # for teleop data collection & visualization
+max_episode_length: 2000
 dataset_path: null  # path to dataset h5 file
 
 replay:
@@ -34,3 +36,5 @@ replay:
   compare_policy: False
   max_steps: -1
   vision_scale: 4
+  print_every: 5
+  pc_every_n_steps: 5

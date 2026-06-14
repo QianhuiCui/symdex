@@ -12,6 +12,17 @@ from loguru import logger
 from omegaconf import OmegaConf, open_dict
 from isaaclab_tasks.utils import load_cfg_from_registry
 
+
+def handle_timeout(dones, info):
+    timeout_key = 'TimeLimit.truncated'
+    timeout_envs = None
+    if timeout_key in info:
+        timeout_envs = info[timeout_key]
+    if timeout_envs is not None:
+        dones = dones * (~timeout_envs)
+    return dones
+
+
 def set_random_seed(seed=None):
     if seed is None:
         max_seed_value = np.iinfo(np.uint32).max

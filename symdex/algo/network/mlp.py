@@ -184,6 +184,90 @@ class TanhEquivariantMLPPolicy(EquivariantMLPNet):
         return super().forward(state).tanh()
 
 
+class DoubleQ(nn.Module):
+    def __init__(self, state_dim, act_dim):
+        super().__init__()
+        if isinstance(state_dim, Sequence):
+            state_dim = state_dim[0]
+        self.net_q1 = MLPNet(in_dim=state_dim + act_dim, out_dim=1)
+        self.net_q2 = MLPNet(in_dim=state_dim + act_dim, out_dim=1)
+
+    def get_q_min(self, state: Tensor, action: Tensor) -> Tensor:
+        return torch.min(*self.get_q1_q2(state, action))  # min Q value
+
+    def get_q1_q2(self, state: Tensor, action: Tensor):
+        input_x = torch.cat((state, action), dim=1)
+        return self.net_q1(input_x), self.net_q2(input_x)  # two Q values
+
+    def get_q1(self, state: Tensor, action: Tensor):
+        input_x = torch.cat((state, action), dim=1)
+        return self.net_q1(input_x)
+    
+
+class DoubleQEquivariant(nn.Module):
+    def __init__(self, G, input_fields, output_fields, state_dim, action_dim, hidden_layers=None):
+        super().__init__()
+        self.net_q1 = EquivariantMLPNet(G, input_fields, output_fields, state_dim + action_dim, 1, hidden_layers)
+        self.net_q2 = EquivariantMLPNet(G, input_fields, output_fields, state_dim + action_dim, 1, hidden_layers)
+
+    def get_q_min(self, state: Tensor, action: Tensor):
+        return torch.min(*self.get_q1_q2(state, action))  # min Q value
+    
+    def get_q1_q2(self, state: Tensor, action: Tensor):
+        input_x = torch.cat((state, action), dim=1)
+        return self.net_q1(input_x), self.net_q2(input_x)  # two Q values
+    
+    def get_q1(self, state: Tensor, action: Tensor):
+        input_x = torch.cat((state, action), dim=1)
+        return self.net_q1(input_x)
+
+
+class DoubleQBatchNorm(nn.Module):
+    def __init__(self, state_dim, act_dim):
+        super().__init__()
+        if isinstance(state_dim, Sequence):
+            state_dim = state_dim[0]
+        self.net_q1 = MLPNet(in_dim=state_dim + act_dim, out_dim=1, use_batchnorm=True)
+        self.net_q2 = MLPNet(in_dim=state_dim + act_dim, out_dim=1, use_batchnorm=True)
+
+    def get_q_min(self, state: Tensor, action: Tensor) -> Tensor:
+        return torch.min(*self.get_q1_q2(state, action))  # min Q value
+
+    def get_q1_q2(self, state: Tensor, action: Tensor):
+        input_x = torch.cat((state, action), dim=1)
+        return self.net_q1(input_x), self.net_q2(input_x)  # two Q values
+
+    def get_q1(self, state: Tensor, action: Tensor):
+        input_x = torch.cat((state, action), dim=1)
+        return self.net_q1(input_x)
+
+
+class DistributionalDoubleQ(nn.Module):
+    def __init__(self, state_dim, act_dim, v_min=-10, v_max=10, num_atoms=51, device="cuda"):
+        super().__init__()
+        if isinstance(state_dim, Sequence):
+            state_dim = state_dim[0]
+        self.device = device
+        self.net_q1 = MLPNet(in_dim=state_dim + act_dim, out_dim=num_atoms)
+        self.net_q2 = MLPNet(in_dim=state_dim + act_dim, out_dim=num_atoms)
+
+        self.z_atoms = torch.linspace(v_min, v_max, num_atoms, device=device)
+
+    def get_q_min(self, state: Tensor, action: Tensor) -> Tensor:
+        Q1, Q2 = self.get_q1_q2(state, action)
+        Q1 = torch.sum(Q1 * self.z_atoms.to(self.device), dim=1)
+        Q2 = torch.sum(Q2 * self.z_atoms.to(self.device), dim=1)
+        return torch.min(Q1, Q2)  # min Q value
+
+    def get_q1_q2(self, state: Tensor, action: Tensor):
+        input_x = torch.cat((state, action), dim=1)
+        return torch.softmax(self.net_q1(input_x), dim=1), torch.softmax(self.net_q2(input_x), dim=1)  # two Q values
+
+    def get_q1(self, state: Tensor, action: Tensor):
+        input_x = torch.cat((state, action), dim=1)
+        return torch.softmax(self.net_q1(input_x), dim=1)
+
+
 class MLPCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
@@ -212,3 +296,30 @@ class MLPBlock(nn.Module):
     
     def forward(self, state):
         return self.net(state)
+
+
+class ScaledTanhMLPPolicy(MLPNet):
+    def __init__(self, state_dim, act_dim, hidden_layers=None, max_action=1.0):
+        super().__init__(in_dim=state_dim, out_dim=act_dim, hidden_layers=hidden_layers)
+        self.max_action = max_action
+
+    def forward(self, state):
+        return super().forward(state).tanh() * self.max_action
+    
+
+class TwinMLPCritic(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_layers=None):
+        super().__init__()
+        if isinstance(state_dim, Sequence):
+            state_dim = state_dim[0]
+        self.critic1 = MLPNet(in_dim=state_dim + action_dim, out_dim=1, hidden_layers=hidden_layers)
+        self.critic2 = MLPNet(in_dim=state_dim + action_dim, out_dim=1, hidden_layers=hidden_layers)
+    
+    def forward(self, state: Tensor, action: Tensor) -> tuple[Tensor, Tensor]:
+        sa = torch.cat([state, action], dim=-1)
+        q1 = self.critic1(sa)
+        q2 = self.critic2(sa)
+        return q1, q2
+    
+    def Q1(self, state: Tensor, action: Tensor) -> Tensor:
+        return self.critic1(torch.cat([state, action], dim=-1))

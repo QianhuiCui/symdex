@@ -1,32 +1,40 @@
 defaults:
+  - actor_critic.yaml
   - _self_
 
 name: "TD3BC"
-
-actor_lr: 1e-4
-critic_lr: 1e-4
+batch_size: 1024
+act_class: "ScaledTanhMLPPolicy"
+cri_class: "TwinMLPCritic"
 log_freq: 100
 eval_freq: 1000
-lambda_entropy: 0.0 
+obs_norm: False
+lambda_entropy: 0.0
 
-discount: 0.99
-tau: 0.005
-policy_noise: 0.1
-noise_clip: 0.2
-policy_freq: 2
+update_times: 8
+no_tgt_actor: True
+
 alpha: 0.05  # 2.5
-pc_max_points: 512
+gamma: 0.99
+nstep: 3
+tau: 0.05
+policy_delay: 2
 
-batch_size: 1024
-max_train_steps: 100000
-# save_freq: 50000
-normalize_states: True
+noise:
+  type: 'mixed' # ['fixed', 'mixed']
+  decay: null  #  "exp" and "linear"
+  exp_decay_rate: 0.99
+  lin_decay_iters: 10000
+  std_max: 0.8
+  std_min: 0.05
+  tgt_pol_std: 0.8
+  tgt_pol_noise_bound: 0.2
 
-reward_scale: 0.001
+multi_agent: True
 
-observation:
+observation:  # buffer
   vision: False
-  pc: True
+  pc: False
 
 offline:
   data_dir: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/teleop_logs/PickObjectEnv-v0_success"
@@ -35,23 +43,4 @@ offline:
 
 checkpoint:
   load_path: null
-  pretrain_encoder_path: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/checkpoint/pc_encoder_multiLabel_pretrain.pt"
-
-pretrain:
-  epochs: 50
-  batch_size: 128
-  lr: 1e-3
-  save_checkpoint: False
-  checkpoint_path: "checkpoints/encoder_pretrain.pth"
-  val_ratio: 0.2
-  seed: 42
-  pc_k: 16
-  pc_max_points: 512
-
-  train_state_action: False
-  train_pc_action: False
-  train_state_pc_action: False
-  train_pc_labels: True
-  train_state_labels: False
-
-  labels: ["object_pos_1", "object_pos_2"]  # , "target_pos"]
+  pretrain_encoder_path: null  # "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/checkpoint/pc_encoder_multiLabel_pretrain.pt"
