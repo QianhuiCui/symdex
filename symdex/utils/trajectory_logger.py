@@ -40,14 +40,16 @@ class TrajectoryLogger:
     def _reset_buffers(self):
         """Internal buffer for current trial data."""
         self._obs_policy = []
-        self._obs_vision = []
-        self.obs_pc = []
+        # self._obs_vision = []
+        # self.obs_pc = []
         self._next_obs_policy = []
-        self._next_obs_vision = []
-        self._next_obs_pc = []
+        # self._next_obs_vision = []
+        # self._next_obs_pc = []
 
         self._act = []
-        self._rew = []
+        # self._rew = []
+        self._rew_right = []
+        self._rew_left = []
         self._terminals = []
         self._timeouts = []
         self._rew_terms = []
@@ -64,23 +66,25 @@ class TrajectoryLogger:
         self._epi_meta["reward_names"] = [str(name) for name in rew_names] if rew_names is not None else []
         self._epi_meta["reward_weights"] = np.asarray(rew_weights, dtype=np.float32) if rew_weights is not None else np.array([], dtype=np.float32)
 
-    def add_transition(self, *, observation, action, reward, next_observation, terminated: bool, truncated: bool, rew_terms):
+    def add_transition(self, *, observation, action, reward_right, reward_left, next_observation, terminated: bool, truncated: bool, rew_terms):
         self._obs_policy.append(np.asarray(observation["policy"], dtype=np.float32))
-        self._obs_vision.append(np.asarray(observation["vision"], dtype=np.uint8))
-        self.obs_pc.append(np.asarray(observation["point_cloud"], dtype=np.float16))
+        # self._obs_vision.append(np.asarray(observation["vision"], dtype=np.uint8))
+        # self.obs_pc.append(np.asarray(observation["point_cloud"], dtype=np.float16))
         self._next_obs_policy.append(np.asarray(next_observation["policy"], dtype=np.float32))
-        self._next_obs_vision.append(np.asarray(next_observation["vision"], dtype=np.uint8))
-        self._next_obs_pc.append(np.asarray(next_observation["point_cloud"], dtype=np.float16))
+        # self._next_obs_vision.append(np.asarray(next_observation["vision"], dtype=np.uint8))
+        # self._next_obs_pc.append(np.asarray(next_observation["point_cloud"], dtype=np.float16))
 
         self._act.append(np.asarray(action, dtype=np.float32))
-        self._rew.append(float(reward))
+        # self._rew.append(float(reward))
+        self._rew_right.append(float(reward_right))
+        self._rew_left.append(float(reward_left))
         self._terminals.append(np.uint8(1 if terminated else 0))
         self._timeouts.append(np.uint8(1 if truncated else 0))
         self._rew_terms.append(np.asarray(rew_terms, dtype=np.float32))
 
     def save_episode(self, success: bool):
-        steps = len(self._rew)
-        if len(self._rew) == 0:
+        steps = len(self._rew_right)
+        if len(self._rew_right) == 0 or len(self._rew_left) == 0 or len(self._rew_right) != len(self._rew_left):
             return
         
         if success:
@@ -109,32 +113,33 @@ class TrajectoryLogger:
         # observations group
         obs_grp = offline_data.create_group("observations")
         obs_grp.create_dataset("policy", data=np.stack(self._obs_policy, axis=0))
-        obs_grp.create_dataset("vision",
-                               data=np.stack(self._obs_vision, axis=0),
-                               compression="gzip",
-                               compression_opts=4,
-                               chunks=True,)
-        obs_grp.create_dataset("point_cloud", 
-                               data=np.stack(self.obs_pc, axis=0),
-                               compression="gzip",
-                               compression_opts=4,
-                               chunks=True,)
+        # obs_grp.create_dataset("vision",
+        #                        data=np.stack(self._obs_vision, axis=0),
+        #                        compression="gzip",
+        #                        compression_opts=4,
+        #                        chunks=True,)
+        # obs_grp.create_dataset("point_cloud", 
+        #                        data=np.stack(self.obs_pc, axis=0),
+        #                        compression="gzip",
+        #                        compression_opts=4,
+        #                        chunks=True,)
         # next_observations group
         next_obs_grp = offline_data.create_group("next_observations")
         next_obs_grp.create_dataset("policy", data=np.stack(self._next_obs_policy, axis=0))
-        next_obs_grp.create_dataset("vision",
-                                     data=np.stack(self._next_obs_vision, axis=0),
-                                     compression="gzip",
-                                     compression_opts=4,
-                                     chunks=True,)
-        next_obs_grp.create_dataset("point_cloud", 
-                                    data=np.stack(self._next_obs_pc, axis=0),
-                                    compression="gzip",
-                                    compression_opts=4,
-                                    chunks=True,)
+        # next_obs_grp.create_dataset("vision",
+        #                              data=np.stack(self._next_obs_vision, axis=0),
+        #                              compression="gzip",
+        #                              compression_opts=4,
+        #                              chunks=True,)
+        # next_obs_grp.create_dataset("point_cloud", 
+        #                             data=np.stack(self._next_obs_pc, axis=0),
+        #                             compression="gzip",
+        #                             compression_opts=4,
+        #                             chunks=True,)
 
         offline_data.create_dataset("actions", data=np.stack(self._act, axis=0))
-        offline_data.create_dataset("rewards", data=np.asarray(self._rew, dtype=np.float32))
+        offline_data.create_dataset("rewards_right", data=np.asarray(self._rew_right, dtype=np.float32))
+        offline_data.create_dataset("rewards_left", data=np.asarray(self._rew_left, dtype=np.float32))
         offline_data.create_dataset("terminals", data=np.asarray(self._terminals, dtype=np.uint8))
         offline_data.create_dataset("timeouts", data=np.asarray(self._timeouts, dtype=np.uint8))
         if len(self._rew_terms) == steps:
@@ -152,7 +157,7 @@ class TrajectoryLogger:
         # self.episode_idx += 1
 
     def close(self):
-        if len(self._rew) > 0:
+        if len(self._rew_right) > 0:
             print("[Logger] Warning: unsaved buffered transitions detected. They will not be auto-classified.")
             self._epi_meta = {}
             self._reset_buffers()

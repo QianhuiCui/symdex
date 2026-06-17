@@ -27,7 +27,7 @@ class PickObjectSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",  # assets/ufactory850/uf850_allegro_right_colored.usd",  # assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -119,7 +119,7 @@ class PickObjectSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",  # assets/ufactory850/uf850_allegro_left_colored.usd",  # assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -456,7 +456,7 @@ class PickObjectCommandsCfg(BaseCommandsCfg):
 
     target_pos = TargetPositionCommandCfg(
         object_id=0,
-        success_threshold=0.05,
+        success_threshold=0.07,
         z_height=0.3,
         debug_vis=True,
         use_initial_pose=True,
@@ -464,7 +464,7 @@ class PickObjectCommandsCfg(BaseCommandsCfg):
 
     waiting_pos = TargetPositionCommandCfg(
         object_id=0,
-        success_threshold=0.05,
+        success_threshold=0.07,
         success_threshold_orient=1.0,
         pose_range={"x": [0.0, 0.0], "y": [0.2, 0.2], "z": [0.3, 0.3]},
         return_type="pos",
@@ -487,24 +487,21 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
         joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
                                                                            "joint_lower_limit": JOINT_LOWER_LIMIT, 
                                                                            "joint_upper_limit": JOINT_UPPER_LIMIT,}, noise=Gnoise(std=0.005))
-        joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
+        # joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
         object_pos_1 = ObsTerm(func=object_pos, params={"object_id": 1}, noise=Unoise(n_min=0.0, n_max=0.015))
-        object_rot_1 = ObsTerm(func=object_quat, params={"object_id": 1, "symmetry": True})
+        # object_rot_1 = ObsTerm(func=object_quat, params={"object_id": 1, "symmetry": True})
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
         joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
                                                                           "asset_cfg": SceneEntityCfg("robot_left")}, noise=Gnoise(std=0.005))
-        joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
+        # joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
         object_pos_2 = ObsTerm(func=object_pos, params={"object_id": 2}, noise=Unoise(n_min=0.0, n_max=0.015))
-        object_rot_2 = ObsTerm(func=object_quat, params={"object_id": 2, "symmetry": True})
-        tote_pos = ObsTerm(
-            func=object_pos,
-            params={"object_id": 0}
-        )
+        # object_rot_2 = ObsTerm(func=object_quat, params={"object_id": 2, "symmetry": True})
+        # tote_pos = ObsTerm(func=object_pos, params={"object_id": 0})
         last_action = ObsTerm(func=last_action)
-        waiting_pos = ObsTerm(func=pick.generated_commands, params={"object_id": 2})
-        target_pos = ObsTerm(func=pick.generated_commands, params={"object_id": 0})
+        # waiting_pos = ObsTerm(func=pick.generated_commands, params={"object_id": 2})
+        # target_pos = ObsTerm(func=pick.generated_commands, params={"object_id": 0})
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -521,34 +518,34 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
     #         self.enable_corruption = False
     #         self.concatenate_terms = True
     
-    @configclass
-    class PointCloudCfg(ObsGroup):
-        """Observations for point cloud group."""
+    # @configclass
+    # class PointCloudCfg(ObsGroup):
+    #     """Observations for point cloud group."""
 
-        # -- robot terms (order preserved)
-        # point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-        #                                                 "wrist_cam_name": [], 
-        #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.01, 0.7]],
-        #                                                 "max_points": 2048, 
-        #                                                 "downsample": "random",
-        #                                                 "add_noise": False})
-        point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-                                                              "wrist_cam_name": [], 
-                                                              "crop_range": [[-0.14, 0.4], [-0.7, 0.0], [0.01, 0.7]],
-                                                              "max_points": 2048, 
-                                                              "downsample": "random",
-                                                              "add_noise": False})
-        point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-                                                             "wrist_cam_name": [], 
-                                                             "crop_range": [[-0.14, 0.4], [0.0, 0.7], [0.01, 0.7]],
-                                                             "max_points": 2048, 
-                                                             "downsample": "random",
-                                                             "add_noise": False})
+    #     # -- robot terms (order preserved)
+    #     # point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+    #     #                                                 "wrist_cam_name": [], 
+    #     #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.01, 0.7]],
+    #     #                                                 "max_points": 2048, 
+    #     #                                                 "downsample": "random",
+    #     #                                                 "add_noise": False})
+    #     point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+    #                                                           "wrist_cam_name": [], 
+    #                                                           "crop_range": [[-0.14, 0.4], [-0.7, 0.0], [0.01, 0.7]],
+    #                                                           "max_points": 2048, 
+    #                                                           "downsample": "random",
+    #                                                           "add_noise": False})
+    #     point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
+    #                                                          "wrist_cam_name": [], 
+    #                                                          "crop_range": [[-0.14, 0.4], [0.0, 0.7], [0.01, 0.7]],
+    #                                                          "max_points": 2048, 
+    #                                                          "downsample": "random",
+    #                                                          "add_noise": False})
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
     # vision: VisionCfg = VisionCfg()
-    point_cloud: PointCloudCfg = PointCloudCfg()
+    # point_cloud: PointCloudCfg = PointCloudCfg()
 
 
 @configclass
@@ -695,17 +692,6 @@ class PickObjectEnvCfg(BaseEnvCfg):
     rewards = PickObjectRewardsCfg()
     num_object = 3
     action_dim = 44 # arm + hand
-    # action_scale: list = [1.0] * action_dim
-    # action_scale: list = [0.03, 0.03, 0.03, 0.03, 0.03, 0.03,
-    #                         0.05, 0.05, 0.05, 0.05,
-    #                         0.05, 0.05, 0.05, 0.05,
-    #                         0.05, 0.05, 0.05, 0.05,
-    #                         0.05, 0.05, 0.05, 0.05,
-    #                       0.03, 0.03, 0.03, 0.03, 0.03, 0.03,
-    #                         0.05, 0.05, 0.05, 0.05,
-    #                         0.05, 0.05, 0.05, 0.05,
-    #                         0.05, 0.05, 0.05, 0.05,
-    #                         0.05, 0.05, 0.05, 0.05]  # jth3 needs smaller rate
     action_scale: list = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.03, 

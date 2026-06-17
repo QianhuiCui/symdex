@@ -18,7 +18,8 @@ from symdex.utils.trajectory_logger import TrajectoryLogger, SphereWriter
 from symdex.env.tasks.manager_based_env_cfg import * 
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
 # from symdex.utils.delta_action_scaler import DeltaActionScaler
-from symdex.utils.action_scaler import ActionScaler, ActionScalerCfg
+# from symdex.utils.action_scaler import ActionScaler, ActionScalerCfg
+from symdex.utils.symmetry import SymmetryManager
 import sys
 sys.path.append("/home/qianhui/Desktop/dex_bimanual_telep/scripts")
 from zmq_utils import recv_msg, send_msg
@@ -55,14 +56,17 @@ def recv_teleop():
 
         time.sleep(0.001)
 
-def get_action_terms(env):
+# def get_action_terms(env):
+#     action_manager = env.unwrapped.action_manager
+#     right_term = action_manager.get_term("arm_hand_action")
+#     left_term = action_manager.get_term("arm_hand_action_left")
+#     return right_term, left_term
+
+def get_action_manager_state(env):
+    # right_term, left_term = get_action_terms(env)
     action_manager = env.unwrapped.action_manager
     right_term = action_manager.get_term("arm_hand_action")
     left_term = action_manager.get_term("arm_hand_action_left")
-    return right_term, left_term
-
-def get_action_manager_state(env):
-    right_term, left_term = get_action_terms(env)
     q_init_right = right_term.init_joint_pos[0].detach().cpu().numpy().astype(np.float32)
     q_init_left = left_term.init_joint_pos[0].detach().cpu().numpy().astype(np.float32)
     del_right = right_term.del_action[0].detach().cpu().numpy().astype(np.float32)
@@ -141,6 +145,7 @@ def main(cfg: DictConfig):
 
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device)
+    symmetry_manager = SymmetryManager(cfg.task.multi.TD3BC, cfg.task.symmetry.symmetric_envs)
     initial_obs, _ = env.reset()
     pending_init_meta = get_episode_init_meta(env, cfg)
     send_msg("robot_reset", {"t": time.time()})
@@ -246,7 +251,10 @@ def main(cfg: DictConfig):
         obs_vec = get_obs(next_obs)
 
         # ---- reward & flags ----
-        reward = float(rew[0].item())
+        # reward = float(rew[0].item())
+        reward_right, reward_left = symmetry_manager.get_multi_agent_rew(extras["detailed_reward"], env.unwrapped.symmetry_tracker)
+        reward_right = reward_right[0].item()
+        reward_left = reward_left[0].item()
         terminated = as_flag(extras.get("terminated"))
         truncated = as_flag(extras.get("time_outs"))
 
@@ -277,7 +285,9 @@ def main(cfg: DictConfig):
                 observation=prev_obs,
                 # action=delta_cmd,
                 action=action_to_log,
-                reward=reward,
+                # reward=reward,
+                reward_right=reward_right,
+                reward_left=reward_left,
                 next_observation=obs_vec,
                 terminated=bool(terminated),
                 truncated=bool(truncated),

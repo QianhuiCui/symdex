@@ -141,7 +141,7 @@ def obj_out_space(
         asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
         object_id: int = 0,
         workspace_radius: float = 0.7,
-        workspace_height_range: tuple = (0.0, 1.5),
+        workspace_height_range: tuple = (0.0, 1.0),
         ) -> torch.Tensor:
     """Terminate if the object is out of the workspace."""
     robot = env.scene[asset_cfg.name]
