@@ -18,20 +18,13 @@ eval_headless: True
 headless: True
                       
 artifact: null
-artifact_critic: null
 save_model: False
-
-logger: False
-max_episodes: 5  # for teleop data collection
 max_episode_length: 2000
-dataset_path: null  # path to dataset h5 file
+
+logger: 
+  enable: False
+  max_episodes: 5  # for teleop data collection
 
 replay:
-  show_vision: False
-  show_pc: False
-  point_size: 2.0
-  compare_policy: False
-  max_steps: -1
-  vision_scale: 4
   print_every: 5
-  pc_every_n_steps: 5
+  dataset_path: null  # path to dataset h5 file

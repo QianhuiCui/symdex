@@ -161,7 +161,7 @@ def main(cfg: DictConfig):
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device)
     symmetry_manager = SymmetryManager(cfg.task.multi.TD3BC, cfg.task.symmetry.symmetric_envs)
-    dataset_path = cfg.dataset_path
+    dataset_path = cfg.replay.dataset_path
     if dataset_path is None:
         raise ValueError("Provide dataset_path=<path/to/file.h5> on the CLI.")
 

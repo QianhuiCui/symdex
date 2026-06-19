@@ -172,8 +172,7 @@ def main(cfg: DictConfig):
     threading.Thread(target=recv_teleop, daemon=True).start()
 
     # --- logger setup ---
-    use_logger = getattr(cfg, "logger", False)
-    max_episodes = getattr(cfg, "max_episodes", None)
+    use_logger = cfg.logger.enable
     logger = None
     if use_logger:
         logger = TrajectoryLogger(task_name=cfg.task.env_name)
@@ -322,7 +321,7 @@ def main(cfg: DictConfig):
                 # logger.save_episode()
                 logger.save_episode(success=bool(terminated and not truncated))
                 episodes_saved += 1
-                if (max_episodes is not None) and (episodes_saved >= max_episodes):
+                if episodes_saved >= cfg.max_episodes:
                     break
             episode_started = False
             cur_lang = None
