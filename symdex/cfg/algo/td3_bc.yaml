@@ -4,8 +4,8 @@ defaults:
 
 name: "TD3BC"
 batch_size: 1024
-act_class: "ScaledTanhMLPPolicy"
-cri_class: "TwinMLPCritic"
+act_class: null  # "ScaledTanhMLPPolicy"
+cri_class: null  # "TwinMLPCritic"
 log_freq: 100
 eval_freq: 1000
 obs_norm: False
@@ -32,11 +32,10 @@ noise:
 
 multi_agent: True
 
-observation:  # buffer
+offline:
   vision: False
   pc: False
-
-offline:
+  offline_ratio: 0.3
   data_dir: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/teleop_logs/PickObjectEnv-v0_success"
   pattern: "*.h5"  # "*.h5"  # "PickObjectEnv-v0_*/*.h5"
   max_action: 1.0

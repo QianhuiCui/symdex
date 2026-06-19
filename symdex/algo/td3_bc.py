@@ -13,11 +13,13 @@ from symdex.utils.torch_util import soft_update
 from symdex.utils.common import handle_timeout, load_class_from_path
 from symdex.algo.network import model_name_to_path
 from symdex.utils.symmetry import load_symmetric_system, SymmetryManager
+from symdex.utils.offline_buffer import OfflineBuffer
 
 @dataclass
 class AgentITD3BC(ActorCriticBase):
     def __post_init__(self):
         super().__post_init__()
+        self.algo_multi_cfg = self.cfg.task.multi.TD3BC
         self.single_obs_dim = list(self.cfg.task.multi.TD3BC.single_agent_obs_dim)
         self.single_action_dim = int(self.cfg.task.multi.TD3BC.single_agent_action_dim)
         self.obs_dim = self.cfg.task.multi.shared_obs_dim
@@ -42,7 +44,7 @@ class AgentITD3BC(ActorCriticBase):
             self.critic_left = cri_class(self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.cfg.algo.actor_lr)
         self.actor_optimizer_left = torch.optim.Adam(self.actor_left.parameters(), self.cfg.algo.actor_lr)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.cfg.algp.critic_lr)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.cfg.algo.critic_lr)
         self.critic_optimizer_left = torch.optim.Adam(self.critic_left.parameters(), self.cfg.algo.critic_lr)
 
         self.critic_target = deepcopy(self.critic)
@@ -69,6 +71,12 @@ class AgentITD3BC(ActorCriticBase):
                                          left_agent=True)
         self.symmetry_manager = SymmetryManager(self.cfg.task.multi.TD3BC, self.cfg.task.symmetry.symmetric_envs)
         self._critic_update_count = 0   # for delayed actor update
+        offline_ratio = self.cfg.algo.offline.offline_ratio
+        if offline_ratio > 0.0:
+            self.offline_buffer = OfflineBuffer(self.cfg)
+            self.offline_buffer.load(self.cfg.algo.offline.data_dir, self.cfg.algo.offline.pattern)
+        else:
+            self.offline_buffer = None
 
     def get_noise_std(self):
         if self.noise_scheduler is None:
@@ -150,16 +158,31 @@ class AgentITD3BC(ActorCriticBase):
         traj_rewards = self.cfg.algo.reward_scale * traj_rewards.reshape(self.cfg.num_envs, timesteps, 1)
         traj_rewards_left = self.cfg.algo.reward_scale * traj_rewards_left.reshape(self.cfg.num_envs, timesteps, 1)
         traj_dones = traj_dones.reshape(self.cfg.num_envs, timesteps, 1)
-        data = self.n_step_buffer.add_to_buffer(traj_states, traj_actions, traj_rewards, traj_dones, reward_left=traj_rewards_left)
+        data = self.n_step_buffer.add_to_buffer(traj_states, traj_actions, traj_rewards, traj_next_states, traj_dones, reward_left=traj_rewards_left)
         return data, timesteps * self.cfg.num_envs
     
     def update_net(self, memory):
+        total_bs = self.cfg.algo.batch_size
+        if self.offline_buffer is not None:
+            offline_bs = max(1, int(total_bs * self.cfg.algo.offline.offline_ratio))
+            online_bs  = total_bs - offline_bs
+        else:
+            online_bs, offline_bs = total_bs, 0
+
         critic_loss_list = list()
         critic_loss_left_list = list()
         actor_loss_list = list()
         actor_loss_left_list = list()
         for _ in range(self.cfg.algo.update_times):
-            obs, action, reward_right, next_obs, done, reward_left = memory.sample_batch(self.cfg.algo.batch_size)
+            obs, action, reward_right, next_obs, done, reward_left = memory.sample_batch(online_bs)
+            if offline_bs > 0:
+                off = self.offline_buffer.sample_batch(offline_bs)
+                obs = torch.cat([obs, off[0]])
+                action = torch.cat([action, off[1]])
+                reward_right = torch.cat([reward_right, off[2]])
+                next_obs = torch.cat([next_obs, off[3]])
+                done = torch.cat([done, off[4]])
+                reward_left = torch.cat([reward_left, off[5]])
             if self.cfg.algo.obs_norm:
                 obs = self.obs_rms.normalize(obs)
                 next_obs = self.obs_rms.normalize(next_obs)

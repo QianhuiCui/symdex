@@ -21,11 +21,8 @@ artifact: null
 artifact_critic: null
 save_model: False
 
-record_video: False   # record a video from cam_1 (env 0) during each eval rollout
-video_freq: 5         # record every N eval calls (1 = every eval)
-
 logger: False
-max_episodes: 5  # for teleop data collection & visualization
+max_episodes: 5  # for teleop data collection
 max_episode_length: 2000
 dataset_path: null  # path to dataset h5 file
 
