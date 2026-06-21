@@ -68,6 +68,7 @@ class AgentITD3BC(ActorCriticBase):
                                          self.cfg.num_envs,
                                          self.cfg.algo.nstep,
                                          device=self.device,
+                                         gamma=self.cfg.algo.gamma,
                                          left_agent=True)
         self.symmetry_manager = SymmetryManager(self.cfg.task.multi.TD3BC, self.cfg.task.symmetry.symmetric_envs)
         self._critic_update_count = 0   # for delayed actor update
@@ -120,7 +121,22 @@ class AgentITD3BC(ActorCriticBase):
                                        out_bounds=[-1., 1.])
         return actions
 
-    def explore_env(self, env, timesteps: int, random: bool = False) -> list:
+    def explore_env(self, env, timesteps: int, random: bool = False, offline: bool = False) -> list:
+        if offline:
+            warmup = min(timesteps * self.cfg.num_envs, self.offline_buffer.offline_states.shape[0])
+            idx = torch.randperm(self.offline_buffer.offline_states.shape[0], device=self.cfg.device)[:warmup]
+            data = (
+                self.offline_buffer.offline_states[idx],
+                self.offline_buffer.offline_actions[idx],
+                self.offline_buffer.offline_rewards[idx],
+                self.offline_buffer.offline_next_states[idx],
+                self.offline_buffer.offline_dones[idx],
+                self.offline_buffer.offline_rewards_left[idx],
+            )
+            return data, warmup
+        else:
+            random = True  # fallback to random if no offline data
+
         obs_dim = (self.obs_dim,) if isinstance(self.obs_dim, int) else self.obs_dim
         traj_states = torch.empty((self.cfg.num_envs, timesteps) + (*obs_dim,), device=self.device)
         traj_actions = torch.empty((self.cfg.num_envs, timesteps) + (self.action_dim,), device=self.device)
@@ -176,13 +192,13 @@ class AgentITD3BC(ActorCriticBase):
         for _ in range(self.cfg.algo.update_times):
             obs, action, reward_right, next_obs, done, reward_left = memory.sample_batch(online_bs)
             if offline_bs > 0:
-                off = self.offline_buffer.sample_batch(offline_bs)
-                obs = torch.cat([obs, off[0]])
-                action = torch.cat([action, off[1]])
-                reward_right = torch.cat([reward_right, off[2]])
-                next_obs = torch.cat([next_obs, off[3]])
-                done = torch.cat([done, off[4]])
-                reward_left = torch.cat([reward_left, off[5]])
+                dataset = self.offline_buffer.sample_batch(offline_bs)
+                obs = torch.cat([obs, dataset[0]])
+                action = torch.cat([action, dataset[1]])
+                reward_right = torch.cat([reward_right, dataset[2]])
+                next_obs = torch.cat([next_obs, dataset[3]])
+                done = torch.cat([done, dataset[4]])
+                reward_left = torch.cat([reward_left, dataset[5]])
             if self.cfg.algo.obs_norm:
                 obs = self.obs_rms.normalize(obs)
                 next_obs = self.obs_rms.normalize(next_obs)
@@ -198,10 +214,14 @@ class AgentITD3BC(ActorCriticBase):
             critic_loss_left_list.append(critic_loss_left)
             self._critic_update_count += 1
 
-            if self._critic_update_count % self.cfg.algo.policy_delay == 0:
-                actor_loss, actor_grad_norm = self.update_actor(self.actor, self.actor_optimizer, self.critic, obs_right, action_right)
+            if self._critic_update_count % self.cfg.algo.policy_delay == 0:  # delayed actor update
+                # Q-maximization uses full mixed obs; BC uses only offline slice
+                obs_right_dataset, obs_left_dataset = obs_right[online_bs:], obs_left[online_bs:]
+                action_right_dataset, action_left_dataset = action_right[online_bs:], action_left[online_bs:]
+
+                actor_loss, actor_grad_norm = self.update_actor(self.actor, self.actor_optimizer, self.critic, obs_right, obs_right_dataset, action_right_dataset)
                 actor_loss_list.append(actor_loss)
-                actor_loss_left, actor_grad_norm_left = self.update_actor(self.actor_left, self.actor_optimizer_left, self.critic_left, obs_left, action_left)
+                actor_loss_left, actor_grad_norm_left = self.update_actor(self.actor_left, self.actor_optimizer_left, self.critic_left, obs_left, obs_left_dataset, action_left_dataset)
                 actor_loss_left_list.append(actor_loss_left)
                 
                 if not self.cfg.algo.no_tgt_actor:
@@ -233,15 +253,16 @@ class AgentITD3BC(ActorCriticBase):
         grad_norm = self.optimizer_update(critic_optimizer, critic_loss)
         return critic_loss.item(), grad_norm
     
-    def update_actor(self, actor, actor_optimizer, critic, obs, action_dataset):
+    def update_actor(self, actor, actor_optimizer, critic, obs, obs_dataset, action_dataset):
         critic.requires_grad_(False)
-        action_pred = actor(obs)
+        action_pred = actor(obs)  # full batch for Q
+        action_dataset_pred = actor(obs_dataset)  # offline only for BC-term
         with torch.no_grad():
-            Q_dataset = critic.get_q1(obs, action_dataset)
+            Q_dataset = critic.get_q1(obs_dataset, action_dataset)
             lmbda = self.cfg.algo.alpha / Q_dataset.abs().mean()
         
         Q_policy = critic.get_q1(obs, action_pred)
-        bc_loss = F.mse_loss(action_pred, action_dataset)
+        bc_loss = F.mse_loss(action_dataset_pred, action_dataset)  # only for expert
         actor_loss = -lmbda * Q_policy.mean() + bc_loss
         grad_norm = self.optimizer_update(actor_optimizer, actor_loss)
         critic.requires_grad_(True)

@@ -3,7 +3,8 @@ defaults:
   - _self_
 
 name: "TD3BC"
-batch_size: 1024
+memory_size: 5e6
+batch_size: 8192
 act_class: null  # "ScaledTanhMLPPolicy"
 cri_class: null  # "TwinMLPCritic"
 log_freq: 100
@@ -16,6 +17,7 @@ no_tgt_actor: True
 
 alpha: 0.05  # 2.5
 gamma: 0.99
+warm_up: 32
 nstep: 3
 tau: 0.05
 policy_delay: 2
@@ -35,11 +37,11 @@ multi_agent: True
 offline:
   vision: False
   pc: False
-  offline_ratio: 0.3
+  offline_ratio: 0.125
   data_dir: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/teleop_logs/PickObjectEnv-v0_success"
   pattern: "*.h5"  # "*.h5"  # "PickObjectEnv-v0_*/*.h5"
   max_action: 1.0
 
-checkpoint:
-  load_path: null
-  pretrain_encoder_path: null  # "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/checkpoint/pc_encoder_multiLabel_pretrain.pt"
+# checkpoint:
+#   load_path: null
+#   pretrain_encoder_path: null  # "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/checkpoint/pc_encoder_multiLabel_pretrain.pt"
