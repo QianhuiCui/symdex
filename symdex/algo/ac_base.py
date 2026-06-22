@@ -50,6 +50,13 @@ class ActorCriticBase:
         self.detailed_tracker = None
         self.step_tracker = Tracker(self.cfg.algo.tracker_len)
 
+        info_track_keys = self.cfg.info_track_keys
+        if info_track_keys is not None:
+            info_track_keys = [info_track_keys] if isinstance(info_track_keys, str) else info_track_keys
+            self.info_trackers = {key: Tracker(self.cfg.algo.tracker_len) for key in info_track_keys}
+            self.info_track_step = {key: self.cfg.info_track_step[idx] for idx, key in enumerate(info_track_keys)}
+            self.traj_info_values = {key: torch.zeros(self.cfg.num_envs, dtype=torch.float32, device='cpu') for key in info_track_keys}
+
         self.device = torch.device(self.cfg.device)
 
         if self.cfg.algo.obs_norm:
@@ -77,6 +84,20 @@ class ActorCriticBase:
             self.success_tracker.update(info['success'][env_done_indices])
             self.current_returns[env_done_indices] = 0
             self.current_lengths[env_done_indices] = 0
+        if self.cfg.info_track_keys is not None:
+            env_done_indices = env_done_indices.cpu()
+            for key in self.cfg.info_track_keys:
+                if key not in info:
+                    continue
+                if self.info_track_step[key] == 'last':
+                    info_val = info[key]
+                    self.info_trackers[key].update(info_val[env_done_indices].cpu())
+                elif self.info_track_step[key] == 'all-episode':
+                    self.traj_info_values[key] += info[key].cpu()
+                    self.info_trackers[key].update(self.traj_info_values[key][env_done_indices])
+                    self.traj_info_values[key][env_done_indices] = 0
+                elif self.info_track_step[key] == 'all-step':
+                    self.info_trackers[key].update(info[key].cpu())
 
         # reward logger
         if self.detailed_returns is None:
@@ -90,6 +111,11 @@ class ActorCriticBase:
             if len(env_done_indices) != 0:
                 self.detailed_tracker[rew_name].update(self.detailed_returns[rew_name][env_done_indices])
                 self.detailed_returns[rew_name][env_done_indices] = 0
+    
+    def add_info_tracker_log(self, log_info):
+        if self.cfg.info_track_keys is not None:
+            for key in self.cfg.info_track_keys:
+                log_info[key] = self.info_trackers[key].mean()
 
     def optimizer_update(self, optimizer, objective, retain_graph=False):
         optimizer.zero_grad(set_to_none=True)
