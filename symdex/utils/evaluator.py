@@ -1,3 +1,4 @@
+import wandb
 import time
 from copy import deepcopy
 import torch
@@ -25,13 +26,22 @@ class Evaluator:
             symmetry_manager = SymmetryManager(cfg=algo_multi_cfg, symmetric_envs=self.cfg.task.symmetry.symmetric_envs)
 
         tracker_capacity = num_envs
+        info_track_keys = self.cfg.info_track_keys
+        if info_track_keys is not None:
+            info_track_keys = [info_track_keys] if isinstance(info_track_keys, str) else info_track_keys
+            info_trackers = {key: Tracker(tracker_capacity) for key in info_track_keys}
+            info_track_step = {key: self.cfg.info_track_step[idx] for idx, key in enumerate(info_track_keys)}
+            traj_info_values = {key: torch.zeros(num_envs, dtype=torch.float32, device='cpu') for key in info_track_keys}
+
         return_tracker = Tracker(tracker_capacity)
         step_tracker = Tracker(tracker_capacity)
         success_tracker = Tracker(tracker_capacity)
         current_returns = torch.zeros(num_envs, dtype=torch.float32, device=self.cfg.device)
         current_lengths = torch.zeros(num_envs, dtype=torch.float32, device=self.cfg.device)
         if_done = torch.ones(num_envs, dtype=torch.float32, device=self.cfg.device)
-        obs, _ = self.env.reset()
+        step_reward_history = {}
+        raw_obs, _ = self.env.reset()
+        obs = raw_obs["policy"] if isinstance(raw_obs, dict) else raw_obs
 
         for i_step in range(max_step):  # run an episode
             if self.cfg.algo.obs_norm:
@@ -42,7 +52,13 @@ class Evaluator:
             action1 = policy[0](obs_list[0], sample=False)
             action2 = policy[1](obs_list[1], sample=False)
             action = symmetry_manager.get_execute_action(action1, action2, self.env.unwrapped.symmetry_tracker)
-            next_obs, reward, done, info = self.env.step(action)
+            raw_next_obs, reward, done, info = self.env.step(action)
+            next_obs = raw_next_obs["policy"] if isinstance(raw_next_obs, dict) else raw_next_obs
+
+            for rew_name, rew_val in info['detailed_reward'].items():
+                if rew_name not in step_reward_history:
+                    step_reward_history[rew_name] = []
+                step_reward_history[rew_name].append(rew_val.mean().item())
 
             current_returns += reward
             current_lengths += 1
@@ -56,6 +72,20 @@ class Evaluator:
             success_tracker.update(info['success'][first_done])
             current_returns[env_done_indices] = 0
             current_lengths[env_done_indices] = 0
+            if self.cfg.info_track_keys is not None:
+                env_done_indices = env_done_indices.cpu()
+                for key in self.cfg.info_track_keys:
+                    if key not in info:
+                        continue
+                    if info_track_step[key] == 'last':
+                        info_val = info[key]
+                        info_trackers[key].update(info_val[env_done_indices].cpu())
+                    elif info_track_step[key] == 'all-episode':
+                        traj_info_values[key] += info[key].cpu()
+                        info_trackers[key].update(traj_info_values[key][env_done_indices])
+                        traj_info_values[key][env_done_indices] = 0
+                    elif info_track_step[key] == 'all-step':
+                        info_trackers[key].update(info[key].cpu())
             obs = next_obs
         
         self.env.obs = obs
@@ -66,16 +96,25 @@ class Evaluator:
         success_mean = success_tracker.mean()
 
         return_dict = {'eval/return': ret_mean, 'eval/episode_length': step_mean, 'eval/success_rate': success_mean}
+        steps = list(range(max_step))
+        for rew_name, history in step_reward_history.items():
+            return_dict[f'eval/step_reward/{rew_name}'] = wandb.plot.line_series(xs=steps,
+                                                                                 ys=[history],
+                                                                                 keys=[rew_name],
+                                                                                 title=f"Eval step reward: {rew_name}")
+        if self.cfg.info_track_keys is not None:
+            for key in self.cfg.info_track_keys:
+                return_dict[f'eval/{key}'] = info_trackers[key].mean()
         if success_max is not None:
             if success_mean > success_max:
                 success_max = success_mean
                 if self.cfg.save_model:
                     save_model(path=f"{self.wandb_run.dir}/model.pth",
-                                actor=policy if isinstance(policy, list) else policy.state_dict(),
-                                critic=value if isinstance(value, list) or value is None else value.state_dict(),
-                                rms=normalizer.get_states() if self.cfg.algo.obs_norm else None,
-                                wandb_run=self.wandb_run,
-                                description=f"success_rate={success_max:.2f} reward={ret_mean:.2f} step={step_mean:.2f}")
+                               actor=policy if isinstance(policy, list) else policy.state_dict(),
+                               critic=value if isinstance(value, list) or value is None else value.state_dict(),
+                               rms=normalizer.get_states() if self.cfg.algo.obs_norm else None,
+                               wandb_run=self.wandb_run,
+                               description=f"success_rate={success_max:.2f} reward={ret_mean:.2f} step={step_mean:.2f}")
             return return_dict, success_max
         return return_dict
 

@@ -13,6 +13,7 @@ import symdex
 from symdex.algo import alg_name_to_path
 from symdex.utils.common import init_wandb, load_class_from_path, set_random_seed, capture_keyboard_interrupt, preprocess_cfg
 from symdex.utils.model_util import load_model
+from symdex.replay.simple_replay import ReplayBuffer
 from symdex.env.tasks.manager_based_env_cfg import *
 from symdex.utils.evaluator import Evaluator
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
@@ -37,10 +38,20 @@ def main(cfg: DictConfig):
                         action_dim=cfg.task.multi.single_agent_action_dim if cfg.algo.multi_agent else env.action_space.shape[-1])
 
     if cfg.artifact is not None:
-        load_model(agent.actor, "actor_0", cfg.artifact)
-        load_model(agent.actor_left, "actor_1", cfg.artifact)
+        if cfg.algo.multi_agent:
+            load_model(agent.actor, "actor_0", cfg.artifact)
+            load_model(agent.actor_left, "actor_1", cfg.artifact)
+        else:
+            load_model(agent.actor, "actor", cfg.artifact)
         if cfg.algo.obs_norm:
             load_model(agent.obs_rms, "obs_rms", cfg.artifact)
+
+    if cfg.artifact_critic is not None:
+        if cfg.algo.multi_agent:
+            load_model(agent.critic, "critic_0", cfg.artifact_critic)
+            load_model(agent.critic_left, "critic_1", cfg.artifact_critic)
+        else:
+            load_model(agent.critic, "critic", cfg.artifact_critic)
 
     global_steps = 0
     success_max = float('-inf')
@@ -53,20 +64,31 @@ def main(cfg: DictConfig):
         env.unwrapped.update_randomization(0.0)
     agent.reset_agent()
 
+    memory = ReplayBuffer(capacity=int(cfg.algo.memory_size),
+                          obs_dim=agent.obs_dim, 
+                          action_dim=agent.action_dim, 
+                          device=cfg.device,
+                          left_agent=cfg.algo.multi_agent,
+                          reserve_space=False)
+    trajectory, steps = agent.explore_env(env, cfg.algo.warm_up, offline=True)
+    memory.add_to_buffer(trajectory)
+    global_steps += steps
+
     for iter_t in count():
         if iter_t % cfg.algo.eval_freq == 0:
-            return_dict, success_max = evaluator.eval_policy([agent.actor, agent.actor_left] if cfg.algo.multi_agent else agent.actor, 
-                                                        [agent.critic, agent.critic_left] if cfg.algo.multi_agent else agent.critic,
-                                                        algo_multi_cfg=agent.algo_multi_cfg if cfg.algo.multi_agent else None,
-                                                        normalizer=agent.obs_rms,
-                                                        success_max=success_max
-                                                        )
+            return_dict, success_max = evaluator.eval_policy(
+                [agent.actor, agent.actor_left] if cfg.algo.multi_agent else agent.actor, 
+                [agent.critic, agent.critic_left] if cfg.algo.multi_agent else agent.critic,
+                algo_multi_cfg=agent.algo_multi_cfg if cfg.algo.multi_agent else None,
+                normalizer=agent.obs_rms,
+                success_max=success_max
+            )
             wandb.log(return_dict, step=global_steps)
             agent.reset_agent()
             
         trajectory, steps = agent.explore_env(env, cfg.algo.horizon_len, random=False)
         global_steps += steps
-        log_info = agent.update_net(trajectory)
+        log_info = agent.update_net(memory)
 
         if iter_t % cfg.algo.log_freq == 0:
             log_info['global_steps'] = global_steps

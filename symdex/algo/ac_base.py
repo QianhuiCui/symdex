@@ -65,7 +65,9 @@ class ActorCriticBase:
             self.obs_rms = None
 
     def reset_agent(self):
-        self.obs, extras = self.env.reset()
+        # self.obs, extras = self.env.reset()
+        obs, extras = self.env.reset()
+        self.obs = obs["policy"] if isinstance(obs, dict) else obs
         self.dones = torch.zeros(self.cfg.num_envs).to(self.device)
         self.current_returns = torch.zeros(self.cfg.num_envs, dtype=torch.float32, device=self.cfg.device)
         self.current_lengths = torch.zeros(self.cfg.num_envs, dtype=torch.float32, device=self.cfg.device)

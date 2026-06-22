@@ -6,6 +6,7 @@ max_grad_norm: 0.5
 tracker_len: 1000
 obs_norm: False
 value_norm: True
+lambda_entropy: 0.0
 handle_timeout: True
 log_freq: 5
 eval_freq: 60

@@ -16,14 +16,20 @@ max_step: null
 max_time: 36000 # in seconds
 eval_headless: True
 headless: True
-                      
-artifact: null
-save_model: False
 max_episode_length: 2000
 
-logger: 
+info_track_keys: null # a list of keys to track in the info dict returned by env.step
+info_track_step: ['all-step'] # ['last', 'all-episode', 'all-step'], whether to track the info in the
+                      # last step or all steps. for all steps, whether to sum all values in episodes
+                      # up or keep track per-step values
+                      
+artifact: null
+artifact_critic: null
+save_model: False
+
+logger:   # for teleop data collection
   enable: False
-  max_episodes: 5  # for teleop data collection
+  max_episodes: 5
 
 replay:
   print_every: 5

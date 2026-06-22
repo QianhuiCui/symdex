@@ -30,15 +30,15 @@ class AgentITD3BC(ActorCriticBase):
                                          model_name_to_path[self.cfg.algo.cri_class])
         if "Equivariant" in self.cfg.algo.act_class:
             self.G = load_symmetric_system(cfg=self.cfg.task.symmetry)
-            self.actor = act_class(self.G, self.cfg.task.symmetry.actor_input_fields[0], self.cfg.task.symmetry.actor_output_fields[0], self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
-            self.actor_left = act_class(self.G, self.cfg.task.symmetry.actor_input_fields[1], self.cfg.task.symmetry.actor_output_fields[1], self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
+            self.actor = act_class(self.G, self.cfg.task.symmetry.TD3BC.actor_input_fields[0], self.cfg.task.symmetry.TD3BC.actor_output_fields[0], self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
+            self.actor_left = act_class(self.G, self.cfg.task.symmetry.TD3BC.actor_input_fields[1], self.cfg.task.symmetry.TD3BC.actor_output_fields[1], self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
         else:
             self.actor = act_class(self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
             self.actor_left = act_class(self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
         if "Equivariant" in self.cfg.algo.cri_class:
             self.G = load_symmetric_system(cfg=self.cfg.task.symmetry)
-            self.critic = cri_class(self.G, self.cfg.task.symmetry.critic_input_fields[0] + ['Q_js'], self.cfg.task.symmetry.critic_output_fields[0], self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
-            self.critic_left = cri_class(self.G, self.cfg.task.symmetry.critic_input_fields[1] + ['Q_js'], self.cfg.task.symmetry.critic_output_fields[1], self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
+            self.critic = cri_class(self.G, self.cfg.task.symmetry.TD3BC.critic_input_fields[0] + ['Q_js'], self.cfg.task.symmetry.TD3BC.critic_output_fields[0], self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
+            self.critic_left = cri_class(self.G, self.cfg.task.symmetry.TD3BC.critic_input_fields[1] + ['Q_js'], self.cfg.task.symmetry.TD3BC.critic_output_fields[1], self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
         else:
             self.critic = cri_class(self.single_obs_dim[0], self.single_action_dim).to(self.cfg.device)
             self.critic_left = cri_class(self.single_obs_dim[1], self.single_action_dim).to(self.cfg.device)
@@ -156,7 +156,8 @@ class AgentITD3BC(ActorCriticBase):
             else:
                 action = self.get_actions(obs, cur_symmetry_tracker, sample=True)
             
-            next_obs, reward, done, info = env.step(action)
+            raw_next_obs, reward, done, info = env.step(action)
+            next_obs = raw_next_obs["policy"] if isinstance(raw_next_obs, dict) else raw_next_obs
             reward_right, reward_left = self.symmetry_manager.get_multi_agent_rew(info['detailed_reward'], cur_symmetry_tracker)
             self.update_tracker(reward_right + reward_left, done, info)
             if self.cfg.algo.handle_timeout:
@@ -240,6 +241,7 @@ class AgentITD3BC(ActorCriticBase):
             "train/episode_length": self.step_tracker.mean(),
             "train/success_rate": self.success_tracker.mean(),
         }
+        self.add_info_tracker_log(log_info)
         return log_info
 
     def update_critic(self, critic, critic_target, critic_optimizer, actor_target, obs, action, reward, next_obs, done):

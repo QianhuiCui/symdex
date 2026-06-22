@@ -90,8 +90,8 @@ class OfflineBuffer:
     @staticmethod
     def _nstep_episode(r, r_left, nobs, done, nstep, gamma):
         steps = len(r)
-        rewards[step] = np.zeros(steps, dtype=np.float32)
-        rewards_left[step] = np.zeros(steps, dtype=np.float32)
+        rewards = np.zeros(steps, dtype=np.float32)
+        rewards_left = np.zeros(steps, dtype=np.float32)
         next_obs = nobs.copy()
         dones = done.copy()
 
@@ -100,8 +100,8 @@ class OfflineBuffer:
             terminated = False
 
             for k in range(n):
-                rewards += (gamma ** k) * r[step + k]
-                rewards_left += (gamma ** k) * r_left[step + k]
+                rewards[step] += (gamma ** k) * r[step + k]
+                rewards_left[step] += (gamma ** k) * r_left[step + k]
                 if done[step + k] > 0.5:
                     next_obs[step] = next_obs[step + k]
                     dones[step] = 1.0

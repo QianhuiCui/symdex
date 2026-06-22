@@ -2,46 +2,39 @@ defaults:
   - actor_critic.yaml
   - _self_
 
-name: "TD3BC"
+name: "ITD3BC"
+horizon_len: 16
 memory_size: 5e6
-batch_size: 8192
-act_class: null  # "ScaledTanhMLPPolicy"
-cri_class: null  # "TwinMLPCritic"
-log_freq: 100
-eval_freq: 1000
-obs_norm: False
-lambda_entropy: 0.0
-
-update_times: 8
-no_tgt_actor: True
-
-alpha: 0.05  # 2.5
-gamma: 0.99
-warm_up: 32
+batch_size: 1024
 nstep: 3
 tau: 0.05
+gamma: 0.99
+warm_up: 500
+act_class: TanhEquivariantMLPPolicy  # "ScaledTanhMLPPolicy"
+cri_class: DoubleQ  # "TwinMLPCritic"
+eval_freq: 100
+
+alpha: 0.5  # 2.5
 policy_delay: 2
+update_times: 8
+no_tgt_actor: True
 
 noise:
   type: 'mixed' # ['fixed', 'mixed']
   decay: null  #  "exp" and "linear"
   exp_decay_rate: 0.99
   lin_decay_iters: 10000
-  std_max: 0.8
+  std_max: 0.3  # 0.8
   std_min: 0.05
-  tgt_pol_std: 0.8
-  tgt_pol_noise_bound: 0.2
-
-multi_agent: True
+  tgt_pol_std: 0.2  # 0.8
+  tgt_pol_noise_bound: 0.1  # 0.2
 
 offline:
   vision: False
   pc: False
-  offline_ratio: 0.125
-  data_dir: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/teleop_logs/PickObjectEnv-v0_success"
+  offline_ratio: 0.5
+  data_dir: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/teleop_logs/policy/PickObjectEnv-v0_success"
   pattern: "*.h5"  # "*.h5"  # "PickObjectEnv-v0_*/*.h5"
   max_action: 1.0
 
-# checkpoint:
-#   load_path: null
-#   pretrain_encoder_path: null  # "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/checkpoint/pc_encoder_multiLabel_pretrain.pt"
+multi_agent: True
