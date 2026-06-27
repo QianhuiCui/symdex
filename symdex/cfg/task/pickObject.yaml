@@ -25,7 +25,7 @@ rew:
   collision_to_table_left: -0.000001
 
 cam:
-  enable: True
+  enable: False
   num_cams: 1
   frame_stack: 1
   resolution: 256

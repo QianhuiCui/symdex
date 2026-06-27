@@ -1,6 +1,6 @@
 from isaaclab.app import AppLauncher
 
-app_launcher = AppLauncher({"headless": True, "enable_cameras": True})
+app_launcher = AppLauncher({"headless": True, "enable_cameras": False})
 simulation_app = app_launcher.app
 
 from itertools import count
