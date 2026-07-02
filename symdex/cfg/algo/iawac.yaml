@@ -1,0 +1,23 @@
+defaults:
+  - actor_critic.yaml
+  - _self_
+
+name: "IAWAC"
+horizon_len: 1
+memory_size: 5e6
+batch_size: 8192
+nstep: 3
+tau: 0.05
+gamma: 0.99
+warm_up: 32
+act_class: DiagGaussianMLPPolicy  # DiagGaussianEquivariantMLPPolicy
+cri_class: DoubleQ  # DoubleQEquivariant  # DoubleQBatchNorm  # DistributionalDoubleQ
+eval_freq: 100
+
+alpha: 0.0
+beta: null
+
+update_times: 8
+no_tgt_actor: True
+
+multi_agent: True
