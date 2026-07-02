@@ -145,10 +145,10 @@ class VecEnvWrapper:
         # move time out information to the extras dict
         # this is only needed for infinite horizon tasks
         # note: only useful when `value_bootstrap` is True in the agent configuration
-        # if not self.unwrapped.cfg.is_finite_horizon:
-        #     extras["time_outs"] = truncated.to(device=self._rl_device)
+        if not self.unwrapped.cfg.is_finite_horizon:
+            extras["time_outs"] = truncated.to(device=self._rl_device)
         extras["terminated"] = terminated.to(device=self._rl_device)
-        extras["time_outs"] = truncated.to(device=self._rl_device)
+        # extras["time_outs"] = truncated.to(device=self._rl_device)
         # process observations and states
         obs = self._process_obs(obs_dict)
         # move buffers to rl-device

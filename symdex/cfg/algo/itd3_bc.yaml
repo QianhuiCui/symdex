@@ -9,7 +9,7 @@ batch_size: 1024
 nstep: 3
 tau: 0.05
 gamma: 0.99
-warm_up: 500
+warm_up: 32
 act_class: TanhEquivariantMLPPolicy  # "ScaledTanhMLPPolicy"
 cri_class: DoubleQ  # "TwinMLPCritic"
 eval_freq: 100

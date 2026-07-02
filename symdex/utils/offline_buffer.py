@@ -38,7 +38,7 @@ class OfflineBuffer:
                     r = dataset["rewards_right"][:]
                     r_left = dataset["rewards_left"][:]
                     nobs = dataset["next_observations"]["policy"][:]
-                    done = np.clip(dataset['terminals'][:].astype(np.float32) + dataset['timeouts'][:].astype(np.float32), 0.0, 1.0)
+                    done = dataset['terminals'][:].astype(np.float32)
 
                     r, r_left, nobs, done = self._nstep_episode(r, r_left, nobs, done, self.cfg.algo.nstep, self.cfg.algo.gamma)
                     states.append(dataset["observations"]["policy"][:])

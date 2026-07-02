@@ -14,10 +14,12 @@ from isaaclab_tasks.utils import load_cfg_from_registry
 
 
 def handle_timeout(dones, info):
-    timeout_key = 'TimeLimit.truncated'
+    # timeout_key = 'TimeLimit.truncated'
     timeout_envs = None
-    if timeout_key in info:
-        timeout_envs = info[timeout_key]
+    if 'TimeLimit.truncated' in info:
+        timeout_envs = info['TimeLimit.truncated']
+    elif 'time_outs' in info:
+        timeout_envs = info['time_outs']
     if timeout_envs is not None:
         dones = dones * (~timeout_envs)
     return dones

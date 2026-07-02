@@ -106,7 +106,7 @@ class AgentIAWAC(ActorCriticBase):
             next_obs = raw_next_obs["policy"] if isinstance(raw_next_obs, dict) else raw_next_obs
             reward_right, reward_left = self.symmetry_manager.get_multi_agent_rew(info['detailed_reward'], cur_symmetry_tracker)
             self.update_tracker(reward_right + reward_left, done, info)
-            if self.algo.handle_timeout:
+            if self.cfg.algo.handle_timeout:
                 done = handle_timeout(done, info)
             
             traj_states[:, i] = obs
@@ -181,6 +181,7 @@ class AgentIAWAC(ActorCriticBase):
             next_actions, _, log_prob, _ = actor.get_actions_logprob_entropy(next_obs, sample=True)
             target_Q = critic_target.get_q_min(next_obs, next_actions) - self.cfg.algo.alpha * log_prob
             target_Q = reward + (1.0 - done) * (self.cfg.algo.gamma ** self.cfg.algo.nstep) * target_Q
+
         current_Q1, current_Q2 = critic.get_q1_q2(obs, action)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
         grad_norm = self.optimizer_update(critic_optimizer, critic_loss)
@@ -194,6 +195,7 @@ class AgentIAWAC(ActorCriticBase):
             V_value = critic.get_q_min(obs, pi)
             adv = Q_value - V_value
             weights = F.softmax(adv / self.cfg.algo.beta, dim=0) * len(adv)
+            
         _, _, log_prob, _ = actor.logprob_entropy(obs, action)
         actor_loss = -(weights * log_prob.unsqueeze(-1)).mean()
         grad_norm = self.optimizer_update(actor_optimizer, actor_loss)

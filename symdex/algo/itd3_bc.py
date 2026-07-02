@@ -248,7 +248,7 @@ class AgentITD3BC(ActorCriticBase):
         with torch.no_grad():
             next_actions = self.get_tgt_policy_actions(actor_target, next_obs)
             target_Q = critic_target.get_q_min(next_obs, next_actions)
-            target_Q = reward + (1 - done) * (self.cfg.algo.gamma ** self.cfg.algo.nstep) * target_Q
+            target_Q = reward + (1.0 - done) * (self.cfg.algo.gamma ** self.cfg.algo.nstep) * target_Q
         
         current_Q1, current_Q2 = critic.get_q1_q2(obs, action)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
