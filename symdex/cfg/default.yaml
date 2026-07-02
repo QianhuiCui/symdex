@@ -16,7 +16,7 @@ max_step: null
 max_time: 36000 # in seconds
 eval_headless: True
 headless: True
-max_episode_length: 500  # TODO: p90 of offline actions
+max_episode_length: 100 
 
 info_track_keys: null # a list of keys to track in the info dict returned by env.step
 info_track_step: ['all-step'] # ['last', 'all-episode', 'all-step'], whether to track the info in the
