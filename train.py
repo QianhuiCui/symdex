@@ -88,6 +88,7 @@ def main(cfg: DictConfig):
             
         trajectory, steps = agent.explore_env(env, cfg.algo.horizon_len, random=False)
         global_steps += steps
+        memory.add_to_buffer(trajectory)
         log_info = agent.update_net(memory)
 
         if iter_t % cfg.algo.log_freq == 0:
