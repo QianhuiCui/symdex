@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 name: "ITD3BC"
-horizon_len: 16
+horizon_len: 1
 memory_size: 5e6
 batch_size: 1024
 nstep: 3
