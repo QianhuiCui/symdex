@@ -635,9 +635,11 @@ class PickObjectRewardsCfg(BaseRewardsCfg):
                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
                                   weight=0.0)
     object_goal_tracking_left = RewTerm(func=pick.object_goal_distance,
-                                        params={"command_name": "waiting_pos", "object_id": 2, 
+                                        params={"command_name": "waiting_pos", 
+                                                "object_id": 2, 
                                                 "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
-                                                "delay": False, "switch": True},
+                                                "delay": False, 
+                                                "switch": True},
                                         weight=0.0)
     object_goal_tracking_left_delay = RewTerm(func=pick.object_goal_distance,
                                               params={"command_name": "target_pos", 

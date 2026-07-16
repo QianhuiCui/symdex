@@ -20,4 +20,11 @@ beta: null
 update_times: 8
 no_tgt_actor: True
 
+offline:
+  vision: False
+  pc: False
+  pretrain_steps: 10000
+  data_dir: "/home/qianhui/Desktop/IsaacLab-dexret/symdex/symdex/teleop_logs/policy/PickObjectEnv-v0_success"
+  pattern: "*.h5"  # "*.h5"  # "PickObjectEnv-v0_*/*.h5"
+
 multi_agent: True

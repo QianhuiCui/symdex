@@ -74,6 +74,12 @@ def main(cfg: DictConfig):
     memory.add_to_buffer(trajectory)
     global_steps += steps
 
+    pretrain_steps = cfg.algo.offline.pretrain_steps
+    for pre_step in range(pretrain_steps):
+        log_info = agent.update_net(memory)
+        if pre_step % cfg.algo.log_freq == 0:
+            wandb.log({f'pretrain/{k}': v for k, v in log_info.items()}, step=pre_step)
+
     for iter_t in count():
         if iter_t % cfg.algo.eval_freq == 0:
             return_dict, success_max = evaluator.eval_policy(
