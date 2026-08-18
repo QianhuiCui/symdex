@@ -39,8 +39,13 @@ This repository provides a PyTorch implementation of the paper [Morphologically 
     ```bash
     conda create -n symdex python=3.10
     conda activate symdex
-    pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu118
-    pip install "isaacsim[all,extscache]==4.5.0" --extra-index-url https://pypi.nvidia.com
+    # pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu118
+    # pip install "isaacsim[all,extscache]==4.5.0" --extra-index-url https://pypi.nvidia.com
+    # install cuda-enabled pytorch
+    pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu128
+    pip install --upgrade pip
+    # install isaac sim packages
+    pip install 'isaacsim[all,extscache]==4.5.0' --extra-index-url https://pypi.nvidia.com
     ```
 3. Install IsaacLab
     ```bash
