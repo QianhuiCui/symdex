@@ -17,9 +17,6 @@ class TrajectoryLogger:
         self.task_name = task_name
         self.timestamp = time.strftime("%Y%m%d_%H%M")
 
-        # self.file_path = save_dir / f"{task_name}_{timestamp}.h5"
-        # self.h5_file = h5py.File(str(self.file_path), "w")
-        # self.episode_idx = 0
         self.success_dir = save_dir / f"{self.task_name}_success"
         self.failed_dir = save_dir / f"{self.task_name}_failed"
         self.success_dir.mkdir(parents=True, exist_ok=True)
@@ -33,60 +30,42 @@ class TrajectoryLogger:
 
         self._epi_meta = {}
         self._reset_buffers()
-        # print(f"[Logger] Initialized trajectory log file: {self.file_path}")
         print(f"[Logger] Initialized success log file: {self.success_tmp_path}")
         print(f"[Logger] Initialized failed log file: {self.failed_tmp_path}")
 
     def _reset_buffers(self):
         """Internal buffer for current trial data."""
         self._obs_policy = []
-        # self._obs_vision = []
+        self._obs_vision = []
         # self.obs_pc = []
-        self._next_obs_policy = []
-        # self._next_obs_vision = []
-        # self._next_obs_pc = []
 
         self._act = []
-        # self._rew = []
-        self._rew_right = []
-        self._rew_left = []
         self._terminals = []
         self._timeouts = []
-        self._rew_terms = []
 
-    def start_episode(self, *, language_instruction: str, rew_cfg_hash: str | None, rew_names: list[str] | None, rew_weights: np.ndarray | None, init_meta: dict | None = None):
+    def start_episode(self, *, language_instruction: str, init_meta: dict | None = None):
         """episode metadata when starting a new episode."""
         self._epi_meta = {
             "language_instruction": str(language_instruction),
-            "rew_cfg_hash": "" if rew_cfg_hash is None else str(rew_cfg_hash),
         }
         if init_meta is not None:
             for k, v in init_meta.items():
                 self._epi_meta[k] = v
-        self._epi_meta["reward_names"] = [str(name) for name in rew_names] if rew_names is not None else []
-        self._epi_meta["reward_weights"] = np.asarray(rew_weights, dtype=np.float32) if rew_weights is not None else np.array([], dtype=np.float32)
 
-    def add_transition(self, *, observation, action, reward_right, reward_left, next_observation, terminated: bool, truncated: bool, rew_terms):
+    def add_traj(self, *, observation, action, terminated: bool, truncated: bool):
         self._obs_policy.append(np.asarray(observation["policy"], dtype=np.float32))
-        # self._obs_vision.append(np.asarray(observation["vision"], dtype=np.uint8))
+        self._obs_vision.append(np.asarray(observation["vision"], dtype=np.uint8))
         # self.obs_pc.append(np.asarray(observation["point_cloud"], dtype=np.float16))
-        self._next_obs_policy.append(np.asarray(next_observation["policy"], dtype=np.float32))
-        # self._next_obs_vision.append(np.asarray(next_observation["vision"], dtype=np.uint8))
-        # self._next_obs_pc.append(np.asarray(next_observation["point_cloud"], dtype=np.float16))
 
         self._act.append(np.asarray(action, dtype=np.float32))
-        # self._rew.append(float(reward))
-        self._rew_right.append(float(reward_right))
-        self._rew_left.append(float(reward_left))
         self._terminals.append(np.uint8(1 if terminated else 0))
         self._timeouts.append(np.uint8(1 if truncated else 0))
-        self._rew_terms.append(np.asarray(rew_terms, dtype=np.float32))
 
     def save_episode(self, success: bool):
-        steps = len(self._rew_right)
-        if len(self._rew_right) == 0 or len(self._rew_left) == 0 or len(self._rew_right) != len(self._rew_left):
+        steps = len(self._act)
+        if steps == 0:
             return
-        
+
         if success:
             h5_file = self.success_h5
             episode_idx = self.success_episode_idx
@@ -113,37 +92,20 @@ class TrajectoryLogger:
         # observations group
         obs_grp = offline_data.create_group("observations")
         obs_grp.create_dataset("policy", data=np.stack(self._obs_policy, axis=0))
-        # obs_grp.create_dataset("vision",
-        #                        data=np.stack(self._obs_vision, axis=0),
-        #                        compression="gzip",
-        #                        compression_opts=4,
-        #                        chunks=True,)
-        # obs_grp.create_dataset("point_cloud", 
+        obs_grp.create_dataset("vision",
+                               data=np.stack(self._obs_vision, axis=0),
+                               compression="gzip",
+                               compression_opts=4,
+                               chunks=True,)
+        # obs_grp.create_dataset("point_cloud",
         #                        data=np.stack(self.obs_pc, axis=0),
         #                        compression="gzip",
         #                        compression_opts=4,
         #                        chunks=True,)
-        # next_observations group
-        next_obs_grp = offline_data.create_group("next_observations")
-        next_obs_grp.create_dataset("policy", data=np.stack(self._next_obs_policy, axis=0))
-        # next_obs_grp.create_dataset("vision",
-        #                              data=np.stack(self._next_obs_vision, axis=0),
-        #                              compression="gzip",
-        #                              compression_opts=4,
-        #                              chunks=True,)
-        # next_obs_grp.create_dataset("point_cloud", 
-        #                             data=np.stack(self._next_obs_pc, axis=0),
-        #                             compression="gzip",
-        #                             compression_opts=4,
-        #                             chunks=True,)
 
         offline_data.create_dataset("actions", data=np.stack(self._act, axis=0))
-        offline_data.create_dataset("rewards_right", data=np.asarray(self._rew_right, dtype=np.float32))
-        offline_data.create_dataset("rewards_left", data=np.asarray(self._rew_left, dtype=np.float32))
         offline_data.create_dataset("terminals", data=np.asarray(self._terminals, dtype=np.uint8))
         offline_data.create_dataset("timeouts", data=np.asarray(self._timeouts, dtype=np.uint8))
-        if len(self._rew_terms) == steps:
-            offline_data.create_dataset("reward_terms", data=np.stack(self._rew_terms, axis=0))
 
         h5_file.flush()
         if success:
@@ -154,10 +116,9 @@ class TrajectoryLogger:
 
         self._epi_meta = {}
         self._reset_buffers()
-        # self.episode_idx += 1
 
     def close(self):
-        if len(self._rew_right) > 0:
+        if len(self._act) > 0:
             print("[Logger] Warning: unsaved buffered transitions detected. They will not be auto-classified.")
             self._epi_meta = {}
             self._reset_buffers()

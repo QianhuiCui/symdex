@@ -8,20 +8,16 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import gymnasium as gym
 import threading
-import time 
-import hashlib 
-import json
+import time
 
 from symdex.utils.common import set_random_seed, capture_keyboard_interrupt, preprocess_cfg
-from symdex.utils.trajectory_utils import get_obs, now_ms, as_flag, to_str
+from symdex.utils.trajectory_utils import get_obs, as_flag, to_str
 from symdex.utils.trajectory_logger import TrajectoryLogger, SphereWriter
 from symdex.env.tasks.manager_based_env_cfg import * 
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
-# from symdex.utils.delta_action_scaler import DeltaActionScaler
-# from symdex.utils.action_scaler import ActionScaler, ActionScalerCfg
 from symdex.utils.symmetry import SymmetryManager
 import sys
-sys.path.append("/home/qianhui/Desktop/dex_bimanual_telep/scripts")
+sys.path.append("/home/qianhui/dex_bimanual_telep/scripts")
 from zmq_utils import recv_msg, send_msg
 
 import symdex
@@ -56,12 +52,6 @@ def recv_teleop():
 
         time.sleep(0.001)
 
-# def get_action_terms(env):
-#     action_manager = env.unwrapped.action_manager
-#     right_term = action_manager.get_term("arm_hand_action")
-#     left_term = action_manager.get_term("arm_hand_action_left")
-#     return right_term, left_term
-
 def get_action_manager_state(env):
     # right_term, left_term = get_action_terms(env)
     action_manager = env.unwrapped.action_manager
@@ -94,7 +84,6 @@ def make_clean_env_action_from_qtarget(env, q_target: np.ndarray):
     q_target = clip_qtarget_to_joint_limits(q_target)
     q_init, del_action = get_action_manager_state(env)
     action_scale = env.unwrapped._scale.detach().cpu().numpy().astype(np.float32)
-    # action_scale = np.maximum(np.abs(action_scale), 1e-6)
 
     # Required scaled increment before BaseEnv action_scale.
     scaled_increment = q_target - q_init - del_action
@@ -145,19 +134,8 @@ def main(cfg: DictConfig):
 
     env = gym.make(cfg.env_name, cfg=env_cfg)
     env = VecEnvWrapper(env, rl_device=cfg.rl_device)
-    symmetry_manager = SymmetryManager(cfg.task.multi.TD3BC, cfg.task.symmetry.symmetric_envs)
-    initial_obs, _ = env.reset()
     pending_init_meta = get_episode_init_meta(env, cfg)
     send_msg("robot_reset", {"t": time.time()})
-    prev_obs = get_obs(initial_obs)
-    # delta_scaler = DeltaActionScaler()
-    # delta_scaler.reset()
-    # absolute actions 
-    # joint_lower = np.concatenate([JOINT_LOWER_LIMIT, JOINT_LOWER_LIMIT_LEFT])
-    # joint_upper = np.concatenate([JOINT_UPPER_LIMIT, JOINT_UPPER_LIMIT_LEFT])
-    # action_scaler_cfg = ActionScalerCfg(max_delta=0.03, deadband=0.005, ema_alpha=0.75)
-    # action_scaler = ActionScaler(env=env, env_cfg=env_cfg, cfg=action_scaler_cfg, joint_lower=joint_lower, joint_upper=joint_upper)
-    # action_scaler.reset()
 
     with _data_lock:
         teleop_joint_data["value"] = None
@@ -181,14 +159,6 @@ def main(cfg: DictConfig):
     episodes_saved = 0
     episode_started = False
     cur_lang = None
-
-    rew_term_dict = env_cfg.rewards.to_dict()
-    rew_names = list(rew_term_dict.keys())
-    rew_weights = np.asarray([float(rew_term_dict[name].get("weight", 0.0)) for name in rew_names], dtype=np.float32)
-    sig = json.dumps({"rew_names": rew_names, "rew_weights": rew_weights.tolist()},
-                     separators=(",", ":"),
-                     sort_keys=True)
-    rew_cfg_hash = hashlib.sha256(sig.encode("utf-8")).hexdigest()
 
     # Visualization
     sphere_writer = SphereWriter(device=cfg.rl_device)
@@ -228,71 +198,37 @@ def main(cfg: DictConfig):
             if len(q_target) != len(q_curr):
                 raise RuntimeError(f"teleop_joint_state length {len(q_target)} != expected {len(q_curr)}.")
 
-            # delta_cmd = (q_target - q_curr).astype(np.float32)
-            # delta_cmd = delta_scaler.process(q_target, q_curr)
             delta_cmd = make_clean_env_action_from_qtarget(env, q_target)
             action_buf.zero_()
             action_buf[0].copy_(torch.from_numpy(delta_cmd).to(action_buf.device))
-            action_to_log = delta_cmd
-            # absolute actions 
-            # abs_cmd = q_target.astype(np.float32)
-            # abs_cmd = action_scaler.process(abs_cmd)
-            # action_buf.zero_()
-            # action_buf[0].copy_(torch.from_numpy(abs_cmd).to(action_buf.device))
-            # action_to_log = abs_cmd
+            action_to_log = delta_cmd 
         else:
             action_buf.zero_()
             action_to_log = np.zeros(env.action_space.shape[1], dtype=np.float32)
 
-        next_obs, rew, reset, extras = env.step(action_buf)
+        obs, _, reset, extras = env.step(action_buf)
 
-        # ---- obs ----
-        obs_vec = get_obs(next_obs)
-
-        # ---- reward & flags ----
-        # reward = float(rew[0].item())
-        reward_right, reward_left = symmetry_manager.get_multi_agent_rew(extras["detailed_reward"], env.unwrapped.symmetry_tracker)
-        reward_right = reward_right[0].item()
-        reward_left = reward_left[0].item()
+        # ---- flags ----
         terminated = as_flag(extras.get("terminated"))
         truncated = as_flag(extras.get("time_outs"))
 
-        # ---- reward terms ----
-        detailed_reward = extras["detailed_reward"]  # dict: name -> tensor([B])
-        rew_terms = np.asarray([float(detailed_reward[name][0].item()) for name in rew_names], dtype=np.float32)
-        if rew_terms.shape[0] != rew_weights.shape[0]:
-            raise RuntimeError(f"[Teleop] reward_terms K={rew_terms.shape[0]} != rew_weights K={rew_weights.shape[0]}")
-
         # ---- start recording if trigger arrives & episode metadata ----
-        # if trig_start == 1 and use_logger and (not episode_started):
         if use_logger and (not episode_started):
             episode_started = True
             cur_lang = to_str(extras.get("language_instruction", ""))
             logger.start_episode(
                 language_instruction=cur_lang,
-                rew_cfg_hash=rew_cfg_hash,
-                rew_names=rew_names,
-                rew_weights=rew_weights,
                 init_meta=pending_init_meta,
             )
             print("[Teleop] Recording started.")
-                
+
         if use_logger and episode_started:
-            # if cur_lang == "":
-            #     cur_lang = to_str(extras.get("language_instruction", ""))
-            logger.add_transition(
-                observation=prev_obs,
-                # action=delta_cmd,
+            logger.add_traj(
+                observation=get_obs(obs),
                 action=action_to_log,
-                # reward=reward,
-                reward_right=reward_right,
-                reward_left=reward_left,
-                next_observation=obs_vec,
                 terminated=bool(terminated),
                 truncated=bool(truncated),
-                rew_terms=rew_terms,
             )
-        prev_obs = obs_vec
 
         if bool(terminated or truncated or as_flag(reset)):
             if terminated and not truncated:
@@ -302,12 +238,8 @@ def main(cfg: DictConfig):
             else:
                 print("[Teleop] Episode finished: ENV RESET triggered.")
 
-            initial_obs, _ = env.reset()
             pending_init_meta = get_episode_init_meta(env, cfg)
             send_msg("robot_reset", {"t": time.time()})
-            prev_obs = get_obs(initial_obs)
-            # delta_scaler.reset()
-            # action_scaler.reset()
             last_reset_recv_time = time.monotonic()
 
             with _data_lock:
@@ -318,7 +250,6 @@ def main(cfg: DictConfig):
                 match_control["recv_time"] = None
 
             if use_logger and episode_started:
-                # logger.save_episode()
                 logger.save_episode(success=bool(terminated and not truncated))
                 episodes_saved += 1
                 if episodes_saved >= cfg.max_episodes:
