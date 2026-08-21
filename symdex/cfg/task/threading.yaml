@@ -18,20 +18,23 @@ rew:
   drill_cube_distance: 500.0
   success_bonus: 2000.0
 
-  # symmetry
-  # reaching_object_symmetry: 0.02
-  # object_lifting_symmetry: 2.0
-  # cube_goal_tracking_symmetry: 10.0
-  # cube_goal_orient_tracking_symmetry: 2.5
-  # align_hand_to_pos_symmetry: 1.0
-  # align_hand_to_quat_symmetry: 0.25
-  # reaching_drill_symmetry: 0.01
-
   energy: 0.000001
   energy_left: 0.000001
   collision_to_table: -0.000001
   collision_to_table_symmetry: -0.000001
 
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 84
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: True
+      pos: [-0.5, 0.0, 0.5]
+      target: [0.18, 0.0, 0.06]
+      
 randomize:
   enable: False
   update_freq: 100
@@ -66,26 +69,6 @@ randomize:
   #              [[0.12, 0.18], [0.23, 0.23], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.27, 1.87]],
   #              [[0.11, 0.19], [0.24, 0.24], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.17, 1.97]],
   #              [[0.10, 0.20], [0.25, 0.25], [0.06, 0.06], [0.0, 0.0], [0.0, 0.0], [1.07, 2.07]]]
-
-cam:
-  enable: True
-  num_cams: 1
-  frame_stack: 1
-  resolution: 128
-  cam_params:
-    cam_1:
-      enable: True
-      randomize: False
-      pos: [0.6, 0.0, 1.0]
-      target: [0.13, 0.0, 0.26]
-    # cam_2:
-    #   enable: False
-    #   randomize: True
-    #   pos: [0.6, -0.7, 0.5]
-    #   target: [-0.18, 0.0, 0.06]
-    # wrist_cam_left:
-    #   enable: False 
-    #   delay: 3
       
 multi:
   shared_obs_dim: 180
@@ -95,12 +78,8 @@ multi:
     single_agent_obs_dim: [102, 102]
     single_agent_obs_idx: [[[0, 56], [112, 158]], 
                           [[56, 136], [158, 180]]]
-    # single_agent_obs_idx_symmetry: [[[56, 136], [158, 180]], 
-    #                                [[0, 56], [112, 158]]]
     single_agent_rew: [["reaching_object", "object_lifting", "cube_goal_tracking", "cube_goal_orient_tracking", "cube_success_bonus", "drill_cube_distance", "success_bonus"],
                       ["align_hand_to_pos", "align_hand_to_quat", "reaching_drill", "drill_goal_tracking", "drill_goal_orient_tracking", "drill_success_bonus", "drill_cube_distance", "success_bonus"]]
-    # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "cube_goal_tracking_symmetry", "cube_goal_orient_tracking_symmetry", "cube_success_bonus", "drill_cube_distance", "success_bonus"],
-    #                             ["align_hand_to_pos_symmetry", "align_hand_to_quat_symmetry", "reaching_drill_symmetry", "drill_goal_tracking", "drill_goal_orient_tracking", "drill_success_bonus", "drill_cube_distance", "success_bonus"]]
 
 symmetry:
   reset_symmetry:

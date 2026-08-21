@@ -130,3 +130,17 @@ def drill_cube_distance(
     distance = torch.norm(env.scene[frame_name].data.target_pos_w.reshape(-1, 3) - cube.data.root_pos_w[:, :3], dim=-1)
     distance = torch.clamp(0.1 - distance, min=0.0) * (cube.data.root_pos_w[:, 2] > 0.25) * (drill.data.root_pos_w[:, 2] > 0.2)
     return distance 
+
+def cmd_success_bonus(
+    env: ManagerBasedRLEnv, command_names: str | list[str], num_success: int = 0,
+) -> torch.Tensor:
+    if isinstance(command_names, str):
+        command_term = env.command_manager.get_term(command_names)
+        success = command_term.metrics["consecutive_success"] >= num_success
+    else:
+        success = torch.ones(env.num_envs, device=env.device)
+        for command_name in command_names:
+            command_term = env.command_manager.get_term(command_name)
+            success = torch.logical_and(success, command_term.metrics["consecutive_success"] >= num_success)
+    rew = success.float()
+    return rew

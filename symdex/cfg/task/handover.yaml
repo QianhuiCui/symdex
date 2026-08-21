@@ -18,39 +18,17 @@ rew:
   middle_success_bonus_left: 20.0
   success_bonus: 3000.0
 
-  # symmetry
-  # reaching_object_symmetry: 0.05
-  # object_goal_tracking_symmetry: 10.0 
-  # object_goal_orient_tracking_symmetry: 2.0
-  # contact_bottle_punish_symmetry: 4.0
-  # reset_robot_joint_pos_symmetry: 200.0
-  # left_align_hand_pose_symmetry: 0.2
-  # left_align_finger_joint_symmetry: 1.0
-  # left_reaching_object_symmetry: 40.0
-  # left_object_goal_tracking_symmetry: 20.0 
-  # left_object_goal_orient_tracking_symmetry: 5.0
-  # middle_success_bonus_left_symmetry: 20.0
-  # success_bonus_symmetry: 3000.0
-
 cam:
   enable: True
   num_cams: 1
   frame_stack: 1
-  resolution: 128
+  resolution: 84
   cam_params:
     cam_1:
       enable: True
       randomize: False
       pos: [0.6, 0.0, 1.0]
       target: [0.13, 0.0, 0.26]
-    cam_2:
-      enable: False
-      randomize: True
-      pos: [0.6, -0.7, 0.5]
-      target: [-0.18, 0.0, 0.06]
-    wrist_cam_left:
-      enable: False 
-      delay: 3
       
 randomize:
   object_mass: [0.2, 0.2]
@@ -67,9 +45,6 @@ multi:
                                     [[0, 56], [112, 158]]]
     single_agent_rew: [["reaching_object", "object_goal_tracking", "object_goal_orient_tracking", "middle_success_bonus", "contact_bottle_punish", "reset_robot_joint_pos", "success_bonus"],
                         ["left_align_hand_pose", "left_align_finger_joint", "left_reaching_object", "left_object_goal_tracking", "left_object_goal_orient_tracking", "middle_success_bonus_left", "success_bonus"]]
-    # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_goal_tracking_symmetry", "object_goal_orient_tracking_symmetry", "middle_success_bonus", "contact_bottle_punish_symmetry", "reset_robot_joint_pos_symmetry", "success_bonus_symmetry"],
-    #                           ["left_align_hand_pose_symmetry", "left_align_finger_joint_symmetry", "left_reaching_object_symmetry", "left_object_goal_tracking_symmetry", "left_object_goal_orient_tracking_symmetry", 
-    #                           "middle_success_bonus_left_symmetry", "success_bonus_symmetry"]]
 
 symmetry:
   reset_symmetry:

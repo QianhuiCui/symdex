@@ -25,21 +25,13 @@ cam:
   enable: True
   num_cams: 1
   frame_stack: 1
-  resolution: 128
+  resolution: 84
   cam_params:
     cam_1:
       enable: True
       randomize: False
       pos: [0.6, 0.0, 1.0]
       target: [0.13, 0.0, 0.26]
-    # cam_2:
-    #   enable: False
-    #   randomize: True
-    #   pos: [0.6, -0.7, 0.5]
-    #   target: [-0.18, 0.0, 0.06]
-    # wrist_cam_left:
-    #   enable: False 
-    #   delay: 3
 
 randomize: 
   enable: False
@@ -81,13 +73,8 @@ multi:
     single_agent_obs_dim: [82, 94]
     single_agent_obs_idx: [[[0, 59], [127, 150]], # 82
                           [[56, 128], [150, 172]]] # 94
-    # single_agent_obs_idx_symmetry: [[[59, 115], [56, 59], [127, 128], [150, 172]], # 82
-    #                                 [[56, 59], [0, 56], [115, 150]]] # 94
     single_agent_rew: [["reaching_object", "object_lifting", "object_goal_tracking", "object_success_bonus_pos", "object_in_drawer", "reset_robot_joint_pos", "success_bonus"],
                        ["reaching_handle", "moving_drawer", "moving_drawer_inside", "success_bonus"]]
-    # single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "object_goal_tracking_symmetry", 
-    #                             "object_success_bonus_pos_symmetry", "object_in_drawer_symmetry", "reset_robot_joint_pos_symmetry", "success_bonus"],
-    #                             ["reaching_handle_symmetry", "moving_drawer_symmetry", "moving_drawer_inside_symmetry", "success_bonus"]]
 
 symmetry:
   reset_symmetry:

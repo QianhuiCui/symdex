@@ -5,7 +5,6 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 import isaaclab.envs.mdp as mdp
 from isaaclab.markers.config import FRAME_MARKER_CFG 
-from isaaclab.envs.mdp.actions import JointPositionActionCfg
 
 import symdex
 from symdex.env.tasks.manager_based_env_cfg import *
@@ -236,7 +235,7 @@ class PickObjectSceneCfg(BaseSceneCfg):
     object_1 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_1",
         spawn=MultiUsdCfg(
-        # sim_utils.UsdFileCfg(
+        # spawn=sim_utils.UsdFileCfg(
             # usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
             # usd_path=f"{symdex.LIB_PATH}/assets/object/dog.usd",
             # usd_path=f"{symdex.LIB_PATH}/assets/object/can.usd",
@@ -275,7 +274,7 @@ class PickObjectSceneCfg(BaseSceneCfg):
     object_2 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_2",
         spawn=MultiUsdCfg(
-        # sim_utils.UsdFileCfg(
+        # spawn=sim_utils.UsdFileCfg(
             # usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
             # usd_path=f"{symdex.LIB_PATH}/assets/object/dog.usd",
             # usd_path=f"{symdex.LIB_PATH}/assets/object/can.usd",
@@ -311,36 +310,13 @@ class PickObjectSceneCfg(BaseSceneCfg):
         ),
     )
 
-    # task_frames_vis = FrameTransformerCfg(   # for teleop
-    #     prim_path="{ENV_REGEX_NS}/Robot/palm_link",
-    #     update_period=0.0,
-    #     debug_vis=True,
-    #     visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
-    #         prim_path="/Visuals/pick_object_task_frames"
-    #     ),
-    #     target_frames=[
-    #         FrameTransformerCfg.FrameCfg(
-    #             prim_path="{ENV_REGEX_NS}/Object_0",
-    #             name="object_0",
-    #         ),
-    #         FrameTransformerCfg.FrameCfg(
-    #             prim_path="{ENV_REGEX_NS}/Object_1",
-    #             name="object_1",
-    #         ),
-    #         FrameTransformerCfg.FrameCfg(
-    #             prim_path="{ENV_REGEX_NS}/Object_2",
-    #             name="object_2",
-    #         ),
-    #     ],
-    # )
-
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
         width=256, height=256,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
-                focal_length=13.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.05, 5.0)
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
             ),  # default parameters
         offset=CameraCfg.OffsetCfg(convention="opengl"),
     )
@@ -434,7 +410,7 @@ class PickObjectEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.05, 0.15], "y": [-0.3, -0.4], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]}, 
+            "pose_range": {"x": [0.15, 0.15], "y": [-0.4, -0.4], "z": [0.0, 0.0], "yaw": [3.14, 3.14]}, 
             "velocity_range": {},
             "object_id": 1,
         },
@@ -444,11 +420,12 @@ class PickObjectEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.05, 0.15], "y": [0.3, 0.4], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]},
+            "pose_range": {"x": [0.15, 0.15], "y": [0.4, 0.4], "z": [0.0, 0.0], "yaw": [3.14, 3.14]},
             "velocity_range": {},
             "object_id": 2,
         },
     )
+
 
 @configclass
 class PickObjectCommandsCfg(BaseCommandsCfg):
@@ -484,68 +461,43 @@ class PickObjectObservationsCfg(BaseObservationsCfg):
 
         # -- robot terms (order preserved)
         ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
-        joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT, 
-                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT,}, noise=Gnoise(std=0.005))
+        hand_joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, 
+                                       params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
+                                               "joint_lower_limit": JOINT_LOWER_LIMIT, 
+                                               "joint_upper_limit": JOINT_UPPER_LIMIT,}, 
+                                       noise=Gnoise(std=0.005))
         # joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
         object_pos_1 = ObsTerm(func=object_pos, params={"object_id": 1}, noise=Unoise(n_min=0.0, n_max=0.015))
-        # object_rot_1 = ObsTerm(func=object_quat, params={"object_id": 1, "symmetry": True})
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
-        joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-                                                                          "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
-                                                                          "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
-                                                                          "asset_cfg": SceneEntityCfg("robot_left")}, noise=Gnoise(std=0.005))
+        hand_joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, 
+                                      params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
+                                              "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT,
+                                              "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
+                                              "asset_cfg": SceneEntityCfg("robot_left")}, 
+                                      noise=Gnoise(std=0.005))
         # joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
         object_pos_2 = ObsTerm(func=object_pos, params={"object_id": 2}, noise=Unoise(n_min=0.0, n_max=0.015))
-        # object_rot_2 = ObsTerm(func=object_quat, params={"object_id": 2, "symmetry": True})
         # tote_pos = ObsTerm(func=object_pos, params={"object_id": 0})
         last_action = ObsTerm(func=last_action)
-        # waiting_pos = ObsTerm(func=pick.generated_commands, params={"object_id": 2})
-        # target_pos = ObsTerm(func=pick.generated_commands, params={"object_id": 0})
 
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
     
-    # @configclass
-    # class VisionCfg(ObsGroup):
-    #     """Observations for vision group."""
+    @configclass
+    class VisionCfg(ObsGroup):
+        """Observations for vision group."""
 
-    #     # -- robot terms (order preserved)
-    #     rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+        # -- robot terms (order preserved)
+        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
 
-    #     def __post_init__(self):
-    #         self.enable_corruption = False
-    #         self.concatenate_terms = True
-    
-    # @configclass
-    # class PointCloudCfg(ObsGroup):
-    #     """Observations for point cloud group."""
-
-    #     # -- robot terms (order preserved)
-    #     # point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-    #     #                                                 "wrist_cam_name": [], 
-    #     #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.01, 0.7]],
-    #     #                                                 "max_points": 2048, 
-    #     #                                                 "downsample": "random",
-    #     #                                                 "add_noise": False})
-    #     point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-    #                                                           "wrist_cam_name": [], 
-    #                                                           "crop_range": [[-0.14, 0.4], [-0.7, 0.0], [0.01, 0.7]],
-    #                                                           "max_points": 2048, 
-    #                                                           "downsample": "random",
-    #                                                           "add_noise": False})
-    #     point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-    #                                                          "wrist_cam_name": [], 
-    #                                                          "crop_range": [[-0.14, 0.4], [0.0, 0.7], [0.01, 0.7]],
-    #                                                          "max_points": 2048, 
-    #                                                          "downsample": "random",
-    #                                                          "add_noise": False})
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    # vision: VisionCfg = VisionCfg()
-    # point_cloud: PointCloudCfg = PointCloudCfg()
+    vision: VisionCfg = VisionCfg()
 
 
 @configclass
@@ -569,30 +521,18 @@ class PickObjectActionsCfg:
         joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
         alpha=0.2
     )
-    # arm_hand_action = JointPositionActionCfg(
-    #     asset_name="robot",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    # )
-    # arm_hand_action_left = JointPositionActionCfg(
-    #     asset_name="robot_left",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    # )
 
 
 @configclass
 class PickObjectTerminationsCfg(BaseTerminationsCfg):
-    # out_of_space = DoneTerm(
-    #     func=pick.obj_out_space,
-    #     params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 1},
-    # )
-    # out_of_space_left = DoneTerm(
-    #     func=pick.obj_out_space,
-    #     params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 2},
-    # )
+    out_of_space = DoneTerm(
+        func=pick.obj_out_space,
+        params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 1},
+    )
+    out_of_space_left = DoneTerm(
+        func=pick.obj_out_space,
+        params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 2},
+    )
     max_consecutive_success = DoneTerm(
         func=pick.max_consecutive_success,
         params={"num_success": 1},
@@ -702,7 +642,7 @@ class PickObjectEnvCfg(BaseEnvCfg):
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.015,
                             0.03, 0.03, 0.03, 0.03]
-    visualize_marker: bool = True
+    visualize_marker: bool = False
 
     def __post_init__(self):
         # post init of parent

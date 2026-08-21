@@ -4,8 +4,7 @@ from isaaclab.assets import RigidObjectCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 import isaaclab.envs.mdp as mdp
-# from isaaclab.markers.config import FRAME_MARKER_CFG 
-from isaaclab.envs.mdp.actions import JointPositionActionCfg
+from isaaclab.markers.config import FRAME_MARKER_CFG 
 from isaaclab.sensors import CameraCfg, FrameTransformerCfg
 
 import symdex
@@ -28,7 +27,7 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",  # assets/ufactory850/uf850_allegro_right_colored.usd",  # assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -120,7 +119,7 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",  # assets/ufactory850/uf850_allegro_left_colored.usd",  # assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -280,37 +279,10 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
         }, 
     ) 
 
-    # task_frames_vis = FrameTransformerCfg(   # for teleop
-    #     prim_path="{ENV_REGEX_NS}/Robot/palm_link",
-    #     update_period=0.0,
-    #     debug_vis=True,
-    #     visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
-    #         prim_path="/Visuals/insert_drawer_task_frames"
-    #     ),
-    #     target_frames=[
-    #         # FrameTransformerCfg.FrameCfg(
-    #         #     prim_path="{ENV_REGEX_NS}/Robot/palm_link",
-    #         #     name="right_palm",
-    #         # ),
-    #         # FrameTransformerCfg.FrameCfg(
-    #         #     prim_path="{ENV_REGEX_NS}/Robot_left/palm_link",
-    #         #     name="left_palm",
-    #         # ),
-    #         FrameTransformerCfg.FrameCfg(
-    #             prim_path="{ENV_REGEX_NS}/Object_0",
-    #             name="object",
-    #         ),
-    #         FrameTransformerCfg.FrameCfg(
-    #             prim_path="{ENV_REGEX_NS}/Drawer/handle_grip",
-    #             name="drawer_handle",
-    #         ),
-    #     ],
-    # )
-
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=128, height=128,
+        width=84, height=84,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -372,55 +344,6 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
         update_period=0.0,
         debug_vis=True,
     )
-    # symmetric sensors
-    # contact_sensors_0_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot_left/if5",  # index
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_0"],
-    # )
-    # contact_sensors_1_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot_left/mf5",  # middle
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_0"],
-    # )
-    # contact_sensors_2_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot_left/pf5",  # pinky
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_0"],
-    # )
-    # contact_sensors_3_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot_left/th5",  # thumb
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_0"],
-    # )
-    # contact_sensors_0_left_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot/if5",  # index
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Drawer/handle_grip"],
-    # )
-    # contact_sensors_1_left_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot/mf5",  # middle
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Drawer/handle_grip"],
-    # )
-    # contact_sensors_2_left_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot/pf5",  # pinky
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Drawer/handle_grip"],
-    # )
-    # contact_sensors_3_left_symmetry = ContactSensorCfg(
-    #     prim_path="/World/envs/env_.*/Robot/th5",  # thumb
-    #     update_period=0.0, 
-    #     debug_vis=True,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Drawer/handle_grip"],
-    # )
 
 
 @configclass
@@ -428,7 +351,7 @@ class InsertDrawerEventCfg(BaseEventCfg):
     """Configuration for events."""
 
     reset_robot_joints_left = EventTerm(
-        func=reset_joints_by_symmetry,
+        func=mdp.reset_joints_by_scale,
         mode="reset",
         params={
             "position_range": (1.0, 1.0),
@@ -461,11 +384,12 @@ class InsertDrawerEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.05, 0.05], "y": [-0.35, -0.35], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]},
+            "pose_range": {"x": [0.05, 0.05], "y": [-0.35, -0.35], "z": [0.0, 0.0], "yaw": [0.0, 0.0]},
             "velocity_range": {},
             "object_id": 0,
         },
     )
+
 
 @configclass
 class InsertDrawerCommandsCfg(BaseCommandsCfg):
@@ -492,21 +416,23 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
 
         # -- robot terms (order preserved)
         ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
-        joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT, 
-                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT,},
-                                                                           noise=Gnoise(std=0.005))
-        joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
+        hand_joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, 
+                                  params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
+                                          "joint_lower_limit": JOINT_LOWER_LIMIT, 
+                                          "joint_upper_limit": JOINT_UPPER_LIMIT,},
+                                  noise=Gnoise(std=0.005))
+        # joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
         object_pos = ObsTerm(func=object_pos,
                              noise=Unoise(n_min=0.0, n_max=0.01),
                              params={"object_id": 0},)
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
-        joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-                                                                          "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
-                                                                          "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
-                                                                          "asset_cfg": SceneEntityCfg("robot_left")},
-                                                                          noise=Gnoise(std=0.005))
-        joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
+        hand_joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, 
+                                 params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
+                                         "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT,
+                                         "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT,
+                                         "asset_cfg": SceneEntityCfg("robot_left")},
+                                 noise=Gnoise(std=0.005))
+        # joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
         drawer_handle_pose = ObsTerm(func=ee_pose, params={"ee_name": "handle_grip", "asset_cfg": SceneEntityCfg("drawer")})
         drawer_joint_pos = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, "asset_cfg": SceneEntityCfg("drawer")}, )
         last_action = ObsTerm(func=last_action)
@@ -514,37 +440,6 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-            
-    # @configclass
-    # class CriticCfg(ObsGroup):
-    #     """Observations for policy group."""
-
-    #     # -- robot terms (order preserved)
-    #     ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
-    #     joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-    #                                                                        "joint_lower_limit": JOINT_LOWER_LIMIT, 
-    #                                                                        "joint_upper_limit": JOINT_UPPER_LIMIT,},
-    #                                                                        noise=Gnoise(std=0.005))
-    #     joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
-    #     object_pos = ObsTerm(
-    #         func=object_pos,
-    #         noise=Unoise(n_min=0.0, n_max=0.01),
-    #         params={"object_id": 0}
-    #     )
-    #     ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
-    #     joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-    #                                                                       "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
-    #                                                                       "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
-    #                                                                       "asset_cfg": SceneEntityCfg("robot_left")},
-    #                                                                       noise=Gnoise(std=0.005))
-    #     joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
-    #     drawer_handle_pos = ObsTerm(func=ee_pose, params={"ee_name": "handle_grip", "asset_cfg": SceneEntityCfg("drawer")})
-    #     drawer_joint_pos = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, "asset_cfg": SceneEntityCfg("drawer")}, )
-    #     last_action = ObsTerm(func=last_action)
-
-    #     def __post_init__(self):
-    #         self.enable_corruption = False
-    #         self.concatenate_terms = True
 
     @configclass
     class VisionCfg(ObsGroup):
@@ -557,58 +452,8 @@ class InsertDrawerObservationsCfg(BaseObservationsCfg):
             self.enable_corruption = False
             self.concatenate_terms = True
 
-    @configclass
-    class PointCloudCfg(ObsGroup):
-        """Observations for point cloud group."""
-
-        # -- robot terms (order preserved)
-        point_cloud = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-                                                        "wrist_cam_name": [], 
-                                                        "crop_range": [[-0.14, 0.4], [-0.6, 0.6], [0.015, 0.5]],
-                                                        "max_points": 2048, 
-                                                        "downsample": "random",
-                                                        "add_noise": True})
-        # point_cloud_right = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-        #                                                 "wrist_cam_name": [], 
-        #                                                 "crop_range": [[-0.14, 0.4], [-0.6, 0.1], [0.015, 0.5]],
-        #                                                 "max_points": 2048, 
-        #                                                 "downsample": "random",
-        #                                                 "add_noise": True})
-        # point_cloud_left = ObsTerm(func=point_cloud, params={"camera_name": ["cam_1"], 
-        #                                                 "wrist_cam_name": [], 
-        #                                                 "crop_range": [[-0.14, 0.4], [-0.0, 0.6], [0.015, 0.5]],
-        #                                                 "max_points": 2048, 
-        #                                                 "downsample": "random",
-        #                                                 "add_noise": True})
-
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
-
-    # @configclass
-    # class PolicyCfg(ObsGroup):
-    #     """Observations for policy group."""
-
-    #     # -- robot terms (order preserved)
-    #     joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-    #                                                                        "joint_lower_limit": JOINT_LOWER_LIMIT, 
-    #                                                                        "joint_upper_limit": JOINT_UPPER_LIMIT,},
-    #                                                                        noise=Gnoise(std=0.01))
-    #     last_action_right = ObsTerm(func=last_action_side, params={"side": "right"})
-    #     joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-    #                                                                       "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
-    #                                                                       "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
-    #                                                                       "asset_cfg": SceneEntityCfg("robot_left")},
-    #                                                                       noise=Gnoise(std=0.01))
-    #     last_action_left = ObsTerm(func=last_action_side, params={"side": "left"})
-    #     def __post_init__(self):
-    #         self.enable_corruption = False
-    #         self.concatenate_terms = True
-
     # observation groups
-    # critic: CriticCfg = CriticCfg()
     vision: VisionCfg = VisionCfg()
-    point_cloud: PointCloudCfg = PointCloudCfg()
     policy: PolicyCfg = PolicyCfg()
 
 
@@ -633,18 +478,6 @@ class InsertDrawerActionsCfg:
         joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
         alpha=0.2
     )
-    # arm_hand_action = JointPositionActionCfg(
-    #     asset_name="robot",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    # )
-    # arm_hand_action_left = JointPositionActionCfg(
-    #     asset_name="robot_left",
-    #     joint_names=[".*"],
-    #     scale=0.95,
-    #     use_default_offset=False,
-    # )
 
 
 @configclass
@@ -719,17 +552,16 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
     rewards = InsertDrawerRewardsCfg()
     num_object = 1
     action_dim = 44 # arm + hand
-    # action_scale: list = [1.0] * action_dim
     action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05, 
-                            0.05, 0.05, 0.05, 0.05, 
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05, 
-                            0.05, 0.05, 0.05, 0.05, 
-                            0.05, 0.05, 0.05, 0.05,
-                            0.05, 0.05, 0.05, 0.05,]  # jth3 needs smaller rate
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
+                            0.03, 0.03, 0.03, 0.03,
+                          0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
+                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
 

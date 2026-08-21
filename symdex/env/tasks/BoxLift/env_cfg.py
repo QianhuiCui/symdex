@@ -7,7 +7,6 @@ import isaaclab.envs.mdp as mdp
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer import OffsetCfg
 from isaaclab.markers.config import FRAME_MARKER_CFG 
-from isaaclab.envs.mdp.actions import JointPositionActionCfg
 
 import symdex
 from symdex.env.tasks.manager_based_env_cfg import *
@@ -29,7 +28,7 @@ class BoxLiftSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",  # assets/ufactory850/uf850_allegro_right_colored.usd",  # assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -121,7 +120,7 @@ class BoxLiftSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",  # assets/ufactory850/uf850_allegro_left_colored.usd",  # assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -236,7 +235,7 @@ class BoxLiftSceneCfg(BaseSceneCfg):
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=128, height=128,
+        width=84, height=84,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -306,7 +305,7 @@ class BoxLiftEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.0, 0.2], "y": [-0.1, 0.1], "z": [0.0, 0.0], "yaw": [-0.7, 0.7]},
+            "pose_range": {"x": [0.1, 0.1], "y": [0.0, 0.0], "z": [0.0, 0.0], "yaw": [0.0, 0.0]},
             "velocity_range": {},
             "object_id": 0,
         },
@@ -341,22 +340,20 @@ class BoxLiftObservationsCfg(BaseObservationsCfg):
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
         # -- robot terms (order preserved)
-        joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None,
+        ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
+        hand_joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
                                                                            "joint_lower_limit": JOINT_LOWER_LIMIT, 
-                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT}, noise=Gnoise(std=0.005))
-        joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
-        joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
+                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT,}, noise=Gnoise(std=0.005))
+        # joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
+        ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
+        hand_joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
                                                                           "asset_cfg": SceneEntityCfg("robot_left")}, noise=Gnoise(std=0.005))
-        joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
-        box_pos = ObsTerm(
-            func=object_pos, noise=Unoise(n_min=0.0, n_max=0.01),
-            params={"object_id": 0}
-        )
-        box_quat = ObsTerm(
-            func=object_quat, params={"object_id": 0, "symmetry": True}, noise=Gnoise(std=0.01)
-        )
+        # joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
+        box_pos = ObsTerm(func=object_pos, noise=Unoise(n_min=0.0, n_max=0.01),
+                          params={"object_id": 0})
+        box_quat = ObsTerm(func=object_quat, params={"object_id": 0, "symmetry": True}, noise=Gnoise(std=0.01))
         box_pos_right = ObsTerm(func=lift.box_side, params={"side": "right"})
         frame_quat_right = ObsTerm(func=frame_quat, params={"frame_name": "tote_right", "symmetry": True})
         box_pos_left = ObsTerm(func=lift.box_side, params={"side": "left"})
@@ -368,49 +365,49 @@ class BoxLiftObservationsCfg(BaseObservationsCfg):
             self.enable_corruption = False
             self.concatenate_terms = True
 
+    @configclass
+    class VisionCfg(ObsGroup):
+        """Observations for vision group."""
+
+        # -- robot terms (order preserved)
+        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+    vision: VisionCfg = VisionCfg()
 
 
 @configclass
 class BoxLiftActionsCfg:
-    # arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
-    #     asset_name="robot",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    #     joint_lower_limit=JOINT_LOWER_LIMIT,
-    #     joint_upper_limit=JOINT_UPPER_LIMIT,
-    #     alpha=0.2
-    # )
-
-    # arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
-    #     asset_name="robot_left",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    #     joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
-    #     joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
-    #     alpha=0.2
-    # )
-    arm_hand_action = JointPositionActionCfg(
+    arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
+        joint_lower_limit=JOINT_LOWER_LIMIT,
+        joint_upper_limit=JOINT_UPPER_LIMIT,
+        alpha=0.2
     )
-    arm_hand_action_left = JointPositionActionCfg(
+
+    arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
+        joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
+        joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
+        alpha=0.2
     )
 
 
 @configclass
 class BoxLiftTerminationsCfg(BaseTerminationsCfg):
     max_consecutive_success = DoneTerm(
-        func=max_consecutive_success, params={"num_success": 20, "command_names": "target_pos"}
+        func=max_consecutive_success, params={"num_success": 1, "command_names": "target_pos"}
     )
 
 
@@ -450,7 +447,7 @@ class BoxLiftRewardsCfg(BaseRewardsCfg):
                                    weight=0.0,
                                    )
     success_bonus = RewTerm(func=success_bonus,
-                            params={"command_names": "target_pos", "num_success": 20},
+                            params={"command_names": "target_pos", "num_success": 1},
                             weight=0.0,
                             )
 
@@ -466,20 +463,20 @@ class BoxLiftEnvCfg(BaseEnvCfg):
     rewards = BoxLiftRewardsCfg()
     num_object = 1
     action_dim = 44 # arm + hand
-    action_scale: list = [1.0] * action_dim
-    # [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.015,
-    #                         0.03, 0.03, 0.03, 0.03,
-    #                         0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.03, 
-    #                         0.03, 0.03, 0.03, 0.015,
-    #                         0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
+    action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
+                            0.03, 0.03, 0.03, 0.03,
+                          0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
+                            0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.viewer.eye = (-1.5, 0.0, 1.5)
+        # self.viewer.eye = (-1.5, 0.0, 1.5)
+        self.viewer.eye = (-0.6, 0.0, 1.0)

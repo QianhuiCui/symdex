@@ -32,30 +32,30 @@ import symdex
 OBJECT: Dict[str, List[str]] = {
     "cup": [
             f"{symdex.LIB_PATH}/assets/objects/cups/cup_1/base.usd",
-            f"{symdex.LIB_PATH}/assets/objects/cups/cup_2/base.usd",
-            f"{symdex.LIB_PATH}/assets/objects/cups/cup_3/base.usd",
-            f"{symdex.LIB_PATH}/assets/objects/cups/cup_4/base.usd",
-            f"{symdex.LIB_PATH}/assets/objects/cups/cup_5/base.usd"
+            # f"{symdex.LIB_PATH}/assets/objects/cups/cup_2/base.usd",
+            # f"{symdex.LIB_PATH}/assets/objects/cups/cup_3/base.usd",
+            # f"{symdex.LIB_PATH}/assets/objects/cups/cup_4/base.usd",
+            # f"{symdex.LIB_PATH}/assets/objects/cups/cup_5/base.usd"
         ],
     "bowl": [
         f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_1/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_2/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_3/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_4/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_5/base.usd"
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_2/base.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_3/base.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_4/base.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_5/base.usd"
     ],
     "bottle": [
         f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_1/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_2/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_3/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_4/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_5/base.usd"
+        # f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_2/base.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_3/base.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_4/base.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_5/base.usd"
     ],
     "scanner": [
         f"{symdex.LIB_PATH}/assets/objects/scanners/scanner_1/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/scanners/scanner_2/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/scanners/scanner_3/base.usd",
-        f"{symdex.LIB_PATH}/assets/objects/scanners/scanner_4/base.usd"
+        # f"{symdex.LIB_PATH}/assets/objects/scanners/scanner_2/base.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/scanners/scanner_3/base.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/scanners/scanner_4/base.usd"
     ],
     "grasp": [
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_1/visual_model.usd",
@@ -117,24 +117,24 @@ OBJECT_CATEGORY: dict[str, str] = {
     },
     "bottle": {
         f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_1/base.usd": "bottle",
-        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_2/base.usd": "bottle",
-        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_3/base.usd": "bottle",
-        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_4/base.usd": "bottle",
-        f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_5/base.usd": "bottle"
+        # f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_2/base.usd": "bottle",
+        # f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_3/base.usd": "bottle",
+        # f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_4/base.usd": "bottle",
+        # f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_5/base.usd": "bottle"
     },
     "cup": {
         f"{symdex.LIB_PATH}/assets/objects/cups/cup_1/base.usd": "cup",
-        f"{symdex.LIB_PATH}/assets/objects/cups/cup_2/base.usd": "cup",
-        f"{symdex.LIB_PATH}/assets/objects/cups/cup_3/base.usd": "cup",
-        f"{symdex.LIB_PATH}/assets/objects/cups/cup_4/base.usd": "cup",
-        f"{symdex.LIB_PATH}/assets/objects/cups/cup_5/base.usd": "cup"
+        # f"{symdex.LIB_PATH}/assets/objects/cups/cup_2/base.usd": "cup",
+        # f"{symdex.LIB_PATH}/assets/objects/cups/cup_3/base.usd": "cup",
+        # f"{symdex.LIB_PATH}/assets/objects/cups/cup_4/base.usd": "cup",
+        # f"{symdex.LIB_PATH}/assets/objects/cups/cup_5/base.usd": "cup"
     },
     "bowl": {
         f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_1/base.usd": "bowl",
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_2/base.usd": "bowl",
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_3/base.usd": "bowl",
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_4/base.usd": "bowl",
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_5/base.usd": "bowl"
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_2/base.usd": "bowl",
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_3/base.usd": "bowl",
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_4/base.usd": "bowl",
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_5/base.usd": "bowl"
     },
     "drill": {
         f"{symdex.LIB_PATH}/assets/threading/drill.usd": "drill"

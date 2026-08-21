@@ -5,7 +5,6 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer import OffsetCfg
-from isaaclab.envs.mdp.actions import JointPositionActionCfg
 from isaaclab.markers.config import FRAME_MARKER_CFG 
 
 import symdex
@@ -17,7 +16,6 @@ from symdex.env.mdps.termination_mdps import *
 from symdex.env.mdps.command_mdps.grasp_command_cfg import TargetPositionCommandCfg
 from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPositionActionCfg
 from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
-from symdex.env.tasks.StirBowl import mdps as bowl
 from symdex.env.tasks.Threading import mdps as threading
 
 FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
@@ -29,7 +27,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",  # assets/ufactory850/uf850_allegro_right_colored.usd",  # assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -121,7 +119,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",  # assets/ufactory850/uf850_allegro_left_colored.usd",  # assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -213,9 +211,19 @@ class ThreadingSceneCfg(BaseSceneCfg):
     object_0 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_0",
         spawn=MultiUsdCfg(
-        # sim_utils.UsdFileCfg(
+        # spawn=sim_utils.UsdFileCfg(
             # usd_path=f"{symdex.LIB_PATH}/assets/object/cube_with_hole.usd",
-            usd_path="cube_with_hole",
+            usd_path="cube_with_hole", 
+            random_choice=True,
+            obj_label=True,
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=False,
+            random_roughness=False,
+            random_metallic=False,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -225,14 +233,6 @@ class ThreadingSceneCfg(BaseSceneCfg):
                 solver_velocity_iteration_count=1,
                 max_depenetration_velocity=1000.0,
             ),
-            preview_surface=RandomPreviewSurfaceCfg(
-                diffuse_color_dict=COLOR_DICT_20,
-                roughness_range=(0.2, 0.8),
-                metallic_range=(0.2, 0.8),
-            ),
-            random_color=True,
-            random_roughness=True,
-            random_metallic=True,
             mass_props=sim_utils.MassPropertiesCfg(mass=0.2),  # 0.15
             activate_contact_sensors=True,
             scale=(0.75, 0.75, 0.75),
@@ -248,9 +248,19 @@ class ThreadingSceneCfg(BaseSceneCfg):
     object_1 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_1",
         spawn=MultiUsdCfg(
-        # sim_utils.UsdFileCfg(
+        # spawn=sim_utils.UsdFileCfg(
             # usd_path=f"{symdex.LIB_PATH}/assets/object/drill.usd",
             usd_path="drill",
+            random_choice=True,
+            obj_label=True,
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=False,
+            random_roughness=False,
+            random_metallic=False,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -260,14 +270,6 @@ class ThreadingSceneCfg(BaseSceneCfg):
                 solver_velocity_iteration_count=1,
                 max_depenetration_velocity=1000.0,
             ),
-            preview_surface=RandomPreviewSurfaceCfg(
-                diffuse_color_dict=COLOR_DICT_20,
-                roughness_range=(0.2, 0.8),
-                metallic_range=(0.2, 0.8),
-            ),
-            random_color=True,
-            random_roughness=True,
-            random_metallic=True,
             mass_props=sim_utils.MassPropertiesCfg(mass=0.5),  # 0.85
             activate_contact_sensors=True,
             scale=(1.0, 1.0, 1.0),
@@ -283,7 +285,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=128, height=128,
+        width=84, height=84,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -372,28 +374,14 @@ class ThreadingSceneCfg(BaseSceneCfg):
             ),
         ],
     )
-
-    # object_approach_frame_symmetry = FrameTransformerCfg(
-    #     prim_path="{ENV_REGEX_NS}/Object_1",
-    #     debug_vis=False,
-    #     visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(prim_path="/Visuals/ObjectApproachFrameTransformer"),
-    #     target_frames=[
-    #         FrameTransformerCfg.FrameCfg(
-    #             prim_path="{ENV_REGEX_NS}/Object_1",
-    #             name="approach_frame",
-    #             offset=OffsetCfg(
-    #                 pos=(0.05, 0.0, 0.0),
-    #                 rot=(0.0, 0.0, 0.7071, 0.7071),
-    #             ),
-    #         ),
-    #     ],
-    # )
+    
 
 @configclass
 class ThreadingEventCfg(BaseEventCfg):
     """Configuration for events."""
+
     reset_robot_joints_left = EventTerm(
-        func=reset_joints_by_symmetry,
+        func=mdp.reset_joints_by_scale,  # reset_joints_by_symmetry,
         mode="reset",
         params={
             "position_range": (1.0, 1.0),
@@ -422,6 +410,7 @@ class ThreadingEventCfg(BaseEventCfg):
         },
     )
 
+
 @configclass
 class ThreadingCommandsCfg(BaseCommandsCfg):
     """Command specifications for the MDP."""
@@ -429,7 +418,7 @@ class ThreadingCommandsCfg(BaseCommandsCfg):
     cube_target_pos = TargetPositionCommandCfg(
         object_id=0,
         success_threshold=0.1,
-        success_threshold_orient=0.97, # 30 degree 
+        success_threshold_orient=0.97, 
         pose_range={"x": [0.0, 0.0], "y": [-0.15, -0.15], "z": [0.3, 0.3], "roll": [-1.57, -1.57]},
         update_goal_on_success=False,
         debug_vis=True,
@@ -444,6 +433,7 @@ class ThreadingCommandsCfg(BaseCommandsCfg):
         debug_vis=True,
     )
 
+
 @configclass
 class ThreadingObservationsCfg(BaseObservationsCfg):
     """Observation specifications for the MDP."""
@@ -454,73 +444,69 @@ class ThreadingObservationsCfg(BaseObservationsCfg):
 
         # -- robot terms (order preserved)
         ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
-        joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None,
-                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT, 
-                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT}, noise=Gnoise(std=0.005))
-        joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
+        hand_joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, 
+                                  params={"joints": None,
+                                          "joint_lower_limit": JOINT_LOWER_LIMIT, 
+                                          "joint_upper_limit": JOINT_UPPER_LIMIT}, 
+                                  noise=Gnoise(std=0.005))
+        # joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
-        joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-                                                                          "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
-                                                                          "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
-                                                                          "asset_cfg": SceneEntityCfg("robot_left")}, noise=Gnoise(std=0.005))
-        joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
+        hand_joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, 
+                                 params={"joints": None, 
+                                         "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT,
+                                         "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
+                                         "asset_cfg": SceneEntityCfg("robot_left")}, 
+                                 noise=Gnoise(std=0.005))
+        # joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
         # -- object terms
-        cube_pos = ObsTerm(
-            func=object_pos, params={"object_id": 0}, noise=Unoise(n_min=0.0, n_max=0.015)
-        )
-        cube_quat = ObsTerm(
-            func=object_quat, params={"object_id": 0, "symmetry": True}, noise=Gnoise(std=0.005)
-        )
-        drill_pos = ObsTerm( # bowl position
-            func=object_pos, params={"object_id": 1}, noise=Unoise(n_min=0.0, n_max=0.015)
-        )
-        drill_quat = ObsTerm(
-            func=object_quat, params={"object_id": 1, "symmetry": True}, noise=Gnoise(std=0.005)
-        )
-        # # -- action terms
+        cube_pos = ObsTerm(func=object_pos, params={"object_id": 0}, noise=Unoise(n_min=0.0, n_max=0.015))
+        cube_quat = ObsTerm(func=object_quat, params={"object_id": 0, "symmetry": True}, noise=Gnoise(std=0.005))
+        drill_pos = ObsTerm(func=object_pos, params={"object_id": 1}, noise=Unoise(n_min=0.0, n_max=0.015))
+        drill_quat = ObsTerm(func=object_quat, params={"object_id": 1, "symmetry": True}, noise=Gnoise(std=0.005))
+        # -- action terms
         last_action = ObsTerm(func=last_action)
 
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
 
+    @configclass
+    class VisionCfg(ObsGroup):
+        """Observations for vision group."""
+
+        # -- robot terms (order preserved)
+        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+    vision: VisionCfg = VisionCfg()
 
 
 @configclass
 class ThreadingActionsCfg:
-    # arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
-    #     asset_name="robot",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    #     joint_lower_limit=JOINT_LOWER_LIMIT,
-    #     joint_upper_limit=JOINT_UPPER_LIMIT,
-    #     alpha=0.2
-    # )
-
-    # arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
-    #     asset_name="robot_left",
-    #     joint_names=[".*"],
-    #     scale=1.0,
-    #     use_default_offset=False,
-    #     joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
-    #     joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
-    #     alpha=0.2
-    # )
-    arm_hand_action = JointPositionActionCfg(
+    arm_hand_action = EMACumulativeRelativeJointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
         scale=1.0,
         use_default_offset=False,
+        joint_lower_limit=JOINT_LOWER_LIMIT,
+        joint_upper_limit=JOINT_UPPER_LIMIT,
+        alpha=0.2
     )
-    arm_hand_action_left = JointPositionActionCfg(
+
+    arm_hand_action_left = EMACumulativeRelativeJointPositionActionCfg(
         asset_name="robot_left",
         joint_names=[".*"],
-        scale=0.95,
+        scale=1.0,
         use_default_offset=False,
+        joint_lower_limit=JOINT_LOWER_LIMIT_LEFT,
+        joint_upper_limit=JOINT_UPPER_LIMIT_LEFT,
+        alpha=0.2
     )
+
 
 @configclass
 class ThreadingTerminationsCfg(BaseTerminationsCfg):
@@ -533,6 +519,7 @@ class ThreadingTerminationsCfg(BaseTerminationsCfg):
     max_consecutive_success = DoneTerm(
         func=threading.max_consecutive_success, params={"num_success": 1}
     )
+
 
 @configclass
 class ThreadingRewardsCfg(BaseRewardsCfg):
@@ -559,7 +546,7 @@ class ThreadingRewardsCfg(BaseRewardsCfg):
                                            },
                                    weight=0.0,
                                    )
-    cube_success_bonus = RewTerm(func=bowl.cmd_success_bonus,
+    cube_success_bonus = RewTerm(func=threading.cmd_success_bonus,
                             params={"command_names": "cube_target_pos", "num_success": 1},
                             weight=0.0,
                             )
@@ -586,7 +573,7 @@ class ThreadingRewardsCfg(BaseRewardsCfg):
                                    params={"command_name": "drill_target_pos", "object_id": 1},
                                    weight=0.0,
                                    )
-    drill_success_bonus = RewTerm(func=bowl.cmd_success_bonus,
+    drill_success_bonus = RewTerm(func=threading.cmd_success_bonus,
                             params={"command_names": "drill_target_pos", "num_success": 1},
                             weight=0.0,
                             )
@@ -595,68 +582,9 @@ class ThreadingRewardsCfg(BaseRewardsCfg):
                                    weight=0.0,
                                    )
     success_bonus = RewTerm(func=threading.success_bonus,
-                            params={"num_success": 20, "object_id": 0, "frame_name": "drill_head_frame"},
+                            params={"num_success": 1, "object_id": 0, "frame_name": "drill_head_frame"},
                             weight=0.0,
                             )
-    
-    # symmetry
-    # reaching_object_symmetry = RewTerm(func=object_robot_distance, 
-    #                           params={"weight": [1.0, 1.0, 1.0, 1.5], 
-    #                                   "link_name": ["if5", "mf5", "pf5", "th5"], 
-    #                                   "object_id": 0,
-    #                                   "asset_cfg": SceneEntityCfg("robot_left")
-    #                                   }, 
-    #                                   weight=0.0)
-    # object_lifting_symmetry = RewTerm(func=lift_distance,
-    #                          params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-    #                          weight=0.0,
-    #                          )
-    # cube_goal_tracking_symmetry = RewTerm(func=threading.object_goal_distance,
-    #                                params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],},
-    #                                weight=0.0,
-    #                                )
-    # cube_goal_orient_tracking_symmetry = RewTerm(func=object_goal_distance_orient,
-    #                                params={"command_name": "cube_target_pos", 
-    #                                        "object_id": 0, 
-    #                                        "axis": "z", 
-    #                                        "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
-    #                                        "pos_success_threshold": 0.1,
-    #                                        },
-    #                                weight=0.0,
-    #                                )
-    # align_hand_to_pos_symmetry = RewTerm(func=align_palm_to_pos,
-    #                                params={"link_name": ["palm_link"], "frame_name": "object_approach_frame_symmetry", "asset_cfg": SceneEntityCfg("robot")},
-    #                                weight=0.0,
-    #                                )
-    # align_hand_to_quat_symmetry = RewTerm(func=align_palm_to_quat,
-    #                                params={"link_name": ["palm_link"], "frame_name": "object_approach_frame_symmetry", "asset_cfg": SceneEntityCfg("robot")},
-    #                                weight=0.0,
-    #                                )
-    # reaching_drill_symmetry = RewTerm(func=object_robot_distance, 
-    #                           params={"weight": [1.0, 1.0, 1.0, 1.5], 
-    #                                   "link_name": ["if5", "mf5", "pf5", "th5"], 
-    #                                   "object_id": 1,
-    #                                   "asset_cfg": SceneEntityCfg("robot")
-    #                                   }, 
-    #                                   weight=0.0)
-    # energy = RewTerm(func=energy_punishment,
-    #                               weight=0.0,
-    #                               params={"asset_cfg": SceneEntityCfg("robot"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
-    #                                                                                               "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
-    #                               )
-    # energy_left = RewTerm(func=energy_punishment,
-    #                               weight=0.0,
-    #                               params={"asset_cfg": SceneEntityCfg("robot_left"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
-    #                                                                                               "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
-    #                               )
-    # collision_to_table = RewTerm(func=collision_penalty,
-    #                             params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-    #                             weight=0.0,
-    #                             )
-    # collision_to_table_symmetry = RewTerm(func=collision_penalty,
-    #                             params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-    #                             weight=0.0,
-    #                             )
 
 
 @configclass
@@ -671,16 +599,15 @@ class ThreadingEnvCfg(BaseEnvCfg):
     rewards = ThreadingRewardsCfg()
     num_object = 2
     action_dim = 44 # arm + hand
-    # action_scale: list = [1.0] * action_dim
     action_scale: list = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.03, 
+                            0.03, 0.03, 0.03, 0.015,
                             0.03, 0.03, 0.03, 0.03,
-                            0.03, 0.03, 0.03, 0.03,
-                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                         0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.03, 
-                            0.03, 0.03, 0.03, 0.03,
+                            0.03, 0.03, 0.03, 0.015,
                             0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
 
     visualize_marker: bool = False
@@ -688,5 +615,5 @@ class ThreadingEnvCfg(BaseEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        # self.viewer.eye = (-1.5, 0.0, 1.5)
-        self.viewer.eye = (-0.5, 0.0, 1.0)
+        # self.viewer.eye = (-3.5, 0.0, 3.5)
+        self.viewer.eye = (-0.6, 0.0, 1.0)

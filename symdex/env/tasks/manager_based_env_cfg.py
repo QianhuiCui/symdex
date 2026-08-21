@@ -134,27 +134,8 @@ class BaseSceneCfg(InteractiveSceneCfg):
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0), metallic=0.2),  # blue
         ),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.5, -0.5, 0.05)), 
-    ) 
+    )
 
-    # target_frames_vis = FrameTransformerCfg(
-    #     prim_path="{ENV_REGEX_NS}/targetSphere",
-    #     update_period=0.0,
-    #     debug_vis=True,
-    #     visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(
-    #         prim_path="/Visuals/base_target_frames"
-    #     ),
-    #     target_frames=[
-    #         FrameTransformerCfg.FrameCfg(
-    #             prim_path="{ENV_REGEX_NS}/targetSphere",
-    #             name="target_right",
-    #         ),
-    #         FrameTransformerCfg.FrameCfg(
-    #             prim_path="{ENV_REGEX_NS}/targetSphere_left",
-    #             name="target_left",
-    #         ),
-    #     ],
-    # )
-    
     replicate_physics = False
 
 @configclass
@@ -188,7 +169,7 @@ class BaseObservationsCfg:
 class BaseEventCfg:
     """Configuration for events."""
     reset_robot_joints = EventTerm(
-        func=reset_joints_by_symmetry,
+        func=mdp.reset_joints_by_scale,  # reset_joints_by_symmetry,
         mode="reset",
         params={
             "position_range": (1.0, 1.0),
