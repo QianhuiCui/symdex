@@ -446,15 +446,15 @@ class ThreadingObservationsCfg(BaseObservationsCfg):
         ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
         hand_joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, 
                                   params={"joints": None,
-                                          "joint_lower_limit": JOINT_LOWER_LIMIT, 
-                                          "joint_upper_limit": JOINT_UPPER_LIMIT}, 
+                                          "joint_lower_limit": JOINT_LOWER_LIMIT[6:], 
+                                          "joint_upper_limit": JOINT_UPPER_LIMIT[6:],}, 
                                   noise=Gnoise(std=0.005))
         # joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
         hand_joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, 
                                  params={"joints": None, 
-                                         "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT,
-                                         "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
+                                         "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT[6:],
+                                         "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT[6:], 
                                          "asset_cfg": SceneEntityCfg("robot_left")}, 
                                  noise=Gnoise(std=0.005))
         # joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
