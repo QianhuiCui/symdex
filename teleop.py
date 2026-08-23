@@ -1,6 +1,6 @@
 from isaaclab.app import AppLauncher
 
-app_launcher = AppLauncher({"headless": False, "enable_cameras": True, "raw_data": True})
+app_launcher = AppLauncher({"headless": False, "enable_cameras": True})
 simulation_app = app_launcher.app
 
 import torch
@@ -15,7 +15,6 @@ from symdex.utils.trajectory_utils import get_obs, as_flag, to_str
 from symdex.utils.trajectory_logger import TrajectoryLogger, SphereWriter
 from symdex.env.tasks.manager_based_env_cfg import * 
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
-from symdex.utils.symmetry import SymmetryManager
 import sys
 sys.path.append("/home/qianhui/dex_bimanual_telep/scripts")
 from zmq_utils import recv_msg, send_msg
@@ -95,7 +94,7 @@ def make_clean_env_action_from_qtarget(env, q_target: np.ndarray):
 
 def get_episode_init_meta(env, cfg):
     meta = {}
-    for obj_id in [0, 1, 2]:
+    for obj_id in range(env.unwrapped.num_object):  # [0, 1, 2]:  # based on objects num in specific task
         obj = env.unwrapped.scene[f"object_{obj_id}"]
         meta[f"object_{obj_id}_init_pos_w"] = obj.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
         meta[f"object_{obj_id}_init_quat_w"] = obj.data.root_quat_w[0, :4].detach().cpu().numpy().astype(np.float32)
@@ -133,7 +132,8 @@ def main(cfg: DictConfig):
     cfg, env_cfg = preprocess_cfg(cfg)
 
     env = gym.make(cfg.env_name, cfg=env_cfg)
-    env = VecEnvWrapper(env, rl_device=cfg.rl_device)
+    env = VecEnvWrapper(env, rl_device=cfg.rl_device, raw_data=True)
+    env.reset()
     pending_init_meta = get_episode_init_meta(env, cfg)
     send_msg("robot_reset", {"t": time.time()})
 
@@ -224,7 +224,7 @@ def main(cfg: DictConfig):
 
         if use_logger and episode_started:
             logger.add_traj(
-                observation=get_obs(obs),
+                observation=get_obs(obs, raw_data=True),
                 action=action_to_log,
                 terminated=bool(terminated),
                 truncated=bool(truncated),
@@ -238,6 +238,7 @@ def main(cfg: DictConfig):
             else:
                 print("[Teleop] Episode finished: ENV RESET triggered.")
 
+            env.reset()
             pending_init_meta = get_episode_init_meta(env, cfg)
             send_msg("robot_reset", {"t": time.time()})
             last_reset_recv_time = time.monotonic()
@@ -252,7 +253,7 @@ def main(cfg: DictConfig):
             if use_logger and episode_started:
                 logger.save_episode(success=bool(terminated and not truncated))
                 episodes_saved += 1
-                if episodes_saved >= cfg.max_episodes:
+                if episodes_saved >= cfg.logger.max_episodes:
                     break
             episode_started = False
             cur_lang = None

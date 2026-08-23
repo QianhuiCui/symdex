@@ -36,14 +36,18 @@ def as_flag(value):
         return any(map(bool, value))
     return bool(value)
 
-def get_obs(obs_dict):
+def get_obs(obs_dict, raw_data: bool = False):
     obs = {}
     for key, value in obs_dict.items():
         if key == "critic" or "policy" in key:
             obs[key] = obs_dict[key][0].detach().cpu().numpy().astype(np.float32, copy=False)
         elif "vision" in key:
             img = obs_dict[key][0, 0].detach().cpu().numpy()
-            img = np.moveaxis(img, 0, -1)  # -> [H, W, 3]
+            if raw_data:
+                # VecEnvWrapper(raw_data=True): vision stays untouched, already [H, W, 3] uint8
+                obs[key] = img.astype(np.uint8, copy=False)
+                continue
+            img = np.moveaxis(img, 0, -1)  # CHW -> [H, W, 3]
             # convert to uint8 HWC
             if img.dtype != np.uint8:
                 mn = float(img.min())

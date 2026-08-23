@@ -116,6 +116,17 @@ def preprocess_cfg(cfg):
             rew_term[key]['weight'] = float(value)
     env_cfg.rewards.from_dict(rew_term)
 
+    # optionally override camera intrinsics (field of view) from yaml
+    if cfg.task.cam.enable:
+        for cam_name, cam_cfg in cfg.task.cam.cam_params.items():
+            if not hasattr(env_cfg.scene, cam_name):
+                continue
+            spawn_cfg = getattr(env_cfg.scene, cam_name).spawn
+            if "horizontal_aperture" in cam_cfg:
+                spawn_cfg.horizontal_aperture = float(cam_cfg.horizontal_aperture)
+            if "focal_length" in cam_cfg:
+                spawn_cfg.focal_length = float(cam_cfg.focal_length)
+
     # add hydra config to env_cfg
     env_cfg.hydra_cfg = cfg
     env_cfg.seed = cfg.seed
