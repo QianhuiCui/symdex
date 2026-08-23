@@ -569,4 +569,4 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
         # post init of parent
         super().__post_init__()
         # self.viewer.eye = (0.8, 1.0, 1.2)
-        self.viewer.eye = (-0.5, 0.0, 1.2)
+        self.viewer.eye = (-0.6, 0.0, 1.0)

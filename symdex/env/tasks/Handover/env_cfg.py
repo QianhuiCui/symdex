@@ -468,14 +468,13 @@ class HandoverObservationsCfg(BaseObservationsCfg):
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
         hand_joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, 
                                       params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
-                                              "joint_lower_limit": JOINT_LOWER_LIMIT[6:], 
-                                              "joint_upper_limit": JOINT_UPPER_LIMIT[6:],
+                                              "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT[6:], 
+                                              "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT[6:],
                                               "asset_cfg": SceneEntityCfg("robot_left")}, 
                                       noise=Gnoise(std=0.005))
         # joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},) # noise=Gnoise(std=0.002)
-        bottle_pos = ObsTerm(func=object_pos, # noise=Gnoise(std=0.01)
-                             params={"object_id": 0})
-        bottle_quat = ObsTerm(func=object_quat, params={"object_id": 0, "symmetry": True},) # noise=Gnoise(std=0.01)
+        bottle_pos = ObsTerm(func=object_pos, params={"object_id": 0})  # noise=Gnoise(std=0.01)
+        bottle_quat = ObsTerm(func=object_quat, params={"object_id": 0, "symmetry": True},)  # noise=Gnoise(std=0.01)
         # handover_pos = ObsTerm(func=generated_commands, params={"command_name": "target_pos"})
         last_action = ObsTerm(func=last_action)
 
@@ -608,7 +607,7 @@ class HandoverRewardsCfg(BaseRewardsCfg):
                                    )
     success_bonus = RewTerm(func=handover.success_bonus,
                             params={"command_names": "target_pos", 
-                                    "num_success": 10,
+                                    "num_success": 1,
                                     "not_contact_sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
                                                                 "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"],
                                     "is_contact_sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
