@@ -132,7 +132,7 @@ def main(cfg: DictConfig):
     cfg, env_cfg = preprocess_cfg(cfg)
 
     env = gym.make(cfg.env_name, cfg=env_cfg)
-    env = VecEnvWrapper(env, rl_device=cfg.rl_device, raw_data=True)
+    env = VecEnvWrapper(env, rl_device=cfg.rl_device, raw_data=False)
     env.reset()
     pending_init_meta = get_episode_init_meta(env, cfg)
     send_msg("robot_reset", {"t": time.time()})
@@ -224,7 +224,7 @@ def main(cfg: DictConfig):
 
         if use_logger and episode_started:
             logger.add_traj(
-                observation=get_obs(obs, raw_data=True),
+                observation=get_obs(obs, raw_data=False),
                 action=action_to_log,
                 terminated=bool(terminated),
                 truncated=bool(truncated),
