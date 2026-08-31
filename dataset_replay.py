@@ -16,7 +16,8 @@ from omegaconf import DictConfig
 from hydra.utils import to_absolute_path
 
 from symdex.utils.common import set_random_seed, capture_keyboard_interrupt, preprocess_cfg
-from symdex.utils.trajectory_utils import get_obs
+from symdex.utils.trajectory_utils import get_obs, as_flag, to_str
+from symdex.utils.trajectory_logger import TrajectoryLogger, SAVE_DIR
 from symdex.utils.rl_env_wrapper import VecEnvWrapper
 from symdex.env.tasks.manager_based_env_cfg import *
 import symdex
@@ -25,9 +26,13 @@ import symdex
 def load_episode(file, episode_key):
     grp = file[episode_key]
     meta = {}
-    for k in grp["epi_meta"].keys():
-        v = grp["epi_meta"][k][()]
+    epi_meta_grp = grp["epi_meta"]
+    for k in epi_meta_grp.keys():
+        v = epi_meta_grp[k][()]
         meta[k] = [x.decode("utf-8") for x in v] if v.dtype.kind == "S" else v
+    # scalar meta (e.g. language_instruction) is stored as HDF5 attrs by TrajectoryLogger
+    for k, v in epi_meta_grp.attrs.items():
+        meta[k] = v
 
     data = grp["offline_data"]
     episode = {
@@ -108,22 +113,24 @@ def make_comparison_frame(recorded: np.ndarray, replayed: np.ndarray | None) -> 
         cv2.putText(canvas, label, (idx * panel_w + 5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
     return canvas
 
-def replay_episode(env: VecEnvWrapper, meta: dict, episode: dict, cfg: DictConfig, ep_key: str):
+def replay_episode(env: VecEnvWrapper, meta: dict, episode: dict, cfg: DictConfig, ep_key: str, logger: TrajectoryLogger | None = None):
     state_stored = episode["state"]
     vision_stored = episode["vision"]
     actions_stored = episode["actions"]
     steps = min(cfg.max_episode_length, len(actions_stored))
     print_every = int(cfg.replay.print_every)
 
+    rerecord = logger is not None
+
     show_vision = bool(cfg.replay.get("show_vision", True)) and vision_stored is not None
-    vision_out_dir = cfg.replay.get("vision_out_dir", None)
-    video_writer = None
-    if show_vision and vision_out_dir:
-        out_dir = Path(to_absolute_path(vision_out_dir))
-        out_dir.mkdir(parents=True, exist_ok=True)
-        video_path = out_dir / f"{ep_key}.mp4"
-        h, w = vision_stored.shape[1], vision_stored.shape[2] * 3
-        video_writer = cv2.VideoWriter(str(video_path), cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (w, h))
+    # vision_out_dir = cfg.replay.get("vision_out_dir", None)
+    # video_writer = None
+    # if show_vision and vision_out_dir:
+    #     out_dir = Path(to_absolute_path(vision_out_dir))
+    #     out_dir.mkdir(parents=True, exist_ok=True)
+    #     video_path = out_dir / f"{ep_key}.mp4"
+    #     h, w = vision_stored.shape[1], vision_stored.shape[2] * 3
+    #     video_writer = cv2.VideoWriter(str(video_path), cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (w, h))
 
     env.reset()
     set_initial_state(env.unwrapped, meta, env.device)
@@ -137,12 +144,20 @@ def replay_episode(env: VecEnvWrapper, meta: dict, episode: dict, cfg: DictConfi
     state_errs = [state_err]
     vision_errs = []
 
+    if rerecord:
+        if vision_init is None:
+            raise RuntimeError("[Replay] replay.logging=True requires camera obs (task.cam.enable=True).")
+        logger.start_episode(
+            language_instruction=to_str(meta.get("language_instruction", "")),
+            init_meta={k: v for k, v in meta.items() if k != "language_instruction"},
+        )
+
     if show_vision:
         frame = make_comparison_frame(vision_stored[0], vision_init)
         cv2.imshow(f"dataset_replay: {ep_key}", frame)
         cv2.waitKey(1)
-        if video_writer is not None:
-            video_writer.write(frame)
+        # if video_writer is not None:
+        #     video_writer.write(frame)
 
     state = state_init
     for i in range(steps):
@@ -150,10 +165,19 @@ def replay_episode(env: VecEnvWrapper, meta: dict, episode: dict, cfg: DictConfi
             state_errs.append(np.abs(state - state_stored[i]))
 
         action = torch.tensor(actions_stored[i], dtype=torch.float32, device=env.device).unsqueeze(0)
-        next_state_raw, _, done, _ = env.step(action)
+        next_state_raw, _, done, extras = env.step(action)
         next_obs = get_obs(next_state_raw, raw_data=False)
         state = next_obs["policy"]
         vision_live = next_obs.get("vision")
+
+        if rerecord:
+            # mirror teleop.py: log (action_i, obs_after_step_i, flags_after_step_i)
+            logger.add_traj(
+                observation=next_obs,
+                action=actions_stored[i],
+                terminated=as_flag(extras.get("terminated")),
+                truncated=as_flag(extras.get("time_outs")),
+            )
 
         if show_vision and (i + 1) < len(vision_stored):
             vision_recorded_next = vision_stored[i + 1]
@@ -163,8 +187,8 @@ def replay_episode(env: VecEnvWrapper, meta: dict, episode: dict, cfg: DictConfi
             frame = make_comparison_frame(vision_recorded_next, vision_live)
             cv2.imshow(f"dataset_replay: {ep_key}", frame)
             cv2.waitKey(1)
-            if video_writer is not None:
-                video_writer.write(frame)
+            # if video_writer is not None:
+            #     video_writer.write(frame)
 
         if (i + 1) % print_every == 0 or i == steps - 1:
             cur_state_err = state_errs[-1]
@@ -180,9 +204,14 @@ def replay_episode(env: VecEnvWrapper, meta: dict, episode: dict, cfg: DictConfi
             print(f" Done at step {i + 1}")
             break
 
-    if video_writer is not None:
-        video_writer.release()
-        print(f"[Replay] Saved comparison video: {video_path}")
+    if rerecord:
+        # preserve the source episode's success/failure label
+        success = bool(np.any(episode["terminals"])) and not bool(np.any(episode["timeouts"]))
+        logger.save_episode(success=success)
+
+    # if video_writer is not None:
+    #     video_writer.release()
+    #     print(f"[Replay] Saved comparison video: {video_path}")
 
     state_errs = np.stack(state_errs)
     stats = {
@@ -220,11 +249,17 @@ def main(cfg: DictConfig):
     episode_keys = sorted(f.keys())
     print(f"[Replay] Episodes: {episode_keys}")
 
+    # optionally re-log the replayed trajectories with clean (debug_vis=False) images
+    logger = None
+    if bool(cfg.replay.get("logging", False)):
+        logger = TrajectoryLogger(save_dir=SAVE_DIR / "no_frame", task_name=cfg.task.env_name)
+        print(f"[Replay] Re-recording enabled (replay.logging=True) -> {SAVE_DIR / 'no_frame'}")
+
     all_stats = []
     for ep_key in episode_keys:
         print(f"\n{'='*60}\n  {ep_key}  ({f[ep_key]['offline_data']['actions'].shape[0]} steps)\n{'='*60}")
         meta, episode = load_episode(f, ep_key)
-        stats = replay_episode(env, meta, episode, cfg, ep_key)
+        stats = replay_episode(env, meta, episode, cfg, ep_key, logger=logger)
         all_stats.append(stats)
         msg = (
             f"\n  [{ep_key}] steps={stats['steps']}"
@@ -235,6 +270,8 @@ def main(cfg: DictConfig):
         print(msg)
 
     f.close()
+    if logger is not None:
+        logger.close()
     cv2.destroyAllWindows()
 
     print(f"\n{'='*60}\n  GLOBAL SUMMARY\n{'='*60}")
