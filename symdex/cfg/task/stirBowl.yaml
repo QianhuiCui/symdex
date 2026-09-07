@@ -1,0 +1,76 @@
+defaults:
+  - base.yaml
+  - _self_
+
+env_name: "StirBowlEnv-v0"
+rew:
+  reaching_object: 0.01
+  object_lifting: 5.0
+  egg_beater_goal_tracking: 50.0
+  egg_beater_goal_orient_tracking: 20.0
+  ball_velocity: 1000.0
+  align_hand_to_pos: 2.0
+  align_hand_to_quat: 0.5
+  bowl_goal_tracking: 10.0
+  bowl_success_bonus: 5.0
+  success_bonus: 100.0  # 00.0
+
+  # symmetry
+  reaching_object_symmetry: 0.01
+  object_lifting_symmetry: 5.0
+  egg_beater_goal_tracking_symmetry: 50.0
+  egg_beater_goal_orient_tracking_symmetry: 20.0
+  ball_velocity_symmetry: 1000.0
+  
+  align_hand_to_pos_symmetry: 2.0
+  align_hand_to_quat_symmetry: 0.5
+
+multi:
+  shared_obs_dim: 225
+  SYMDEX:
+    single_agent_action_dim: 22
+    swap_action: True
+    single_agent_obs_dim: [120, 105]
+    # total: right EE pose | right joint pos | right joint vel | left EE pose | left joint pos | left joint vel | egg_beater pose | bowl pose + vel | ball info | goal egg | goal bowl | right last joint pos | left last joint pos
+  #              0               12               34                56                68               90              112               124             139        157         169        181        203
+    single_agent_obs_idx: [[[0, 56], [112, 124], [139, 169], [181, 203]], 
+                          [[56, 112], [124, 139], [169, 181], [203, 225]]]
+    single_agent_obs_idx_symmetry: [[[56, 112], [112, 124], [139, 169], [203, 225]], 
+                                    [[0, 56], [124, 139], [169, 203]]]
+    single_agent_rew: [["reaching_object", "object_lifting", "egg_beater_goal_tracking", "egg_beater_goal_orient_tracking", "ball_velocity", "success_bonus"],
+                       ["align_hand_to_pos", "align_hand_to_quat", "bowl_goal_tracking", "bowl_success_bonus", "success_bonus"]]
+    single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "egg_beater_goal_tracking_symmetry", "egg_beater_goal_orient_tracking_symmetry", "ball_velocity_symmetry", "success_bonus"],
+                                ["align_hand_to_pos_symmetry", "align_hand_to_quat_symmetry", "bowl_goal_tracking", "bowl_success_bonus", "success_bonus"]]
+
+symmetry:
+  reset_symmetry:
+    object_0:
+      type: "rigid_object"
+      symmetry: ['position', 'quat']
+    object_1:
+      type: "rigid_object"
+      symmetry: ['position', 'quat']
+    object_2:
+      type: "rigid_object"
+      symmetry: ['position']
+    object_3:
+      type: "rigid_object"
+      symmetry: ['position']
+    object_4:
+      type: "rigid_object"
+      symmetry: ['position']
+    target_pos:
+      type: "command"
+      symmetry: ['position', 'quat']
+    bowl_target_pos:
+      type: "command"
+      symmetry: ['position', 'quat']
+  SYMDEX:
+    # actor network
+    actor_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "R3", "R3", "R3", "R3", "R3", "R3", "SO3_flat", "Q_js"], # 120
+                        ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "R3", "SO3_flat", "Q_js"]]  # 105
+    actor_output_fields: [["Q_js"], ["Q_js"]]  # 22
+    # critic network
+    critic_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "R3", "R3", "R3", "R3", "R3", "R3", "SO3_flat", "Q_js"], # 3 + 9 + 22 + 22 + 3 + 1 + 22 = 82
+                        ["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "SO3_flat", "R3", "R3", "SO3_flat", "Q_js"]]  # 3 + 3 + 9 + 22 + 22 + 3 + 9 + 1 + 22 = 94
+    critic_output_fields: [["irrep_0"], ["irrep_0"]] # 1

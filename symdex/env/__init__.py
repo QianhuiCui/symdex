@@ -22,6 +22,15 @@ gym.register(
     },
 )   
 
+from .tasks.StirBowl.env_cfg import StirBowlEnvCfg
+gym.register(
+    id="StirBowlEnv-v0",
+    entry_point="symdex.env.tasks.StirBowl.env:StirBowlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": StirBowlEnvCfg,
+    },
+)
 
 from .tasks.InsertDrawer.env_cfg import InsertDrawerEnvCfg
 gym.register(
