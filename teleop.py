@@ -153,8 +153,10 @@ def main(cfg: DictConfig):
     use_logger = cfg.logger.enable
     logger = None
     if use_logger:
-        logger = TrajectoryLogger(task_name=cfg.task.env_name)
+        logger = TrajectoryLogger(task_name=cfg.task.env_name, operator=cfg.logger.operator)
         print("[Teleop] Logger enabled.")
+    if cfg.logger.operator is None:
+        print("[Teleop] WARNING: logger.operator not set — pass logger.operator=<name>")
     # Recording state (independent from teleop)
     episodes_saved = 0
     episode_started = False

@@ -7,15 +7,16 @@ from isaaclab.utils.math import quat_from_matrix
 
 from pathlib import Path
 LOGGER_ROOT = Path(__file__).resolve().parents[1] 
-SAVE_DIR = LOGGER_ROOT / "teleop_logs"  #  / "test"  # / "policy"
+SAVE_DIR = LOGGER_ROOT / "teleop_logs"   # / "test"  # / "policy"
 
 
 class TrajectoryLogger:
-    def __init__(self, save_dir: Path=SAVE_DIR, task_name=None):
+    def __init__(self, save_dir: Path=SAVE_DIR, task_name=None, operator: str | None = None):
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
         self.task_name = task_name
-        self.timestamp = time.strftime("%Y%m%d_%H%M")
+        self.operator = operator
+        self.timestamp = time.strftime("%m%d_%H%M%S")
 
         self.success_dir = save_dir / f"{self.task_name}_success"
         self.failed_dir = save_dir / f"{self.task_name}_failed"
@@ -30,6 +31,7 @@ class TrajectoryLogger:
 
         self._epi_meta = {}
         self._reset_buffers()
+        print(f"[Logger] Operator: {self.operator}")
         print(f"[Logger] Initialized success log file: {self.success_tmp_path}")
         print(f"[Logger] Initialized failed log file: {self.failed_tmp_path}")
 
@@ -51,6 +53,10 @@ class TrajectoryLogger:
         if init_meta is not None:
             for k, v in init_meta.items():
                 self._epi_meta[k] = v
+        if self.operator is not None:
+            self._epi_meta["operator"] = self.operator  # authoritative when logger was given one
+        else:
+            self._epi_meta.setdefault("operator", "unknown")
 
     def add_traj(self, *, observation, action, terminated: bool, truncated: bool):
         self._obs_policy.append(np.asarray(observation["policy"], dtype=np.float32))
