@@ -324,7 +324,7 @@ class BoxLiftCommandsCfg(BaseCommandsCfg):
     target_pos = TargetPositionCommandCfg(
         object_id=0,
         success_threshold=0.05,
-        success_threshold_orient=0.9, # 60 degree 
+        success_threshold_orient=0.9, 
         pose_range={"x": [0.15, 0.15], "y": [0.0, 0.0], "z": [0.18, 0.18]},
         update_goal_on_success=True,
         debug_vis=True,
@@ -483,4 +483,4 @@ class BoxLiftEnvCfg(BaseEnvCfg):
         # post init of parent
         super().__post_init__()
         # self.viewer.eye = (-1.5, 0.0, 1.5)
-        self.viewer.eye = (-0.6, 0.0, 1.0)
+        self.viewer.eye = (-0.6, 0.0, 1.2)

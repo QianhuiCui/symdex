@@ -14,7 +14,7 @@ rew:
   reaching_object_left: 0.01
   object_lifting_left: 1.0
   object_goal_tracking_left: 10.0
-  object_goal_tracking_left_delay: 50.0
+  # object_goal_tracking_left_delay: 50.0
   object_2_in_tote: 2000.0
   reset_robot_joint_pos_left: 200.0
   success_bonus: 1.0
@@ -89,7 +89,7 @@ multi:
     single_agent_obs_idx: [[[0, 59], [118, 143]], # 84
                           [[59, 118], [118, 121], [143, 165], [165, 168]]] # 87
     single_agent_rew: [["reaching_object", "object_lifting", "object_goal_tracking", "object_1_in_tote", "reset_robot_joint_pos", "energy", "collision_to_table"],
-                       ["reaching_object_left", "object_lifting_left", "object_goal_tracking_left", "object_goal_tracking_left_delay", "object_2_in_tote", "reset_robot_joint_pos_left", "energy_left", "collision_to_table_left"]]
+                       ["reaching_object_left", "object_lifting_left", "object_goal_tracking_left", "object_2_in_tote", "reset_robot_joint_pos_left", "energy_left", "collision_to_table_left"]]  # "object_goal_tracking_left_delay", 
 
 symmetry:
   symmetric_envs: False
@@ -106,9 +106,9 @@ symmetry:
     target_pos:
       type: "command"
       symmetry: ['position']
-    waiting_pos:
-      type: "command"
-      symmetry: ['position']
+    # waiting_pos:
+    #   type: "command"
+    #   symmetry: ['position']
   SYMDEX:
     # actor network
     actor_input_fields: [["R3", "SO3_flat", "Q_js", "TqQ_js", "R3", "R3", "Q_js"],

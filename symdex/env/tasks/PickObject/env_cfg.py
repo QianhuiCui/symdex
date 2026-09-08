@@ -439,16 +439,16 @@ class PickObjectCommandsCfg(BaseCommandsCfg):
         use_initial_pose=True,
     )
 
-    waiting_pos = TargetPositionCommandCfg(
-        object_id=0,
-        success_threshold=0.07,
-        success_threshold_orient=1.0,
-        pose_range={"x": [0.0, 0.0], "y": [0.2, 0.2], "z": [0.3, 0.3]},
-        return_type="pos",
-        debug_vis=True,
-        offset=True,
-        use_initial_pose=True,
-    )
+    # waiting_pos = TargetPositionCommandCfg(
+    #     object_id=0,
+    #     success_threshold=0.07,
+    #     success_threshold_orient=1.0,
+    #     pose_range={"x": [0.0, 0.0], "y": [0.2, 0.2], "z": [0.3, 0.3]},
+    #     return_type="pos",
+    #     debug_vis=True,
+    #     offset=True,
+    #     use_initial_pose=True,
+    # )
 
 
 @configclass
@@ -575,23 +575,25 @@ class PickObjectRewardsCfg(BaseRewardsCfg):
                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
                                   weight=0.0)
     object_goal_tracking_left = RewTerm(func=pick.object_goal_distance,
-                                        params={"command_name": "waiting_pos", "object_id": 2, 
+                                        params={"command_name": "target_pos", 
+                                                "object_id": 2, 
                                                 "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
-                                                "delay": False, "switch": True},
+                                                "distance_threshold": 0.2},
+                                                # "delay": False, "switch": True},
                                         weight=0.0)
-    object_goal_tracking_left_delay = RewTerm(func=pick.object_goal_distance,
-                                              params={"command_name": "target_pos", 
-                                                      "object_id": 2, 
-                                                      "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
-                                                      "delay": True,
-                                                      "switch": False,
-                                                      "distance_threshold": 0.2},
-                                              weight=0.0)
+    # object_goal_tracking_left_delay = RewTerm(func=pick.object_goal_distance,
+    #                                           params={"command_name": "target_pos", 
+    #                                                   "object_id": 2, 
+    #                                                   "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],
+    #                                                   "delay": True,
+    #                                                   "switch": False,
+    #                                                   "distance_threshold": 0.2},
+    #                                           weight=0.0)
     object_2_in_tote = RewTerm(func=pick.if_in_tote,
                                params={"object_id": 2, 
                                        "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"], 
-                                       "distance_threshold": 0.2,
-                                       "delay": True},
+                                       "distance_threshold": 0.2,},
+                                    #    "delay": False,},
                                weight=0.0)
     reset_robot_joint_pos_left = RewTerm(func=pick.robot_goal_distance, 
                                          params={"object_id": 2, 

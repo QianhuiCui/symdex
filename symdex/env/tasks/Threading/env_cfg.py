@@ -345,7 +345,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
 
     drill_head_frame = FrameTransformerCfg(
         prim_path="{ENV_REGEX_NS}/Object_1",
-        debug_vis=False,
+        debug_vis=True,
         visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(prim_path="/Visuals/ObjectApproachFrameTransformer"),
         target_frames=[
             FrameTransformerCfg.FrameCfg(
@@ -361,7 +361,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
 
     object_approach_frame = FrameTransformerCfg(
         prim_path="{ENV_REGEX_NS}/Object_1",
-        debug_vis=False,
+        debug_vis=True,
         visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(prim_path="/Visuals/ObjectApproachFrameTransformer"),
         target_frames=[
             FrameTransformerCfg.FrameCfg(
