@@ -15,15 +15,25 @@ rew:
   bowl_success_bonus: 5.0
   success_bonus: 100.0  # 00.0
 
-  # symmetry
-  reaching_object_symmetry: 0.01
-  object_lifting_symmetry: 5.0
-  egg_beater_goal_tracking_symmetry: 50.0
-  egg_beater_goal_orient_tracking_symmetry: 20.0
-  ball_velocity_symmetry: 1000.0
-  
-  align_hand_to_pos_symmetry: 2.0
-  align_hand_to_quat_symmetry: 0.5
+  energy: 0.000001
+  energy_left: 0.000001
+  collision_to_table: 0.000001
+  collision_to_drawer: 0.000001
+
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 84
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: False
+      pos: [-0.5, 0.0, 0.45]
+      target: [0.18, 0.0, 0.08]
+      horizontal_aperture: 32.0 
+      # pos: [0.6, 0.0, 1.0]
+      # target: [0.13, 0.0, 0.26]
 
 multi:
   shared_obs_dim: 225
@@ -35,12 +45,8 @@ multi:
   #              0               12               34                56                68               90              112               124             139        157         169        181        203
     single_agent_obs_idx: [[[0, 56], [112, 124], [139, 169], [181, 203]], 
                           [[56, 112], [124, 139], [169, 181], [203, 225]]]
-    single_agent_obs_idx_symmetry: [[[56, 112], [112, 124], [139, 169], [203, 225]], 
-                                    [[0, 56], [124, 139], [169, 203]]]
     single_agent_rew: [["reaching_object", "object_lifting", "egg_beater_goal_tracking", "egg_beater_goal_orient_tracking", "ball_velocity", "success_bonus"],
                        ["align_hand_to_pos", "align_hand_to_quat", "bowl_goal_tracking", "bowl_success_bonus", "success_bonus"]]
-    single_agent_rew_symmetry: [["reaching_object_symmetry", "object_lifting_symmetry", "egg_beater_goal_tracking_symmetry", "egg_beater_goal_orient_tracking_symmetry", "ball_velocity_symmetry", "success_bonus"],
-                                ["align_hand_to_pos_symmetry", "align_hand_to_quat_symmetry", "bowl_goal_tracking", "bowl_success_bonus", "success_bonus"]]
 
 symmetry:
   reset_symmetry:

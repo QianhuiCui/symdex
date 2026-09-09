@@ -15,6 +15,7 @@ from symdex.env.mdps.reward_mdps import *
 from symdex.env.mdps.termination_mdps import *
 from symdex.env.mdps.command_mdps.grasp_command_cfg import TargetPositionCommandCfg
 from symdex.env.action_managers.actions_cfg import EMACumulativeRelativeJointPositionActionCfg
+from symdex.utils.random_cfg import MultiUsdCfg, RandomPreviewSurfaceCfg, COLOR_DICT_20
 from symdex.env.tasks.StirBowl import mdps as bowl
 
 FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
@@ -26,7 +27,7 @@ class StirBowlSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",  # f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right_colored.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -118,7 +119,7 @@ class StirBowlSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left_colored.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",  # f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left_colored.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -233,8 +234,20 @@ class StirBowlSceneCfg(BaseSceneCfg):
 
     object_1 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_1",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/object/bowl.usd",
+        spawn=MultiUsdCfg(
+        # spawn=sim_utils.UsdFileCfg(
+            # usd_path=f"{symdex.LIB_PATH}/assets/object/bowl.usd",
+            usd_path="bowl",
+            random_choice=True,
+            obj_label=True,
+            preview_surface=RandomPreviewSurfaceCfg(
+                diffuse_color_dict=COLOR_DICT_20,
+                roughness_range=(0.2, 0.8),
+                metallic_range=(0.2, 0.8),
+            ),
+            random_color=False,
+            random_roughness=False,
+            random_metallic=False,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=False,
                 disable_gravity=False,
@@ -327,6 +340,17 @@ class StirBowlSceneCfg(BaseSceneCfg):
         ),
     )
 
+    # cameras
+    cam_1 = CameraCfg(
+        prim_path="/World/envs/env_.*/Cameras_1",
+        width=84, height=84,
+        data_types=["rgb", "depth"],
+        spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+            ),  # default parameters
+        offset=CameraCfg.OffsetCfg(convention="opengl"),
+    )
+
     # sensors
     contact_sensors_0 = ContactSensorCfg(
         prim_path="/World/envs/env_.*/Robot/if5",  # index
@@ -352,7 +376,6 @@ class StirBowlSceneCfg(BaseSceneCfg):
         debug_vis=True,
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_0"],
     )
-
     contact_sensors_0_left = ContactSensorCfg(
         prim_path="/World/envs/env_.*/Robot_left/if5",  # index
         update_period=0.0, 
@@ -377,7 +400,6 @@ class StirBowlSceneCfg(BaseSceneCfg):
         debug_vis=True,
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Object_0"],
     )
-
     object_approach_frame = FrameTransformerCfg(
         prim_path="{ENV_REGEX_NS}/Object_1",
         debug_vis=True,
@@ -394,21 +416,6 @@ class StirBowlSceneCfg(BaseSceneCfg):
         ],
     )
 
-    object_approach_frame_symmetry = FrameTransformerCfg(
-        prim_path="{ENV_REGEX_NS}/Object_1",
-        debug_vis=True,
-        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(prim_path="/Visuals/ObjectApproachFrameTransformerSymmetry"),
-        target_frames=[
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Object_1",
-                name="approach_frame",
-                offset=OffsetCfg(
-                    pos=(0.0, -0.18, 0.0),
-                    rot=(0.5, 0.5, 0.5, 0.5),
-                ),
-            ),
-        ],
-    )
 
 @configclass
 class StirBowlEventCfg(BaseEventCfg):
@@ -473,6 +480,7 @@ class StirBowlEventCfg(BaseEventCfg):
         },
     )
 
+
 @configclass
 class StirBowlCommandsCfg(BaseCommandsCfg):
     """Command specifications for the MDP."""
@@ -495,6 +503,7 @@ class StirBowlCommandsCfg(BaseCommandsCfg):
         debug_vis=True,
     )
 
+
 @configclass
 class StirBowlObservationsCfg(BaseObservationsCfg):
     """Observation specifications for the MDP."""
@@ -504,52 +513,34 @@ class StirBowlObservationsCfg(BaseObservationsCfg):
         """Observations for policy group."""
         # -- robot terms (order preserved)
         ee_pose_right = ObsTerm(func=ee_pose, params={"ee_name": "palm_link"})
-        joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None,
-                                                                           "joint_lower_limit": JOINT_LOWER_LIMIT, 
-                                                                           "joint_upper_limit": JOINT_UPPER_LIMIT}, )
-        joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
+        hand_joint_pos_right = ObsTerm(func=joint_pos_limit_normalized, 
+                                       params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
+                                               "joint_lower_limit": JOINT_LOWER_LIMIT[6:], 
+                                               "joint_upper_limit": JOINT_UPPER_LIMIT[6:]}, 
+                                       noise=Gnoise(std=0.005))
+        # joint_vel_right = ObsTerm(func=joint_vel, params={"joints": None},)
         ee_pose_left = ObsTerm(func=ee_pose, params={"ee_name": "palm_link", "asset_cfg": SceneEntityCfg("robot_left")})
-        joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, params={"joints": None, 
-                                                                          "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT, 
-                                                                          "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT, 
-                                                                          "asset_cfg": SceneEntityCfg("robot_left")}, )
-        joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
+        hand_joint_pos_left = ObsTerm(func=joint_pos_limit_normalized, 
+                                      params={"joints": ["j.*f1", "j.*f2", "j.*f3", "j.*f4", "jth1", "jth2", "jth3", "jth4"], 
+                                              "joint_lower_limit": JOINT_LOWER_LIMIT_LEFT[6:], 
+                                              "joint_upper_limit": JOINT_UPPER_LIMIT_LEFT[6:],
+                                              "asset_cfg": SceneEntityCfg("robot_left")}, 
+                                      noise=Gnoise(std=0.005))
+        # joint_vel_left = ObsTerm(func=joint_vel, params={"joints": None, "asset_cfg": SceneEntityCfg("robot_left")},)
         # -- object terms
-        egg_beater_pos = ObsTerm(
-            func=object_pos, params={"object_id": 0},
-        )
-        egg_beater_quat = ObsTerm(
-            func=object_quat, params={"object_id": 0, "symmetry": True},
-        )
-        bowl_pos = ObsTerm(
-            func=object_pos, params={"object_id": 1},
-        )
-        bowl_quat = ObsTerm(
-            func=object_quat, params={"object_id": 1, "symmetry": True},
-        )
-        bowl_lin_vel = ObsTerm(
-            func=object_lin_vel, params={"object_id": 1},
-        )
-        ball_1_pos = ObsTerm(
-            func=object_pos, params={"object_id": 2},
-        )
-        ball_1_lin_vel = ObsTerm(
-            func=object_lin_vel, params={"object_id": 2},
-        )
-        ball_2_pos = ObsTerm(
-            func=object_pos, params={"object_id": 3},
-        )
-        ball_2_lin_vel = ObsTerm(
-            func=object_lin_vel, params={"object_id": 3},
-        )
-        ball_3_pos = ObsTerm(
-            func=object_pos, params={"object_id": 4},
-        )
-        ball_3_lin_vel = ObsTerm(
-            func=object_lin_vel, params={"object_id": 4},
-        )
-        goal_pos_egg_beater = ObsTerm(func=generated_commands, params={"command_name": "target_pos"})
-        goal_pos_bowl = ObsTerm(func=generated_commands, params={"command_name": "bowl_target_pos"})
+        egg_beater_pos = ObsTerm(func=object_pos, params={"object_id": 0},)
+        egg_beater_quat = ObsTerm(func=object_quat, params={"object_id": 0, "symmetry": True},)
+        bowl_pos = ObsTerm(func=object_pos, params={"object_id": 1},)
+        bowl_quat = ObsTerm(func=object_quat, params={"object_id": 1, "symmetry": True},)
+        bowl_lin_vel = ObsTerm(func=object_lin_vel, params={"object_id": 1},)
+        ball_1_pos = ObsTerm(func=object_pos, params={"object_id": 2},)
+        ball_1_lin_vel = ObsTerm(func=object_lin_vel, params={"object_id": 2},)
+        ball_2_pos = ObsTerm(func=object_pos, params={"object_id": 3},)
+        ball_2_lin_vel = ObsTerm(func=object_lin_vel, params={"object_id": 3},)
+        ball_3_pos = ObsTerm(func=object_pos, params={"object_id": 4},)
+        ball_3_lin_vel = ObsTerm(func=object_lin_vel, params={"object_id": 4},)
+        # goal_pos_egg_beater = ObsTerm(func=generated_commands, params={"command_name": "target_pos"})
+        # goal_pos_bowl = ObsTerm(func=generated_commands, params={"command_name": "bowl_target_pos"})
         # -- action terms
         last_action = ObsTerm(func=last_action)
 
@@ -557,8 +548,20 @@ class StirBowlObservationsCfg(BaseObservationsCfg):
             self.enable_corruption = False
             self.concatenate_terms = True
 
+    @configclass
+    class VisionCfg(ObsGroup):
+        """Observations for vision group."""
+
+        # -- robot terms (order preserved)
+        rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+    
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+    vision: VisionCfg = VisionCfg()
 
 
 @configclass
@@ -583,9 +586,11 @@ class StirBowlActionsCfg:
         alpha=0.2
     )
 
+
 @configclass
 class StirBowlTerminationsCfg(BaseTerminationsCfg):
-    pass
+    max_consecutive_success = DoneTerm(func=bowl.max_consecutive_success,
+                                       params={"num_success": 1},)
 
 
 @configclass
@@ -595,77 +600,36 @@ class StirBowlRewardsCfg(BaseRewardsCfg):
                               params={"weight": [1.0, 1.0, 1.0, 1.5], 
                                       "link_name": ["if5", "mf5", "pf5", "th5"], 
                                       "object_id": 0}, 
-                                      weight=0.0)
+                              weight=0.0)
     object_lifting = RewTerm(func=lift_distance,
                              params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                             weight=0.0,
-                             )
+                             weight=0.0,)
     egg_beater_goal_tracking = RewTerm(func=object_goal_distance,
                                    params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
-                                   weight=0.0,
-                                   )
+                                   weight=0.0,)
     egg_beater_goal_orient_tracking = RewTerm(func=object_goal_distance_orient,
                                    params={"command_name": "target_pos", "object_id": 0, "axis": "z", "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
-                                   weight=0.0,
-                                   )
+                                   weight=0.0,)
     ball_velocity = RewTerm(func=bowl.object_vel, 
                             params={"object_id": [2, 3, 4], 
                                     "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                                    weight=0.0)
+                            weight=0.0)
     bowl_goal_tracking = RewTerm(func=bowl.object_goal_distance,
-                                   params={"command_name": "bowl_target_pos", "object_id": 1,},
-                                   weight=0.0,
-                                   )
+                                 params={"command_name": "bowl_target_pos", "object_id": 1,},
+                                 weight=0.0,)
     align_hand_to_pos = RewTerm(func=align_palm_to_pos,
-                                   params={"link_name": ["palm_link"], "frame_name": "object_approach_frame", "asset_cfg": SceneEntityCfg("robot_left")},
-                                   weight=0.0,
-                                   )
+                                params={"link_name": ["palm_link"], "frame_name": "object_approach_frame", "asset_cfg": SceneEntityCfg("robot_left")},
+                                weight=0.0,)
     align_hand_to_quat = RewTerm(func=align_palm_to_quat,
-                                   params={"link_name": ["palm_link"], "frame_name": "object_approach_frame", "asset_cfg": SceneEntityCfg("robot_left")},
-                                   weight=0.0,
-                                   )
+                                 params={"link_name": ["palm_link"], "frame_name": "object_approach_frame", "asset_cfg": SceneEntityCfg("robot_left")},
+                                 weight=0.0,)
     bowl_success_bonus = RewTerm(func=bowl.cmd_success_bonus,
-                            params={"command_names": "bowl_target_pos", "num_success": 1},
-                            weight=0.0,
-                            )
+                                 params={"command_names": "bowl_target_pos", "num_success": 1},
+                                 weight=0.0,)
     success_bonus = RewTerm(func=bowl.success_bonus,
-                            params={"num_success": 5},
-                            weight=0.0,
-                            )
+                            params={"num_success": 1},
+                            weight=0.0,)
     
-    # symmetry
-    reaching_object_symmetry = RewTerm(func=object_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "object_id": 0,
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
-    object_lifting_symmetry = RewTerm(func=lift_distance,
-                             params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                             weight=0.0,
-                             )
-    egg_beater_goal_tracking_symmetry = RewTerm(func=object_goal_distance,
-                                   params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],},
-                                   weight=0.0,
-                                   )
-    egg_beater_goal_orient_tracking_symmetry = RewTerm(func=object_goal_distance_orient,
-                                   params={"command_name": "target_pos", "object_id": 0, "axis": "z", "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"],},
-                                   weight=0.0,
-                                   )
-    ball_velocity_symmetry = RewTerm(func=bowl.object_vel, 
-                            params={"object_id": [2, 3, 4], 
-                                    "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                                    weight=0.0)
-    align_hand_to_pos_symmetry = RewTerm(func=align_palm_to_pos,
-                                   params={"link_name": ["palm_link"], "frame_name": "object_approach_frame_symmetry", "asset_cfg": SceneEntityCfg("robot")},
-                                   weight=0.0,
-                                   )
-    align_hand_to_quat_symmetry = RewTerm(func=align_palm_to_quat,
-                                   params={"link_name": ["palm_link"], "frame_name": "object_approach_frame_symmetry", "asset_cfg": SceneEntityCfg("robot")},
-                                   weight=0.0,
-                                   )
-
-
 
 @configclass
 class StirBowlEnvCfg(BaseEnvCfg):
@@ -684,15 +648,15 @@ class StirBowlEnvCfg(BaseEnvCfg):
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.015,
                             0.03, 0.03, 0.03, 0.03,
-                            0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                          0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.015,
                             0.03, 0.03, 0.03, 0.03]  # jth3 needs smaller rate
-
     visualize_marker: bool = False
 
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.viewer.eye = (-3.5, 0.0, 3.5)
+        # self.viewer.eye = (-3.5, 0.0, 3.5)
+        self.viewer.eye = (-0.6, 0.0, 1.2)

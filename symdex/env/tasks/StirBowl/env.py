@@ -38,3 +38,10 @@ class StirBowlEnv(BaseEnv):
     """
     Helper functions.
     """
+    def _pre_init_process(self):
+        super()._pre_init_process()
+        self.success_tracker_step = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+
+    def _post_reset_process(self, env_ids):
+        super()._post_reset_process(env_ids)
+        self.success_tracker_step[env_ids] = 0

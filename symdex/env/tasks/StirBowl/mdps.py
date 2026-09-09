@@ -47,6 +47,22 @@ def success_bonus(
     env.success_tracker = rew.float()
     return rew
 
+def max_consecutive_success(
+        env: ManagerBasedRLEnv, 
+        num_success: int = 0,
+    ) -> torch.Tensor:
+    bowl_command_term = env.command_manager.get_term("bowl_target_pos")
+    bowl_within_range = bowl_command_term.metrics["position_error"] < 0.1
+    egg_beater_command_term = env.command_manager.get_term("target_pos")
+    egg_beater_within_range = egg_beater_command_term.metrics["position_error"] < 0.1
+    egg_beater_orient_within_range = egg_beater_command_term.metrics["orientation_error"] > 0.7
+    success = (bowl_within_range * egg_beater_within_range * egg_beater_orient_within_range).bool()
+
+    env.success_tracker_step[success] += 1
+    env.success_tracker_step[~success] = 0
+    success_consecutive = env.success_tracker_step >= num_success
+    return success_consecutive
+
 def object_vel(
     env: ManagerBasedRLEnv,
     object_id: int | list[int] = 0,
