@@ -394,7 +394,7 @@ class ThreadingEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.1, 0.1], "y": [-0.3, -0.3], "z": [0.05, 0.05], "roll": [-1.57, -1.57]}, # 0.785 = 45 degree, 2.356 = 135 degree
+            "pose_range": {"x": [0.05, 0.15], "y": [-0.25, -0.35], "z": [0.05, 0.05], "roll": [-1.57, -1.57]}, # 0.785 = 45 degree, 2.356 = 135 degree
             "velocity_range": {},
             "object_id": 0,
         },
@@ -404,7 +404,7 @@ class ThreadingEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.15, 0.15], "y": [0.2, 0.2], "z": [0.06, 0.06], "yaw": [1.57, 1.57]}, # 0.785 = 45 degree, 2.356 = 135 degree
+            "pose_range": {"x": [0.1, 0.2], "y": [0.15, 0.25], "z": [0.06, 0.06], "yaw": [1.57, 1.57]}, # 0.785 = 45 degree, 2.356 = 135 degree
             "velocity_range": {},
             "object_id": 1,
         },
@@ -476,6 +476,7 @@ class ThreadingObservationsCfg(BaseObservationsCfg):
 
         # -- robot terms (order preserved)
         rgb_image = ObsTerm(func=rgb_image, params={"camera_name": ["cam_1"]})
+
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
@@ -528,63 +529,50 @@ class ThreadingRewardsCfg(BaseRewardsCfg):
                               params={"weight": [1.0, 1.0, 1.0, 1.5], 
                                       "link_name": ["if5", "mf5", "pf5", "th5"], 
                                       "object_id": 0}, 
-                                      weight=0.0)
+                              weight=0.0)
     object_lifting = RewTerm(func=lift_distance,
                              params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                             weight=0.0,
-                             )
+                             weight=0.0,)
     cube_goal_tracking = RewTerm(func=threading.object_goal_distance,
-                                   params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
-                                   weight=0.0,
-                                   )
+                                 params={"command_name": "cube_target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
+                                 weight=0.0,)
     cube_goal_orient_tracking = RewTerm(func=object_goal_distance_orient,
-                                   params={"command_name": "cube_target_pos", 
+                                        params={"command_name": "cube_target_pos", 
                                            "object_id": 0, 
                                            "axis": "z", 
                                            "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],
-                                           "pos_success_threshold": 0.1,
-                                           },
-                                   weight=0.0,
-                                   )
+                                           "pos_success_threshold": 0.1,},
+                                        weight=0.0,)
     cube_success_bonus = RewTerm(func=threading.cmd_success_bonus,
-                            params={"command_names": "cube_target_pos", "num_success": 1},
-                            weight=0.0,
-                            )
+                                 params={"command_names": "cube_target_pos", "num_success": 1},
+                                 weight=0.0,)
     align_hand_to_pos = RewTerm(func=align_palm_to_pos,
-                                   params={"link_name": ["palm_link"], "frame_name": "object_approach_frame", "asset_cfg": SceneEntityCfg("robot_left")},
-                                   weight=0.0,
-                                   )
+                                params={"link_name": ["palm_link"], "frame_name": "object_approach_frame", "asset_cfg": SceneEntityCfg("robot_left")},
+                                weight=0.0,)
     align_hand_to_quat = RewTerm(func=align_palm_to_quat,
-                                   params={"link_name": ["palm_link"], "frame_name": "object_approach_frame", "asset_cfg": SceneEntityCfg("robot_left")},
-                                   weight=0.0,
-                                   )
+                                 params={"link_name": ["palm_link"], "frame_name": "object_approach_frame", "asset_cfg": SceneEntityCfg("robot_left")},
+                                 weight=0.0,)
     reaching_drill = RewTerm(func=object_robot_distance, 
-                              params={"weight": [1.0, 1.0, 1.0, 1.5], 
+                             params={"weight": [1.0, 1.0, 1.0, 1.5], 
                                       "link_name": ["if5", "mf5", "pf5", "th5"], 
                                       "object_id": 1,
-                                      "asset_cfg": SceneEntityCfg("robot_left")
-                                      }, 
-                                      weight=0.0)
+                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
+                             weight=0.0)
     drill_goal_tracking = RewTerm(func=threading.object_goal_distance,
-                                   params={"command_name": "drill_target_pos", "object_id": 1},
-                                   weight=0.0,
-                                   )
+                                  params={"command_name": "drill_target_pos", "object_id": 1},
+                                  weight=0.0,)
     drill_goal_orient_tracking = RewTerm(func=threading.drill_goal_orient_distance,
-                                   params={"command_name": "drill_target_pos", "object_id": 1},
-                                   weight=0.0,
-                                   )
+                                         params={"command_name": "drill_target_pos", "object_id": 1},
+                                         weight=0.0,)
     drill_success_bonus = RewTerm(func=threading.cmd_success_bonus,
-                            params={"command_names": "drill_target_pos", "num_success": 1},
-                            weight=0.0,
-                            )
+                                  params={"command_names": "drill_target_pos", "num_success": 1},
+                                  weight=0.0,)
     drill_cube_distance = RewTerm(func=threading.drill_cube_distance,
-                                   params={"frame_name": "drill_head_frame", "cube_id": 0, "drill_id": 1},
-                                   weight=0.0,
-                                   )
+                                  params={"frame_name": "drill_head_frame", "cube_id": 0, "drill_id": 1},
+                                  weight=0.0,)
     success_bonus = RewTerm(func=threading.success_bonus,
                             params={"num_success": 1, "object_id": 0, "frame_name": "drill_head_frame"},
-                            weight=0.0,
-                            )
+                            weight=0.0,)
 
 
 @configclass
@@ -604,7 +592,7 @@ class ThreadingEnvCfg(BaseEnvCfg):
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.015,
                             0.03, 0.03, 0.03, 0.03,
-                         0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+                          0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.03, 
                             0.03, 0.03, 0.03, 0.015,

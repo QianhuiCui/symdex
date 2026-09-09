@@ -38,7 +38,8 @@ OBJECT: Dict[str, List[str]] = {
             # f"{symdex.LIB_PATH}/assets/objects/cups/cup_5/base.usd"
         ],
     "bowl": [
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_1/base.usd",
+        f"{symdex.LIB_PATH}/assets/object/bowl.usd",
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_1/base.usd",
         # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_2/base.usd",
         # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_3/base.usd",
         # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_4/base.usd",
@@ -130,7 +131,8 @@ OBJECT_CATEGORY: dict[str, str] = {
         # f"{symdex.LIB_PATH}/assets/objects/cups/cup_5/base.usd": "cup"
     },
     "bowl": {
-        f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_1/base.usd": "bowl",
+        f"{symdex.LIB_PATH}/assets/object/bowl.usd": "bowl",
+        # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_1/base.usd": "bowl",
         # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_2/base.usd": "bowl",
         # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_3/base.usd": "bowl",
         # f"{symdex.LIB_PATH}/assets/objects/bowls/bowl_4/base.usd": "bowl",

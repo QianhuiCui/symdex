@@ -384,7 +384,7 @@ class InsertDrawerEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.05, 0.05], "y": [-0.35, -0.35], "z": [0.0, 0.0], "yaw": [0.0, 0.0]},
+            "pose_range": {"x": [0.0, 0.1], "y": [-0.3, -0.4], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]},
             "velocity_range": {},
             "object_id": 0,
         },
@@ -497,47 +497,40 @@ class InsertDrawerRewardsCfg(BaseRewardsCfg):
                               params={"weight": [1.0, 1.0, 1.0, 1.5], 
                                       "link_name": ["if5", "mf5", "pf5", "th5"], 
                                       "object_id": 0}, 
-                                      weight=0.0)
+                              weight=0.0)
     object_lifting = RewTerm(func=lift_distance,
                              params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                             weight=0.0,
-                             )
+                             weight=0.0,)
     object_goal_tracking = RewTerm(func=object_goal_distance,
                                    params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
-                                   weight=0.0,
-                                   )
+                                   weight=0.0,)
     object_in_drawer = RewTerm(func=drawer.if_in_drawer,
-                             params={"object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                             weight=0.0,
-                             )
-    reset_robot_joint_pos = RewTerm(func=drawer.robot_goal_distance, 
-                              params={"target_pos": [-0.1277, -0.3174,  1.2583], 
+                               params={"object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
+                               weight=0.0,)
+    reset_robot_joint_pos = RewTerm(func=drawer.robot_goal_distance,
+                                    params={"target_pos": [-0.1277, -0.3174,  1.2583], 
                                       "target_link": "palm_link"}, 
-                                      weight=0.0)           
-    
+                                    weight=0.0)
     reaching_handle = RewTerm(func=drawer.drawer_handle_robot_distance, 
                               params={"weight": [1.0, 1.0], 
                                       "link_name": ["if5", "mf5"], 
                                       "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
+                              weight=0.0)
     moving_drawer = RewTerm(func=drawer.drawer_move, 
                             params={"joints": ["base_drawer_joint"], "asset_cfg": SceneEntityCfg("drawer"), "sensor_names": ["contact_sensors_0_left"]},
                             weight=0.0)
-    moving_drawer_inside = RewTerm(func=drawer.drawer_move_inside, 
-                            params={"joints": ["base_drawer_joint"], "asset_cfg": SceneEntityCfg("drawer"), "sensor_names": ["contact_sensors_0_left"]},
-                            weight=0.0)
+    moving_drawer_inside = RewTerm(func=drawer.drawer_move_inside,
+                                   params={"joints": ["base_drawer_joint"], "asset_cfg": SceneEntityCfg("drawer"), "sensor_names": ["contact_sensors_0_left"]},
+                                   weight=0.0)
     success_bonus = RewTerm(func=drawer.success_bonus,
                             params={},
-                            weight=0.0,
-                            )
+                            weight=0.0,)
     collision_to_table = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
-                                weight=0.0,
-                                )
+                                 params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
+                                 weight=0.0,)
     collision_to_drawer = RewTerm(func=collision_penalty,
-                                params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
-                                weight=0.0,
-                                )
+                                  params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
+                                  weight=0.0,)
 
 
 @configclass

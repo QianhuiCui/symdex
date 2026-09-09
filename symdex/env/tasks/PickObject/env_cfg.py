@@ -410,7 +410,7 @@ class PickObjectEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.15, 0.15], "y": [-0.4, -0.4], "z": [0.0, 0.0], "yaw": [3.14, 3.14]}, 
+            "pose_range": {"x": [0.1, 0.2], "y": [-0.3, -0.5], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]}, 
             "velocity_range": {},
             "object_id": 1,
         },
@@ -420,7 +420,7 @@ class PickObjectEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.15, 0.15], "y": [0.4, 0.4], "z": [0.0, 0.0], "yaw": [3.14, 3.14]},
+            "pose_range": {"x": [0.1, 0.2], "y": [0.3, 0.5], "z": [0.0, 0.0], "yaw": [-3.14, 3.14]},
             "velocity_range": {},
             "object_id": 2,
         },

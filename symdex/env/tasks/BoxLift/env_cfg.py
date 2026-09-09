@@ -287,6 +287,7 @@ class BoxLiftSceneCfg(BaseSceneCfg):
         ],
     )
 
+
 @configclass
 class BoxLiftEventCfg(BaseEventCfg):
     """Configuration for events."""
@@ -305,7 +306,7 @@ class BoxLiftEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.1, 0.1], "y": [0.0, 0.0], "z": [0.0, 0.0], "yaw": [0.0, 0.0]},
+            "pose_range": {"x": [0.0, 0.2], "y": [-0.1, 0.1], "z": [0.0, 0.0], "yaw": [-0.7, 0.7]},
             "velocity_range": {},
             "object_id": 0,
         },
@@ -316,6 +317,7 @@ class BoxLiftEventCfg(BaseEventCfg):
         mode="startup",
         params={"object_id": 0, "axis": "y"},
     )
+
 
 @configclass
 class BoxLiftCommandsCfg(BaseCommandsCfg):
@@ -419,41 +421,33 @@ class BoxLiftTerminationsCfg(BaseTerminationsCfg):
 class BoxLiftRewardsCfg(BaseRewardsCfg):
     """Reward terms for the MDP."""
     align_hand_to_pos = RewTerm(func=lift.align_palm_to_pos,
-                                   params={"link_name": ["palm_link"], "side": "right", "asset_cfg": SceneEntityCfg("robot")},
-                                   weight=0.0,
-                                   )
+                                params={"link_name": ["palm_link"], "side": "right", "asset_cfg": SceneEntityCfg("robot")},
+                                weight=0.0,)
     align_hand_to_quat = RewTerm(func=align_palm_to_quat,
-                                   params={"link_name": ["palm_link"], "frame_name": "tote_right", "asset_cfg": SceneEntityCfg("robot")},
-                                   weight=0.0,
-                                   )
+                                 params={"link_name": ["palm_link"], "frame_name": "tote_right", "asset_cfg": SceneEntityCfg("robot")},
+                                 weight=0.0,)
     align_hand_to_pos_left = RewTerm(func=lift.align_palm_to_pos,
-                                   params={"link_name": ["palm_link"], "side": "left", "asset_cfg": SceneEntityCfg("robot_left")},
-                                   weight=0.0,
-                                   )
+                                     params={"link_name": ["palm_link"], "side": "left", "asset_cfg": SceneEntityCfg("robot_left")},
+                                     weight=0.0,)
     align_hand_to_quat_left = RewTerm(func=align_palm_to_quat,
-                                   params={"link_name": ["palm_link"], "frame_name": "tote_left", "asset_cfg": SceneEntityCfg("robot_left")},
-                                   weight=0.0,
-                                   )
+                                      params={"link_name": ["palm_link"], "frame_name": "tote_left", "asset_cfg": SceneEntityCfg("robot_left")},
+                                      weight=0.0,)
     object_goal_tracking = RewTerm(func=lift.object_goal_distance,
                                    params={"command_name": "target_pos", "object_id": 0},
-                                   weight=0.0,
-                                   )
+                                   weight=0.0,)
     object_goal_orient_tracking = RewTerm(func=lift.object_goal_orient_distance,
-                                   params={"object_id": 0, "command_name": "target_pos"},
-                                   weight=0.0,
-                                   )
+                                          params={"object_id": 0, "command_name": "target_pos"},
+                                          weight=0.0,)
     punish_collision = RewTerm(func=lift.punish_collision,
-                                   params={"sensor": "contact_sensors_robot"},
-                                   weight=0.0,
-                                   )
+                               params={"sensor": "contact_sensors_robot"},
+                               weight=0.0,)
     punish_collision_left = RewTerm(func=lift.punish_collision,
-                                   params={"sensor": "contact_sensors_robot_left"},
-                                   weight=0.0,
-                                   )
+                                    params={"sensor": "contact_sensors_robot_left"},
+                                    weight=0.0,)
     success_bonus = RewTerm(func=success_bonus,
                             params={"command_names": "target_pos", "num_success": 1},
-                            weight=0.0,
-                            )
+                            weight=0.0,)
+
 
 @configclass
 class BoxLiftEnvCfg(BaseEnvCfg):

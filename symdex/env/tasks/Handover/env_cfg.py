@@ -411,20 +411,20 @@ class HandoverEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.2, 0.2], "y": [-0.25, -0.25], "z": [0.12, 0.12], "yaw": [0.0, 0.0]},  # 
+            "pose_range": {"x": [0.15, 0.25], "y": [-0.2, -0.3], "z": [0.12, 0.12], "yaw": [0.0, 0.0]},  # 
             "velocity_range": {},
             "object_id": 0,
         },
     )
 
-    # object_mass = EventTerm(
-    #     func=randomize_rigid_body_mass,
-    #     mode="startup",
-    #     params={
-    #         "mass_distribution_params": (0.05, 0.9),
-    #         "operation": "scale",
-    #     },
-    # )
+    object_mass = EventTerm(
+        func=randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "mass_distribution_params": (0.05, 0.9),
+            "operation": "scale",
+        },
+    )
 
 @configclass
 class HandoverCommandsCfg(BaseCommandsCfg):
@@ -542,78 +542,68 @@ class HandoverRewardsCfg(BaseRewardsCfg):
                               params={"weight": [1.0, 1.0, 1.0, 1.5, 2.0], 
                                       "link_name": ["if5", "mf5", "pf5", "th5", "palm_link"], 
                                       "frame_name": "bottle_bottom"}, 
-                                      weight=0.0)
+                              weight=0.0)
     object_goal_tracking = RewTerm(func=handover.object_goal_distance,
                                    params={"command_name": "target_pos", "object_id": 0},
-                                   weight=0.0,
-                                   )
+                                   weight=0.0,)
     object_goal_orient_tracking = RewTerm(func=handover.object_goal_orient_distance,
-                                   params={"command_name": "target_pos", "object_id": 0, "axis": "z"},
-                                   weight=0.0,
-                                   )
+                                          params={"command_name": "target_pos", "object_id": 0, "axis": "z"},
+                                          weight=0.0,)
     middle_success_bonus = RewTerm(func=handover.cmd_success_bonus,
                                    params={"command_names": "target_pos", "num_success": 1, "if_right": True},
-                                   weight=0.0,
-                                   )
+                                   weight=0.0,)
     contact_bottle_punish = RewTerm(func=handover.contact_bottle_punish,
-                                   params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
+                                    params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
                                                             "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"]},
-                                   weight=0.0,
-                                   )
-    reset_robot_joint_pos = RewTerm(func=handover.robot_goal_distance, 
-                              params={"target_pos": [0.0462, -0.5045, 0.4468], 
-                                      "target_link": "palm_link",
-                                      "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
-                                                            "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"]}, 
-                                      weight=0.0)   
+                                    weight=0.0,)
+    reset_robot_joint_pos = RewTerm(func=handover.robot_goal_distance,
+                                    params={"target_pos": [0.0462, -0.5045, 0.4468], 
+                                            "target_link": "palm_link",
+                                            "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
+                                                             "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"]}, 
+                                    weight=0.0)   
     left_align_hand_pose = RewTerm(func=handover.align_hand_pose,
                                    params={"link_name": "palm_link", "command_name": "left_hand_target_pos", "asset_cfg": SceneEntityCfg("robot_left")},
-                                   weight=0.0,
-                                   )
+                                   weight=0.0,)
     left_align_finger_joint = RewTerm(func=handover.align_finger_joint,
-                                   params={"link_name": ["jif1", "jif2", "jif3", "jif4", "jmf1", "jmf2", "jmf3", "jmf4", "jpf1", "jpf2", "jpf3", "jpf4", "jth1", "jth2", "jth3", "jth4"], 
+                                      params={"link_name": ["jif1", "jif2", "jif3", "jif4", "jmf1", "jmf2", "jmf3", "jmf4", "jpf1", "jpf2", "jpf3", "jpf4", "jth1", "jth2", "jth3", "jth4"], 
                                            "asset_cfg": SceneEntityCfg("robot_left")},
-                                   weight=0.0,
-                                   )
-    left_reaching_object = RewTerm(func=handover.frame_marker_robot_distance, 
-                              params={"weight": [1.5, 1.0, 1.0, 2.0], 
-                                      "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                      "frame_name": "bottle_top",
-                                      "if_left": True,
-                                      "asset_cfg": SceneEntityCfg("robot_left")}, 
-                                      weight=0.0)
+                                           weight=0.0,)
+    left_reaching_object = RewTerm(func=handover.frame_marker_robot_distance,
+                                   params={"weight": [1.5, 1.0, 1.0, 2.0], 
+                                           "link_name": ["if5", "mf5", "pf5", "th5"], 
+                                           "frame_name": "bottle_top",
+                                           "if_left": True,
+                                           "asset_cfg": SceneEntityCfg("robot_left")}, 
+                                   weight=0.0)
     left_object_goal_tracking = RewTerm(func=handover.object_goal_distance,
-                                   params={"command_name": "target_pos", 
-                                           "object_id": 0, 
-                                           "if_left": True,
-                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
-                                                            "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
-                                   weight=0.0,
-                                   )
+                                        params={"command_name": "target_pos", 
+                                                "object_id": 0, 
+                                                "if_left": True,
+                                                "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
+                                                                 "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
+                                        weight=0.0,)
     left_object_goal_orient_tracking = RewTerm(func=handover.object_goal_orient_distance,
-                                   params={"command_name": "target_pos", 
-                                           "object_id": 0, 
-                                           "axis": "z", 
-                                           "if_left": True,
-                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
-                                                            "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
-                                   weight=0.0,
-                                   )
+                                               params={"command_name": "target_pos", 
+                                                       "object_id": 0, 
+                                                       "axis": "z", 
+                                                       "if_left": True,
+                                                       "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
+                                                                        "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
+                                               weight=0.0,)
     middle_success_bonus_left = RewTerm(func=handover.cmd_success_bonus,
-                                   params={"command_names": "target_pos", "num_success": 1, "if_left": True, 
-                                           "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
-                                                            "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
-                                   weight=0.0,
-                                   )
+                                        params={"command_names": "target_pos", "num_success": 1, "if_left": True, 
+                                                "sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
+                                                                 "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
+                                        weight=0.0,)
     success_bonus = RewTerm(func=handover.success_bonus,
                             params={"command_names": "target_pos", 
                                     "num_success": 1,
                                     "not_contact_sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3",
-                                                                "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"],
+                                                                 "contact_sensors_0_4", "contact_sensors_1_4", "contact_sensors_2_4", "contact_sensors_3_4"],
                                     "is_contact_sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left",
                                                                 "contact_sensors_0_4_left", "contact_sensors_1_4_left", "contact_sensors_2_4_left", "contact_sensors_3_4_left"]},
-                            weight=0.0,
-                            )
+                            weight=0.0,)
                             
 
 @configclass

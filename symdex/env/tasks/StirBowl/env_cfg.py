@@ -434,7 +434,7 @@ class StirBowlEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.15, 0.05], "y": [-0.3, -0.35], "z": [0.01, 0.01], "roll": [1.57, 1.57]},
+            "pose_range": {"x": [0.05, 0.15], "y": [-0.25, -0.35], "z": [0.01, 0.01], "roll": [1.57, 1.57]},
             "velocity_range": {},
             "object_id": 0,
         },
@@ -589,8 +589,9 @@ class StirBowlActionsCfg:
 
 @configclass
 class StirBowlTerminationsCfg(BaseTerminationsCfg):
-    max_consecutive_success = DoneTerm(func=bowl.max_consecutive_success,
-                                       params={"num_success": 1},)
+    max_consecutive_success = DoneTerm(
+        func=bowl.max_consecutive_success, params={"num_success": 1},
+    )
 
 
 @configclass
@@ -605,11 +606,11 @@ class StirBowlRewardsCfg(BaseRewardsCfg):
                              params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
                              weight=0.0,)
     egg_beater_goal_tracking = RewTerm(func=object_goal_distance,
-                                   params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
-                                   weight=0.0,)
+                                       params={"command_name": "target_pos", "object_id": 0, "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
+                                       weight=0.0,)
     egg_beater_goal_orient_tracking = RewTerm(func=object_goal_distance_orient,
-                                   params={"command_name": "target_pos", "object_id": 0, "axis": "z", "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
-                                   weight=0.0,)
+                                              params={"command_name": "target_pos", "object_id": 0, "axis": "z", "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"],},
+                                              weight=0.0,)
     ball_velocity = RewTerm(func=bowl.object_vel, 
                             params={"object_id": [2, 3, 4], 
                                     "sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
