@@ -129,33 +129,9 @@ def max_consecutive_success(env: ManagerBasedRLEnv, num_success: int) -> torch.T
     drawer: Articulation = env.scene["drawer"]
     joint_ids = drawer.find_joints("base_drawer_joint")[0]
     joint_pos = drawer.data.joint_pos[:, joint_ids].reshape(-1)
-    success = (joint_pos < 0.1) * if_in_drawer(env)
+    success = (joint_pos < 0.03) * if_in_drawer(env)
     env.success_tracker_step[success] += 1
     env.success_tracker_step[~success] = 0
     success = env.success_tracker_step >= num_success
     env.success_tracker = success.float()
     return success
-
-def obj_out_space(
-        env: ManagerBasedRLEnv, 
-        asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-        object_id: int = 0,
-        workspace_radius: float = 0.7,
-        workspace_height_range: tuple = (0.0, 1.5),
-        ) -> torch.Tensor:
-    """Terminate if the object is out of the workspace."""
-    robot = env.scene[asset_cfg.name]
-    object: RigidObject = env.scene[f"object_{object_id}"]
-
-    robot_base = robot.data.root_link_pos_w[:, :3]
-    object_pos = object.data.root_pos_w[:, :3]
-
-    offset = object_pos - robot_base
-    dist_xy = torch.norm(offset[:, :2], dim=-1)
-    dist_z = offset[:, 2]
-
-    out_of_radius = (dist_xy > workspace_radius) | (dist_xy < 0.1)
-    out_of_height = (dist_z < workspace_height_range[0]) | (dist_z > workspace_height_range[1])
-    out_of_space = out_of_radius | out_of_height
-
-    return out_of_space

@@ -282,7 +282,7 @@ class InsertDrawerSceneCfg(BaseSceneCfg):
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=84, height=84,
+        width=128, height=128,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -482,9 +482,6 @@ class InsertDrawerActionsCfg:
 
 @configclass
 class InsertDrawerTerminationsCfg(BaseTerminationsCfg):
-    out_of_space = DoneTerm(
-        func=drawer.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot")}
-    )
     max_consecutive_success = DoneTerm(
         func=drawer.max_consecutive_success, params={"num_success": 1}
     )
@@ -562,4 +559,4 @@ class InsertDrawerEnvCfg(BaseEnvCfg):
         # post init of parent
         super().__post_init__()
         # self.viewer.eye = (0.8, 1.0, 1.2)
-        self.viewer.eye = (-0.6, 0.0, 1.0)
+        self.viewer.eye = (-0.6, 0.0, 0.8)

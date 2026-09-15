@@ -82,7 +82,8 @@ OBJECT: Dict[str, List[str]] = {
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_20/visual_model.usd"
     ],
     "cube_with_hole": [
-        f"{symdex.LIB_PATH}/assets/threading/cube_with_hole.usd"
+        # f"{symdex.LIB_PATH}/assets/threading/cube_with_hole.usd",
+        f"{symdex.LIB_PATH}/assets/object/cube_with_hole_fric.usd"
     ],
     "drill": [
         f"{symdex.LIB_PATH}/assets/threading/drill.usd"
@@ -114,7 +115,8 @@ OBJECT_CATEGORY: dict[str, str] = {
         # f"{symdex.LIB_PATH}/assets/objects/grasping/object_20/visual_model.usd": "cattle"
     },
     "cube_with_hole": {
-        f"{symdex.LIB_PATH}/assets/threading/cube_with_hole.usd": "cube"
+        # f"{symdex.LIB_PATH}/assets/threading/cube_with_hole.usd": "cube",
+        f"{symdex.LIB_PATH}/assets/object/cube_with_hole_fric.usd": "cube",
     },
     "bottle": {
         f"{symdex.LIB_PATH}/assets/objects/bottels/bottle_1/base.usd": "bottle",

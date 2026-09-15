@@ -235,7 +235,7 @@ class BoxLiftSceneCfg(BaseSceneCfg):
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=84, height=84,
+        width=128, height=128,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)

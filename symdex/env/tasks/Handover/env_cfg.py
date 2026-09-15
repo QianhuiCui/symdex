@@ -235,8 +235,8 @@ class HandoverSceneCfg(BaseSceneCfg):
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
             activate_contact_sensors=True,
-            # scale=(1.2, 1.2, 1.2),
-            scale=(1.0, 1.0, 1.0),
+            scale=(1.5, 1.5, 1.5),
+            # scale=(1.0, 1.0, 1.0),
         ), # wait for initialization
         init_state=RigidObjectCfg.InitialStateCfg(
             lin_vel=(0.0, 0.0, 0.0),
@@ -248,7 +248,7 @@ class HandoverSceneCfg(BaseSceneCfg):
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=84, height=84,
+        width=128, height=128,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -393,6 +393,7 @@ class HandoverSceneCfg(BaseSceneCfg):
         ],
     )
 
+
 @configclass
 class HandoverEventCfg(BaseEventCfg):
     """Configuration for events."""
@@ -426,6 +427,7 @@ class HandoverEventCfg(BaseEventCfg):
         },
     )
 
+
 @configclass
 class HandoverCommandsCfg(BaseCommandsCfg):
     """Command specifications for the MDP."""
@@ -448,6 +450,7 @@ class HandoverCommandsCfg(BaseCommandsCfg):
         update_goal_on_success=False,
         debug_vis=True,
     )
+
 
 @configclass
 class HandoverObservationsCfg(BaseObservationsCfg):
@@ -523,12 +526,6 @@ class HandoverActionsCfg:
 
 @configclass
 class HandoverTerminationsCfg(BaseTerminationsCfg):
-    out_of_space = DoneTerm(
-        func=handover.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot")}
-    )
-    out_of_space_left = DoneTerm(
-        func=handover.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot_left")}
-    ) 
     max_consecutive_success = DoneTerm(
         func=handover.max_consecutive_success, 
         params={"num_success": 1},

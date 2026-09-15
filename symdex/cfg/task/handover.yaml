@@ -22,13 +22,13 @@ cam:
   enable: True
   num_cams: 1
   frame_stack: 1
-  resolution: 84
+  resolution: 128
   cam_params:
     cam_1:
       enable: True
       randomize: False
       pos: [-0.5, 0.0, 0.45]
-      target: [0.18, 0.0, 0.08]
+      target: [0.18, 0.0, 0.25]
       horizontal_aperture: 32.0 
       # pos: [0.6, 0.0, 1.0]
       # target: [0.13, 0.0, 0.26]

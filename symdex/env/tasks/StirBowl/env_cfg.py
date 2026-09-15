@@ -42,10 +42,10 @@ class StirBowlSceneCfg(BaseSceneCfg):
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
                 "joint1": 0.5,
-                "joint2": 0.3,
-                "joint3": -0.6,
+                "joint2": 0.0,
+                "joint3": -0.5,
                 "joint4": 0.0,
-                "joint5": -0.8,
+                "joint5": -0.3,
                 "joint6": -1.57,
                 # hand 
                 "jif1": 0.0,
@@ -134,10 +134,10 @@ class StirBowlSceneCfg(BaseSceneCfg):
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
                 "joint1": -0.5,
-                "joint2": 0.3,
-                "joint3": -0.6,
+                "joint2": 0.0,
+                "joint3": -0.5,
                 "joint4": 0.0,
-                "joint5": -0.8,
+                "joint5": -0.3,
                 "joint6": 1.57,
                 # hand 
                 "jif1": 0.0,
@@ -343,7 +343,7 @@ class StirBowlSceneCfg(BaseSceneCfg):
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=84, height=84,
+        width=128, height=128,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -489,7 +489,7 @@ class StirBowlCommandsCfg(BaseCommandsCfg):
         object_id=0,
         success_threshold=0.1,
         success_threshold_orient=0.86,
-        pose_range={"x": [-0.1, -0.1], "y": [0.0, 0.0], "z": [0.28, 0.28]},
+        pose_range={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.28, 0.28]},
         update_goal_on_success=False,
         debug_vis=True,
     )
@@ -498,7 +498,7 @@ class StirBowlCommandsCfg(BaseCommandsCfg):
         object_id=1,
         success_threshold=0.05,
         success_threshold_orient=0.97,
-        pose_range={"x": [-0.1, -0.1], "y": [0.0, 0.0], "z": [0.06, 0.06]},
+        pose_range={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.06, 0.06]},
         update_goal_on_success=False,
         debug_vis=True,
     )
@@ -660,4 +660,4 @@ class StirBowlEnvCfg(BaseEnvCfg):
         # post init of parent
         super().__post_init__()
         # self.viewer.eye = (-3.5, 0.0, 3.5)
-        self.viewer.eye = (-0.6, 0.0, 1.2)
+        self.viewer.eye = (-0.8, 0.0, 0.7)

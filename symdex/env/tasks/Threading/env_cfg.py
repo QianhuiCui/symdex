@@ -42,10 +42,10 @@ class ThreadingSceneCfg(BaseSceneCfg):
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
                 "joint1": 0.6,
-                "joint2": 0.3,
+                "joint2": -0.13,
                 "joint3": -0.6,
                 "joint4": 0.0,
-                "joint5": -0.8,
+                "joint5": -0.4,
                 "joint6": -1.57,
                 # hand 
                 "jif1": 0.0,
@@ -134,10 +134,10 @@ class ThreadingSceneCfg(BaseSceneCfg):
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
                 "joint1": 0.25,
-                "joint2": 0.0,
+                "joint2": -0.22,
                 "joint3": -0.5,
                 "joint4": -1.4,
-                "joint5": -1.0,
+                "joint5": -1.1,
                 "joint6": 3.14,
                 # hand 
                 "jif1": 0.0,
@@ -285,7 +285,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
     # cameras
     cam_1 = CameraCfg(
         prim_path="/World/envs/env_.*/Cameras_1",
-        width=84, height=84,
+        width=128, height=128,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -404,7 +404,7 @@ class ThreadingEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.1, 0.2], "y": [0.15, 0.25], "z": [0.06, 0.06], "yaw": [1.57, 1.57]}, # 0.785 = 45 degree, 2.356 = 135 degree
+            "pose_range": {"x": [0.05, 0.15], "y": [0.15, 0.25], "z": [0.06, 0.06], "yaw": [1.57, 1.57]}, # 0.785 = 45 degree, 2.356 = 135 degree
             "velocity_range": {},
             "object_id": 1,
         },
@@ -419,7 +419,7 @@ class ThreadingCommandsCfg(BaseCommandsCfg):
         object_id=0,
         success_threshold=0.1,
         success_threshold_orient=0.97, 
-        pose_range={"x": [0.0, 0.0], "y": [-0.15, -0.15], "z": [0.3, 0.3], "roll": [-1.57, -1.57]},
+        pose_range={"x": [0.0, 0.0], "y": [-0.15, -0.15], "z": [0.2, 0.2], "roll": [-1.57, -1.57]},
         update_goal_on_success=False,
         debug_vis=True,
     )
@@ -428,7 +428,7 @@ class ThreadingCommandsCfg(BaseCommandsCfg):
         object_id=1,
         success_threshold=0.1,
         success_threshold_orient=0.97, # 60 degree 
-        pose_range={"x": [0.0, 0.0], "y": [0.05, 0.05], "z": [0.23, 0.23], "yaw": [1.57, 1.57]},
+        pose_range={"x": [0.0, 0.0], "y": [0.05, 0.05], "z": [0.13, 0.13], "yaw": [1.57, 1.57]},
         update_goal_on_success=False,
         debug_vis=True,
     )
@@ -511,12 +511,6 @@ class ThreadingActionsCfg:
 
 @configclass
 class ThreadingTerminationsCfg(BaseTerminationsCfg):
-    out_of_space = DoneTerm(
-        func=threading.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot"), "object_id": 0,}
-    )
-    out_of_space_left = DoneTerm(
-        func=threading.obj_out_space, params={"asset_cfg": SceneEntityCfg("robot_left"), "object_id": 1,}
-    )
     max_consecutive_success = DoneTerm(
         func=threading.max_consecutive_success, params={"num_success": 1}
     )
