@@ -181,15 +181,21 @@ class BaseEventCfg:
 class BaseRewardsCfg:
     """Reward terms for the MDP."""
     energy = RewTerm(func=energy_punishment,
-                                  weight=0.0,
-                                  params={"asset_cfg": SceneEntityCfg("robot"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
-                                                                                                  "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
-                                  )
+                     params={"asset_cfg": SceneEntityCfg("robot"), 
+                             "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
+                                               "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
+                     weight=0.0)
     energy_left = RewTerm(func=energy_punishment,
-                                  weight=0.0,
-                                  params={"asset_cfg": SceneEntityCfg("robot_left"), "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
-                                                                                                  "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
-                                  )
+                          params={"asset_cfg": SceneEntityCfg("robot_left"), 
+                                  "actuator_name": ["allegro_hand_1", "allegro_hand_2", "allegro_hand_3", "allegro_hand_4", 
+                                                    "allegro_hand_thumb_1", "allegro_hand_thumb_2", "allegro_hand_thumb_3", "allegro_hand_thumb_4"]},
+                          weight=0.0)
+    collision_to_table = RewTerm(func=collision_penalty,
+                                 params={"sensor_names": ["contact_sensors_0", "contact_sensors_1", "contact_sensors_2", "contact_sensors_3"]},
+                                 weight=0.0)
+    collision_to_table_left = RewTerm(func=collision_penalty,
+                                      params={"sensor_names": ["contact_sensors_0_left", "contact_sensors_1_left", "contact_sensors_2_left", "contact_sensors_3_left"]},
+                                      weight=0.0)
 
 @configclass
 class BaseTerminationsCfg:

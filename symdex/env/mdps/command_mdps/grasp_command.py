@@ -43,6 +43,7 @@ class TargetPositionCommand(CommandTerm):
             self.z_height = None
 
         self.return_type = cfg.return_type
+        self.axis = cfg.axis if cfg.axis is not None else "z"
 
         # create buffers to store the command
         # -- command: (x, y, z)
@@ -87,8 +88,8 @@ class TargetPositionCommand(CommandTerm):
         # logs data
         # -- compute the orientation error
         from symdex.utils.isaac_utils import get_angle_from_quat
-        target_axis = get_angle_from_quat(self.quat_command_w, axis="z", normalize=True)
-        cur_axis = get_angle_from_quat(self.object.data.root_quat_w, axis="z", normalize=True)
+        target_axis = get_angle_from_quat(self.quat_command_w, axis=self.axis, normalize=True)
+        cur_axis = get_angle_from_quat(self.object.data.root_quat_w, axis=self.axis, normalize=True)
         self.metrics["orientation_error"] = torch.sum(target_axis * cur_axis, dim=-1)
         # -- compute the position error
         self.metrics["position_error"] = torch.norm(self.object.data.root_pos_w - self.pos_command_w, dim=1)

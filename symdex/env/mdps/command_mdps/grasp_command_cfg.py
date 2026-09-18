@@ -27,6 +27,9 @@ class TargetPositionCommandCfg(CommandTermCfg):
     success_threshold: float = MISSING
     """Threshold for the position error to consider the goal position to be reached."""
 
+    axis: str = None
+    """The axis to consider for the orientation error."""
+
     success_threshold_orient: float = MISSING
     """Threshold for the orientation error to consider the goal orientation to be reached."""
 
