@@ -143,7 +143,7 @@ def object_goal_distance(
         distance = torch.clamp(max_distance - distance, min=0.0)
         # only enable when the gripper is in contact with the object
         rew = distance * get_allegro_contact(env, sensor_names)
-        object_pos_w = env.scene["bottle_bottom"].data.target_pos_w.reshape(-1, 1, 3)
+        object_pos_w = env.scene["bottle_bottom"].data.target_pos_w  # object.data.root_pos_w.reshape(-1, 1, 3)   # was env.scene["bottle_bottom"].data.target_pos_w
         # Fingertip position: (num_envs, num_fingertip, 3)
         robot: Articulation = env.scene[asset_cfg.name]
         link_idx = robot.find_bodies("palm_link")[0]
@@ -152,6 +152,7 @@ def object_goal_distance(
         object_link_distance = torch.norm(object_pos_w - link_w, dim=-1)
         rew = rew * (object_link_distance[:, -1] < 0.15).float()
     return rew
+
 
 def object_goal_orient_distance(
     env: ManagerBasedRLEnv,

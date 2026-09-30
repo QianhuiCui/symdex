@@ -43,12 +43,12 @@ class PouringSceneCfg(BaseSceneCfg):
         ),
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
-                "joint1": -0.25,
+                "joint1": 0.5,
                 "joint2": 0.0,
                 "joint3": -0.5,
-                "joint4": 1.4,
-                "joint5": -1.0,
-                "joint6": -3.14,
+                "joint4": 0.0,
+                "joint5": -0.3,
+                "joint6": -1.57,
                 # hand 
                 "jif1": 0.0,
                 "jif2": 0.4,
@@ -62,7 +62,7 @@ class PouringSceneCfg(BaseSceneCfg):
                 "jpf2": 0.4,
                 "jpf3": 0.4,
                 "jpf4": 0.0,
-                "jth1": 1.4,
+                "jth1": 1.3,
                 "jth2": 0.0,
                 "jth3": 0.2,
                 "jth4": 0.0,
@@ -135,12 +135,12 @@ class PouringSceneCfg(BaseSceneCfg):
         ),
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
-                "joint1": 0.25,
+                "joint1": -0.5,
                 "joint2": 0.0,
                 "joint3": -0.5,
-                "joint4": -1.4,
-                "joint5": -1.0,
-                "joint6": 3.14,
+                "joint4": 0.0,
+                "joint5": -0.3,
+                "joint6": 1.57,
                 # hand 
                 "jif1": 0.0,
                 "jif2": 0.4,
@@ -154,7 +154,7 @@ class PouringSceneCfg(BaseSceneCfg):
                 "jpf2": 0.4,
                 "jpf3": 0.4,
                 "jpf4": 0.0,
-                "jth1": 0.364,
+                "jth1": 1.3,
                 "jth2": 0.0,
                 "jth3": 0.2,
                 "jth4": 0.0,
@@ -358,7 +358,7 @@ class PouringSceneCfg(BaseSceneCfg):
                 prim_path="{ENV_REGEX_NS}/Object_0",
                 name="palm_frame",
                 offset=OffsetCfg(
-                    pos=(0.0, 0.0, 0.07),
+                    pos=(0.0, 0.0, 0.04),
                     rot=(0.5, 0.5, 0.5, 0.5),
                 )
             )
@@ -432,8 +432,8 @@ class PouringCommandsCfg(BaseCommandsCfg):
     target_pos_cup = TargetPositionCommandCfg(
         object_id=0,
         success_threshold=0.05,
-        success_threshold_orient=0.5, # 60 degree 
-        pose_range={"x": [0.2, 0.2], "y": [-0.1, -0.1], "z": [0.28, 0.28]},
+        success_threshold_orient=0.5,  # 60 degree 
+        pose_range={"x": [0.2, 0.2], "y": [-0.1, -0.1], "z": [0.18, 0.18]},
         debug_vis=True,
     )
 

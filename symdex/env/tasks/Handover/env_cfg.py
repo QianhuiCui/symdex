@@ -47,6 +47,12 @@ class HandoverSceneCfg(BaseSceneCfg):
                 "joint4": 1.4,
                 "joint5": -1.0,
                 "joint6": -3.14,
+                # "joint1": 0.5,
+                # "joint2": 0.0,
+                # "joint3": -0.5,
+                # "joint4": 0.0,
+                # "joint5": -0.3,
+                # "joint6": -1.57,
                 # hand 
                 "jif1": 0.0,
                 "jif2": 0.4,
@@ -133,11 +139,11 @@ class HandoverSceneCfg(BaseSceneCfg):
         ),
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
-                "joint1": -0.8,
-                "joint2": 0.3,
+                "joint1": -0.8,  # -0.9,  # -0.8,
+                "joint2": 0.3,  # -0.85,  # 0.3,
                 "joint3": -0.6,
-                "joint4": 0.0,
-                "joint5": -0.8,
+                "joint4": 0.0,  # -3.2,  # 0.0,
+                "joint5": -0.8,  # -2.0,  # -0.8,
                 "joint6": 1.57,
                 # hand 
                 "jif1": 0.0,
@@ -211,9 +217,11 @@ class HandoverSceneCfg(BaseSceneCfg):
     object_0 = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Object_0",
         spawn=MultiUsdCfg(
-            # sim_utils.UsdFileCfg(
-            # usd_path=f"{symdex.LIB_PATH}/assets/object/orange_bottle.usd",
-            usd_path="bottle",
+        # spawn=sim_utils.UsdFileCfg(
+            # usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
+            # usd_path=f"{symdex.LIB_PATH}/assets/object/dog.usd",
+            # usd_path=f"{symdex.LIB_PATH}/assets/object/can.usd",
+            usd_path="bottle",  # "grasp",
             random_choice=True,
             obj_label=True,
             preview_surface=RandomPreviewSurfaceCfg(
@@ -233,7 +241,7 @@ class HandoverSceneCfg(BaseSceneCfg):
                 solver_velocity_iteration_count=1,
                 max_depenetration_velocity=1000.0,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.11),
             activate_contact_sensors=True,
             scale=(1.5, 1.5, 1.5),
             # scale=(1.0, 1.0, 1.0),
@@ -422,7 +430,7 @@ class HandoverEventCfg(BaseEventCfg):
         func=randomize_rigid_body_mass,
         mode="startup",
         params={
-            "mass_distribution_params": (0.05, 0.9),
+            "mass_distribution_params": (0.05, 0.5),
             "operation": "scale",
         },
     )
@@ -436,7 +444,8 @@ class HandoverCommandsCfg(BaseCommandsCfg):
         object_id=0,
         success_threshold=0.05,
         success_threshold_orient=0.95, # 60 degree 
-        pose_range={"x": [0.15, 0.15], "y": [0.0, 0.0], "z": [0.25, 0.25], "roll": [-1.57, -1.57]},
+        pose_range={"x": [0.15, 0.15], "y": [0.0, 0.0], "z": [0.37, 0.37], "pitch": [1.57, 1.57]},
+        # {"x": [0.15, 0.15], "y": [0.0, 0.0], "z": [0.25, 0.25], "roll": [-1.57, -1.57]},
         update_goal_on_success=False,
         debug_vis=True,
     )
@@ -446,7 +455,8 @@ class HandoverCommandsCfg(BaseCommandsCfg):
         target_link="palm_link",
         success_threshold=0.05,
         success_threshold_orient=0.95, # 60 degree 
-        pose_range={"x": [0.15, 0.15], "y": [0.07, 0.07], "z": [0.37, 0.37], "pitch": [1.57, 1.57]},
+        pose_range={"x": [0.15, 0.15], "y": [0.07, 0.07], "z": [0.25, 0.25], "roll": [-1.57, -1.57]},
+        # {"x": [0.15, 0.15], "y": [0.07, 0.07], "z": [0.37, 0.37], "pitch": [1.57, 1.57]},
         update_goal_on_success=False,
         debug_vis=True,
     )
@@ -526,19 +536,17 @@ class HandoverActionsCfg:
 
 @configclass
 class HandoverTerminationsCfg(BaseTerminationsCfg):
-    max_consecutive_success = DoneTerm(
-        func=handover.max_consecutive_success, 
-        params={"num_success": 1},
-    )
+    max_consecutive_success = DoneTerm(func=handover.max_consecutive_success, 
+                                       params={"num_success": 1},)
 
 
 @configclass
 class HandoverRewardsCfg(BaseRewardsCfg):
     """Reward terms for the MDP."""
-    reaching_object = RewTerm(func=handover.frame_marker_robot_distance, 
+    reaching_object = RewTerm(func=handover.frame_marker_robot_distance,   # object_robot_distance,  # handover.frame_marker_robot_distance, 
                               params={"weight": [1.0, 1.0, 1.0, 1.5, 2.0], 
                                       "link_name": ["if5", "mf5", "pf5", "th5", "palm_link"], 
-                                      "frame_name": "bottle_bottom"}, 
+                                      "frame_name": "bottle_bottom"},  # "object_id": 0},  # "frame_name": "bottle_bottom"}, 
                               weight=0.0)
     object_goal_tracking = RewTerm(func=handover.object_goal_distance,
                                    params={"command_name": "target_pos", "object_id": 0},
@@ -564,12 +572,12 @@ class HandoverRewardsCfg(BaseRewardsCfg):
                                    weight=0.0,)
     left_align_finger_joint = RewTerm(func=handover.align_finger_joint,
                                       params={"link_name": ["jif1", "jif2", "jif3", "jif4", "jmf1", "jmf2", "jmf3", "jmf4", "jpf1", "jpf2", "jpf3", "jpf4", "jth1", "jth2", "jth3", "jth4"], 
-                                           "asset_cfg": SceneEntityCfg("robot_left")},
-                                           weight=0.0,)
-    left_reaching_object = RewTerm(func=handover.frame_marker_robot_distance,
+                                              "asset_cfg": SceneEntityCfg("robot_left")},
+                                      weight=0.0,)
+    left_reaching_object = RewTerm(func=handover.frame_marker_robot_distance,  # object_robot_distance,  # handover.frame_marker_robot_distance,
                                    params={"weight": [1.5, 1.0, 1.0, 2.0], 
                                            "link_name": ["if5", "mf5", "pf5", "th5"], 
-                                           "frame_name": "bottle_top",
+                                           "frame_name": "bottle_top",  # "object_id": 0,  # "frame_name": "bottle_top",
                                            "if_left": True,
                                            "asset_cfg": SceneEntityCfg("robot_left")}, 
                                    weight=0.0)

@@ -25,6 +25,19 @@ rew:
   collision_to_table: -0.000001
   collision_to_table_left: -0.000001
 
+cam:
+  enable: True
+  num_cams: 1
+  frame_stack: 1
+  resolution: 128
+  cam_params:
+    cam_1:
+      enable: True
+      randomize: False
+      pos: [-0.5, 0.0, 0.45]
+      target: [0.18, 0.0, 0.08]
+      horizontal_aperture: 36.0
+
 randomize:
   enable: False
   update_freq: 100
@@ -65,19 +78,6 @@ randomize:
     #            [[0.06, 0.19], [0.42, 0.28], [0.0, 0.0]],
     #            [[0.04, 0.21], [0.43, 0.27], [0.0, 0.0]],
     #            [[0.02, 0.23], [0.44, 0.26], [0.0, 0.0]]]
-
-cam:
-  enable: True
-  num_cams: 1
-  frame_stack: 1
-  resolution: 128
-  cam_params:
-    cam_1:
-      enable: True
-      randomize: False
-      pos: [-0.5, 0.0, 0.45]
-      target: [0.18, 0.0, 0.08]
-      horizontal_aperture: 32.0 
 
 multi:
   shared_obs_dim: 138

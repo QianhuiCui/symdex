@@ -7,10 +7,12 @@ from isaaclab.utils.math import quat_from_matrix
 
 from pathlib import Path
 LOGGER_ROOT = Path(__file__).resolve().parents[1] 
-SAVE_DIR = LOGGER_ROOT / "teleop_logs"   # / "test"  # / "policy"
+SAVE_DIR = LOGGER_ROOT / "teleop_logs" #  / "mixture"  # / "test"  # / "policy"
 
 
 class TrajectoryLogger:
+    """Saves each episode to its own .h5 file (one trajectory per file)."""
+
     def __init__(self, save_dir: Path=SAVE_DIR, task_name=None, operator: str | None = None):
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -22,18 +24,14 @@ class TrajectoryLogger:
         self.failed_dir = save_dir / f"{self.task_name}_failed"
         self.success_dir.mkdir(parents=True, exist_ok=True)
         self.failed_dir.mkdir(parents=True, exist_ok=True)
-        self.success_tmp_path = self.success_dir / f"{self.task_name}_{self.timestamp}_success_tmp.h5"
-        self.failed_tmp_path = self.failed_dir / f"{self.task_name}_{self.timestamp}_failed_tmp.h5"
-        self.success_h5 = h5py.File(str(self.success_tmp_path), "w")
-        self.failed_h5 = h5py.File(str(self.failed_tmp_path), "w")
         self.success_episode_idx = 0
         self.failed_episode_idx = 0
 
         self._epi_meta = {}
         self._reset_buffers()
         print(f"[Logger] Operator: {self.operator}")
-        print(f"[Logger] Initialized success log file: {self.success_tmp_path}")
-        print(f"[Logger] Initialized failed log file: {self.failed_tmp_path}")
+        print(f"[Logger] Success trajectories -> {self.success_dir}")
+        print(f"[Logger] Failed trajectories -> {self.failed_dir}")
 
     def _reset_buffers(self):
         """Internal buffer for current trial data."""
@@ -73,52 +71,58 @@ class TrajectoryLogger:
             return
 
         if success:
-            h5_file = self.success_h5
+            out_dir = self.success_dir
             episode_idx = self.success_episode_idx
             file_tag = "success"
         else:
-            h5_file = self.failed_h5
+            out_dir = self.failed_dir
             episode_idx = self.failed_episode_idx
             file_tag = "failed"
-        grp = h5_file.create_group(f"episode_{episode_idx:03d}")
 
-        # metadata
-        meta = grp.create_group("epi_meta")
-        for k, v in self._epi_meta.items():
-            if isinstance(v, (list, tuple)):
-                meta.create_dataset(k, data=np.array(v, dtype='S'))
-            elif isinstance(v, np.ndarray):
-                meta.create_dataset(k, data=v)
-            else:
-                meta.attrs[k] = v
-        
-        # offline rl data
-        offline_data = grp.create_group("offline_data")
-        
-        # observations group
-        obs_grp = offline_data.create_group("observations")
-        obs_grp.create_dataset("policy", data=np.stack(self._obs_policy, axis=0))
-        obs_grp.create_dataset("vision",
-                               data=np.stack(self._obs_vision, axis=0),
-                               compression="gzip",
-                               compression_opts=4,
-                               chunks=True,)
-        # obs_grp.create_dataset("point_cloud",
-        #                        data=np.stack(self.obs_pc, axis=0),
-        #                        compression="gzip",
-        #                        compression_opts=4,
-        #                        chunks=True,)
+        tmp_path = out_dir / f"{self.task_name}_{self.timestamp}_{file_tag}_{episode_idx:03d}_tmp.h5"  # _{episode_idx:03d}_tmp.h5"
+        final_path = out_dir / f"{self.task_name}_{self.timestamp}_{file_tag}_{episode_idx:03d}.h5"  # _{episode_idx:03d}.h5"
 
-        offline_data.create_dataset("actions", data=np.stack(self._act, axis=0))
-        offline_data.create_dataset("terminals", data=np.asarray(self._terminals, dtype=np.uint8))
-        offline_data.create_dataset("timeouts", data=np.asarray(self._timeouts, dtype=np.uint8))
+        with h5py.File(str(tmp_path), "w") as h5_file:
+            grp = h5_file.create_group("episode_000")
 
-        h5_file.flush()
+            # metadata
+            meta = grp.create_group("epi_meta")
+            for k, v in self._epi_meta.items():
+                if isinstance(v, (list, tuple)):
+                    meta.create_dataset(k, data=np.array(v, dtype='S'))
+                elif isinstance(v, np.ndarray):
+                    meta.create_dataset(k, data=v)
+                else:
+                    meta.attrs[k] = v
+
+            # offline rl data
+            offline_data = grp.create_group("offline_data")
+
+            # observations group
+            obs_grp = offline_data.create_group("observations")
+            obs_grp.create_dataset("policy", data=np.stack(self._obs_policy, axis=0))
+            obs_grp.create_dataset("vision",
+                                   data=np.stack(self._obs_vision, axis=0),
+                                   compression="gzip",
+                                   compression_opts=4,
+                                   chunks=True,)
+            # obs_grp.create_dataset("point_cloud",
+            #                        data=np.stack(self.obs_pc, axis=0),
+            #                        compression="gzip",
+            #                        compression_opts=4,
+            #                        chunks=True,)
+
+            offline_data.create_dataset("actions", data=np.stack(self._act, axis=0))
+            offline_data.create_dataset("terminals", data=np.asarray(self._terminals, dtype=np.uint8))
+            offline_data.create_dataset("timeouts", data=np.asarray(self._timeouts, dtype=np.uint8))
+
+        tmp_path.rename(final_path)
+
         if success:
             self.success_episode_idx += 1
         else:
             self.failed_episode_idx += 1
-        print(f"[Logger] Saved {file_tag} episode_{episode_idx:03d} with {steps} steps")
+        print(f"[Logger] Saved {file_tag} trajectory -> {final_path.name} ({steps} steps)")
 
         self._epi_meta = {}
         self._reset_buffers()
@@ -129,21 +133,6 @@ class TrajectoryLogger:
             self._epi_meta = {}
             self._reset_buffers()
 
-        self.success_h5.close()
-        self.failed_h5.close()
-
-        success_final_path = self.success_dir / (
-            f"{self.task_name}_{self.timestamp}_success_{self.success_episode_idx:02d}eps.h5"
-        )
-        failed_final_path = self.failed_dir / (
-            f"{self.task_name}_{self.timestamp}_failed_{self.failed_episode_idx:02d}eps.h5"
-        )
-
-        self.success_tmp_path.rename(success_final_path)
-        self.failed_tmp_path.rename(failed_final_path)
-
-        print(f"[Logger] Closed success file: {success_final_path}")
-        print(f"[Logger] Closed failed file: {failed_final_path}")
         print(f"[Logger] Summary: success={self.success_episode_idx}, failed={self.failed_episode_idx}")
 
 
