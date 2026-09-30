@@ -65,6 +65,12 @@ class TrajectoryLogger:
         self._terminals.append(np.uint8(1 if terminated else 0))
         self._timeouts.append(np.uint8(1 if truncated else 0))
 
+    def mark_aborted(self):
+        """Operator ended the episode early: flag the last step as truncated and tag the metadata."""
+        if len(self._timeouts) > 0:
+            self._timeouts[-1] = np.uint8(1)
+        self._epi_meta["aborted"] = True
+
     def save_episode(self, success: bool):
         steps = len(self._act)
         if steps == 0:

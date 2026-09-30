@@ -9,6 +9,8 @@ from omegaconf import DictConfig, OmegaConf
 import gymnasium as gym
 import threading
 import time
+import carb
+import omni.appwindow
 
 from symdex.utils.common import set_random_seed, capture_keyboard_interrupt, preprocess_cfg
 from symdex.utils.trajectory_utils import get_obs, as_flag, to_str
@@ -26,6 +28,25 @@ teleop_joint_data = {"value": None, "timestamp": None, "recv_time": None}
 teleop_target_poses = {"right": None, "left": None}
 match_control = {"start": 0, "recv_time": None}
 _data_lock = threading.Lock()
+episode_abort = {"requested": False}
+
+def setup_abort_key(key_name: str = "K"):
+    input_iface = carb.input.acquire_input_interface()
+    keyboard = omni.appwindow.get_default_app_window().get_keyboard()
+
+    def _on_key(event, *args):
+        if event.type == carb.input.KeyboardEventType.KEY_PRESS and event.input.name == key_name:
+            with _data_lock:
+                episode_abort["requested"] = True
+        return True
+
+    return input_iface.subscribe_to_keyboard_events(keyboard, _on_key)
+
+def clear_teleop_state():
+    with _data_lock:
+        teleop_joint_data.update(value=None, timestamp=None, recv_time=None)
+        match_control.update(start=0, recv_time=None)
+        episode_abort["requested"] = False
 
 def recv_teleop():
     print("[Teleop Receiver] Listening for teleoperation data...")
@@ -136,18 +157,13 @@ def main(cfg: DictConfig):
     env.reset()
     pending_init_meta = get_episode_init_meta(env, cfg)
     send_msg("robot_reset", {"t": time.time()})
-
-    with _data_lock:
-        teleop_joint_data["value"] = None
-        teleop_joint_data["timestamp"] = None
-        teleop_joint_data["recv_time"] = None 
-        match_control["start"] = 0
-        match_control["recv_time"] = None
-
+    clear_teleop_state()
     last_reset_recv_time = time.monotonic()
     action_buf = torch.empty((env.num_envs, env.action_space.shape[1]), device=cfg.rl_device, dtype=torch.float32)
 
     threading.Thread(target=recv_teleop, daemon=True).start()
+    abort_key_sub = setup_abort_key("K")
+    print("[Teleop] Press 'K' in the Isaac window to end the episode early as FAILED.")
 
     # --- logger setup ---
     use_logger = cfg.logger.enable
@@ -167,8 +183,27 @@ def main(cfg: DictConfig):
 
     print("[IsaacLab Teleop] Started. Waiting for teleop input...")
 
+    def finish_episode(success: bool) -> bool:
+        """Reset env + teleop state, save the recording. Returns True if max_episodes reached."""
+        nonlocal pending_init_meta, last_reset_recv_time, episodes_saved, episode_started, cur_lang
+        env.reset()
+        pending_init_meta = get_episode_init_meta(env, cfg)
+        send_msg("robot_reset", {"t": time.time()})
+        last_reset_recv_time = time.monotonic()
+        clear_teleop_state()
+
+        was_recording = use_logger and episode_started
+        episode_started, cur_lang = False, None
+        if not was_recording:
+            return False
+        logger.save_episode(success=success)
+        episodes_saved += 1
+        return episodes_saved >= cfg.logger.max_episodes
+
     while simulation_app.is_running():
         with _data_lock:
+            abort_requested = episode_abort["requested"]
+            episode_abort["requested"] = False
             q_value = teleop_joint_data["value"]
             q_ts_recv = teleop_joint_data["recv_time"]
             pose_right = teleop_target_poses["right"] 
@@ -184,7 +219,16 @@ def main(cfg: DictConfig):
             sphere_writer.write(env, "target_sphere", np.array(pose_right, dtype=np.float32))
         if pose_left is not None:
             sphere_writer.write(env, "target_sphere_left", np.array(pose_left, dtype=np.float32))
-                    
+
+        # ---- operator abort (K): end episode now, save as failed ----
+        if abort_requested:
+            print("[Teleop] Episode finished: ABORTED by operator (K) -> saved as FAILED.")
+            if use_logger and episode_started:
+                logger.mark_aborted()
+            if finish_episode(success=False):
+                break
+            continue
+
         if q_value is None or q_ts_recv is None:
             time.sleep(0.001)
             continue
@@ -240,25 +284,8 @@ def main(cfg: DictConfig):
             else:
                 print("[Teleop] Episode finished: ENV RESET triggered.")
 
-            env.reset()
-            pending_init_meta = get_episode_init_meta(env, cfg)
-            send_msg("robot_reset", {"t": time.time()})
-            last_reset_recv_time = time.monotonic()
-
-            with _data_lock:
-                teleop_joint_data["value"] = None
-                teleop_joint_data["timestamp"] = None
-                teleop_joint_data["recv_time"] = None
-                match_control["start"] = 0
-                match_control["recv_time"] = None
-
-            if use_logger and episode_started:
-                logger.save_episode(success=bool(terminated and not truncated))
-                episodes_saved += 1
-                if episodes_saved >= cfg.logger.max_episodes:
-                    break
-            episode_started = False
-            cur_lang = None
+            if finish_episode(success=bool(terminated and not truncated)):
+                break
 
     if use_logger:
         logger.close()
