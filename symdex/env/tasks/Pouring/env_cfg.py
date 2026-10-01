@@ -399,7 +399,7 @@ class PouringEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x":[0.0, 0.3], "y":[-0.15, -0.3], "z":[0.05, 0.05], "roll": [1.57, 1.57]},
+            "pose_range": {"x":[0.15, 0.25], "y":[-0.15, -0.25], "z":[0.05, 0.05], "roll": [1.57, 1.57]},
             "velocity_range": {},
             "object_id": 0,
         }
@@ -409,7 +409,7 @@ class PouringEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.0, 0.3], "y": [0.1, 0.4], "z": [0.0, 0.0], "roll": [1.57, 1.57]},
+            "pose_range": {"x": [0.05, 0.2], "y": [0.1, 0.3], "z": [0.0, 0.0], "roll": [1.57, 1.57]},
             "velocity_range": {},
             "object_id": 1,
         },

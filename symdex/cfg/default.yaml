@@ -11,12 +11,12 @@ sim_device: ${.device}
 rl_device: ${.device}
 graphics_device_id: 0
 
-seed: 42  # 42  # -1 for teleop
+seed: -1  # 42  # -1 for teleop
 max_step: null
 max_time: 36000 # in seconds
 eval_headless: True
 headless: True
-max_episode_length: 2000
+max_episode_length: 1500
 
 info_track_keys: null # a list of keys to track in the info dict returned by env.step
 info_track_step: ['all-step'] # ['last', 'all-episode', 'all-step'], whether to track the info in the
@@ -28,13 +28,13 @@ artifact_critic: null
 save_model: False
 
 logger:   # for teleop data collection
-  enable: False
-  max_episodes: 1
+  enable: True
+  max_episodes: 10
   operator: 1  # optional, name of the operator for teleop data collection
 
 replay:
   print_every: 5
   dataset_path: null  # path to dataset h5 file
-  show_vision: False  # pop up a window comparing recorded vs replayed camera frames
+  show_vision: True  # pop up a window comparing recorded vs replayed camera frames
   # vision_out_dir: null  # optional dir to save per-episode recorded-vs-replayed comparison videos
   logging: False  # re-record the replayed trajectories (clean images, debug_vis=False) into <teleop_logs>/no_frame
