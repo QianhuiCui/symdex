@@ -8,6 +8,7 @@ import torch
 import hydra
 from omegaconf import DictConfig
 import gymnasium as gym
+import time
 
 from symdex.utils.common import set_random_seed, capture_keyboard_interrupt, preprocess_cfg
 
@@ -19,6 +20,8 @@ from symdex.utils.rl_env_wrapper import VecEnvWrapper
 @hydra.main(config_path=symdex.LIB_PATH_PATH.joinpath('cfg').as_posix(), config_name="default")
 def main(cfg: DictConfig):
     torch.set_printoptions(sci_mode=False, precision=3)
+    if cfg.seed is None or int(cfg.seed) < 0:
+        cfg.seed = int(time.time() * 1000) % (2**31 - 1)
     set_random_seed(cfg.seed)
     capture_keyboard_interrupt()
     cfg, env_cfg = preprocess_cfg(cfg)
