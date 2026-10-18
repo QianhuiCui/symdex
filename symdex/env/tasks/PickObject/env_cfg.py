@@ -433,7 +433,7 @@ class PickObjectCommandsCfg(BaseCommandsCfg):
 
     target_pos = TargetPositionCommandCfg(
         object_id=0,
-        success_threshold=0.07,
+        success_threshold=0.15,
         z_height=0.3,
         debug_vis=True,
         use_initial_pose=True,
@@ -642,4 +642,5 @@ class PickObjectEnvCfg(BaseEnvCfg):
         # post init of parent
         super().__post_init__()
         # self.viewer.eye = (-1.5, 0.0, 1.5)
-        self.viewer.eye = (-0.6, 0.0, 1.0)
+        self.viewer.eye = (-0.9, 0.0, 0.8)
+        self.viewer.lookat = (0.2, 0.0, 0.0)

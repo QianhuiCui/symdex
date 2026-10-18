@@ -626,3 +626,4 @@ class PouringEnvCfg(BaseEnvCfg):
         # post init of parent
         super().__post_init__()
         self.viewer.eye = (-0.8, 0.0, 0.7)
+        self.viewer.lookat = (0.2, 0.0, 0.1)

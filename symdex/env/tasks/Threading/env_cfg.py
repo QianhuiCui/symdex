@@ -27,7 +27,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
     robot = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right.usd",  # assets/ufactory850/uf850_allegro_right_colored.usd",  # assets/ufactory850/uf850_allegro_right.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_right_fric.usd",  # assets/ufactory850/uf850_allegro_right_colored.usd",  # assets/ufactory850/uf850_allegro_right.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -119,7 +119,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
     robot_left = ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot_left",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left.usd",  # assets/ufactory850/uf850_allegro_left_colored.usd",  # assets/ufactory850/uf850_allegro_left.usd",
+            usd_path=f"{symdex.LIB_PATH}/assets/ufactory850/uf850_allegro_left_fric.usd",  # assets/ufactory850/uf850_allegro_left_colored.usd",  # assets/ufactory850/uf850_allegro_left.usd",
             activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=True,
@@ -212,8 +212,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
         prim_path=f"/World/envs/env_.*/Object_0",
         spawn=MultiUsdCfg(
         # spawn=sim_utils.UsdFileCfg(
-            # usd_path=f"{symdex.LIB_PATH}/assets/object/cube_with_hole.usd",
-            usd_path="cube_with_hole", 
+            usd_path="cube_with_hole",
             random_choice=True,
             obj_label=True,
             preview_surface=RandomPreviewSurfaceCfg(
@@ -233,7 +232,7 @@ class ThreadingSceneCfg(BaseSceneCfg):
                 solver_velocity_iteration_count=1,
                 max_depenetration_velocity=1000.0,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=0.2),  # 0.15
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.11),
             activate_contact_sensors=True,
             scale=(0.75, 0.75, 0.75),
         ), # wait for initialization
@@ -374,7 +373,23 @@ class ThreadingSceneCfg(BaseSceneCfg):
             ),
         ],
     )
-    
+
+    cube_hole_frame = FrameTransformerCfg(
+        prim_path="{ENV_REGEX_NS}/Object_0",
+        debug_vis=True,
+        visualizer_cfg=FRAME_MARKER_SMALL_CFG.replace(prim_path="/Visuals/CubeHoleFrameTransformer"),
+        target_frames=[
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/Object_0",
+                name="hole_frame",
+                offset=OffsetCfg(
+                    pos=(0.0, 0.0, 0.0),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+            ),
+        ],
+    )
+
 
 @configclass
 class ThreadingEventCfg(BaseEventCfg):
@@ -394,7 +409,7 @@ class ThreadingEventCfg(BaseEventCfg):
         func=reset_object,
         mode="reset",
         params={
-            "pose_range": {"x": [0.05, 0.15], "y": [-0.25, -0.35], "z": [0.05, 0.05], "roll": [-1.57, -1.57]}, # 0.785 = 45 degree, 2.356 = 135 degree
+            "pose_range": {"x": [0.05, 0.15], "y": [-0.25, -0.35], "z": [0.05, 0.05], "roll": [-1.57, -1.57], "yaw": [0.0, 0.785]}, # 0.785 = 45 degree, 2.356 = 135 degree
             "velocity_range": {},
             "object_id": 0,
         },
@@ -419,7 +434,7 @@ class ThreadingCommandsCfg(BaseCommandsCfg):
         object_id=0,
         success_threshold=0.1,
         success_threshold_orient=0.97, 
-        pose_range={"x": [0.0, 0.0], "y": [-0.15, -0.15], "z": [0.2, 0.2], "roll": [-1.57, -1.57]},
+        pose_range={"x": [0.1, 0.1], "y": [-0.15, -0.15], "z": [0.2, 0.2], "roll": [-1.57, -1.57]},
         update_goal_on_success=False,
         debug_vis=True,
     )
@@ -428,7 +443,7 @@ class ThreadingCommandsCfg(BaseCommandsCfg):
         object_id=1,
         success_threshold=0.1,
         success_threshold_orient=0.97, # 60 degree 
-        pose_range={"x": [0.0, 0.0], "y": [0.05, 0.05], "z": [0.13, 0.13], "yaw": [1.57, 1.57]},
+        pose_range={"x": [0.1, 0.1], "y": [0.05, 0.05], "z": [0.13, 0.13], "yaw": [1.57, 1.57]},
         update_goal_on_success=False,
         debug_vis=True,
     )
@@ -598,4 +613,5 @@ class ThreadingEnvCfg(BaseEnvCfg):
         # post init of parent
         super().__post_init__()
         # self.viewer.eye = (-3.5, 0.0, 3.5)
-        self.viewer.eye = (-0.6, 0.0, 1.0)
+        self.viewer.eye = (-0.6, 0.0, 0.7)
+        self.viewer.lookat = (0.2, 0.0, 0.1)

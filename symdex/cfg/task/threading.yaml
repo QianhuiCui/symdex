@@ -82,7 +82,7 @@ multi:
     single_agent_obs_idx: [[[0, 56], [112, 158]], 
                           [[56, 136], [158, 180]]]
     single_agent_rew: [["reaching_object", "object_lifting", "cube_goal_tracking", "cube_goal_orient_tracking", "cube_success_bonus", "drill_cube_distance", "success_bonus"],
-                      ["align_hand_to_pos", "align_hand_to_quat", "reaching_drill", "drill_goal_tracking", "drill_goal_orient_tracking", "drill_success_bonus", "drill_cube_distance", "success_bonus"]]
+                       ["align_hand_to_pos", "align_hand_to_quat", "reaching_drill", "drill_goal_tracking", "drill_goal_orient_tracking", "drill_success_bonus", "drill_cube_distance", "success_bonus"]]
 
 symmetry:
   reset_symmetry:
